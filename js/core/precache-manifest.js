@@ -12,6 +12,7 @@ self.PRECACHE_URLS = [
   "./assets/app-icons/icon-192.png",
   "./assets/app-icons/icon-512.png",
   "./assets/app-icons/icon-maskable-512.png",
+  "./assets/brand/favicon.svg",
   "./assets/brand/logo-full.svg",
   "./assets/brand/logo-mark.svg",
   "./assets/fonts/inter/inter-latin-400-normal.woff2",

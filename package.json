@@ -18,5 +18,20 @@
     "@resvg/resvg-js": "^2.6.2",
     "chart.js": "^4.6.1",
     "lucide-static": "^1.73.0"
-  }
+  },
+  "main": "sw.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/awstamimi99/AstroHealth-AI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/awstamimi99/AstroHealth-AI/issues"
+  },
+  "homepage": "https://github.com/awstamimi99/AstroHealth-AI#readme"
 }

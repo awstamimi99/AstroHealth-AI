@@ -15,8 +15,8 @@ import { dirname, extname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const SKIP_DIRS = new Set(["node_modules", "docs", "scripts", "tests", ".git"]);
-const EXTENSIONS = new Set([".html", ".css", ".js", ".mjs", ".webmanifest"]);
+const SKIP_DIRS = new Set(["node_modules", "docs", "scripts", "tests", ".git", ".github"]);
+const EXTENSIONS = new Set([".html", ".css", ".js", ".mjs", ".webmanifest", ".json"]);
 const ALLOWED = ["http://www.w3.org/2000/svg"];
 const URL_RE = /https?:\/\/[^\s"'`)<>]*/g;
 
@@ -26,6 +26,8 @@ function walk(dir, list = []) {
     const top = relative(ROOT, full).split(sep)[0];
     if (SKIP_DIRS.has(top)) continue;
     if (statSync(full).isDirectory()) walk(full, list);
+    // package files are development metadata, never loaded by the app.
+    else if (/^package(?:-lock)?\.json$/.test(name)) continue;
     else if (EXTENSIONS.has(extname(name))) list.push(full);
   }
   return list;
