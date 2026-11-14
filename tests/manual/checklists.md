@@ -62,7 +62,7 @@ Demo accounts (password `demo`): `haddad` (astronaut, a-01), `medofficer` and
 
 Run `python3 -m http.server 8080`, then open <http://localhost:8080/login.html>.
 If you visited before, reload once so the current service worker
-(cache `astrohealth-v0.7.0`) takes over. If the mission chips show
+(cache `astrohealth-v0.8.0`) takes over. If the mission chips show
 "Not available", the browser holds data seeded before the `mission` setting
 existed: run `resetDatabase()` or clear site data.
 
@@ -72,7 +72,7 @@ existed: run `resetDatabase()` or clear site data.
 - [ ] Top bar shows **Mission ODYSSEY-7** and **Mission Day 147** on the seed day (from the synthetic seed, not hardcoded)
 - [ ] Bell is a plain link to Alerts with **no** number on it
 - [ ] Sidebar has 7 items; **Crew Monitor** and **Simulation Center** are not shown
-- [ ] Each item except Overview, Physical Health, Mental Wellbeing and Alerts opens its placeholder: icon, title, "will be completed in a later sprint" (no numbers, charts, forms or alerts). Overview is the Sprint 4 Astronaut Overview (section 8); Physical Health and Mental Wellbeing are Sprint 6 pages (section 10); Alerts is the Sprint 8 page (section 12)
+- [ ] Every item opens a functional page (no placeholders remain since Sprint 9): Overview (section 8), Physical Health and Mental Wellbeing (section 10), Alerts (section 12), Health History, Reports and Settings (section 13)
 - [ ] The active item has `aria-current="page"`; the page heading and browser tab title change; the page does not reload
 - [ ] After choosing a route, focus is on the page heading (screen reader announces it)
 - [ ] Type `#/crew` (and `#/simulation`, `#/crew/AH-01`) → **Access denied**: lock icon, "available to the Medical Officer role only. You are signed in as Astronaut.", "Go to Overview" link, focus on the heading
@@ -87,6 +87,7 @@ existed: run `resetDatabase()` or clear site data.
 - [ ] `#/overview` and `#/crew` (Crew Monitor) open the functional Sprint 5 views — verify them with section 9
 - [ ] `#/simulation` opens the Sprint 7 Simulation Center (no Access denied) — verify it with section 11
 - [ ] `#/alerts` opens the Sprint 8 Alerts page — verify it with section 12
+- [ ] `#/history`, `#/reports` and `#/settings` open the Sprint 9 pages — verify them with section 13
 - [ ] Astronauts still get Access denied on both `#/crew` and `#/simulation` (see the Astronaut list above)
 - [ ] Log out → `login.html`
 
@@ -120,7 +121,7 @@ existed: run `resetDatabase()` or clear site data.
 
 Run `python3 -m http.server 8080` and open <http://localhost:8080/login.html>.
 Returning browsers: reload once so the current service worker cache
-`astrohealth-v0.7.0` takes over. All data is synthetic seed data; values are relative to the moment
+`astrohealth-v0.8.0` takes over. All data is synthetic seed data; values are relative to the moment
 the database was seeded, so "today" items depend on the UTC time of seeding.
 
 **Expected per account** (seeded today after 08:00 UTC)
@@ -143,7 +144,7 @@ the database was seeded, so "today" items depend on the UTC time of seeding.
 - [ ] Today's routine: check-in "Completed today" + "Shared with the Medical Officer" or "Private — not shared" (no mood/stress scores); vital signs "Recorded today"; cognitive check "Last completed …" (never "due"/"overdue")
 - [ ] Sleep: 7 UTC dates with bars and values, summary sentence (nights recorded, average, baseline, nights below baseline); missing nights say "No data"
 - [ ] A message shows "From the Medical Officer" only when its sender is a stored `medical_officer` account (verified in the service); no sender id appears anywhere on the page
-- [ ] Quick links go to `#/physical`, `#/wellbeing`, `#/history`, `#/alerts` (Physical Health and Mental Wellbeing are the Sprint 6 pages; Alerts is the Sprint 8 page; History is still a placeholder)
+- [ ] Quick links go to `#/physical`, `#/wellbeing`, `#/history`, `#/alerts` (Physical Health and Mental Wellbeing are the Sprint 6 pages; Alerts is the Sprint 8 page; Health History is the Sprint 9 page)
 
 **Routing by role (current, since Sprint 5)**
 
@@ -156,7 +157,7 @@ the database was seeded, so "today" items depend on the UTC time of seeding.
 - [ ] Section failure (DevTools console, then go to `#/history` and back to `#/overview`):
       `const o = IDBObjectStore.prototype.index; IDBObjectStore.prototype.index = function (n) { if (n === "by_astronaut_status") throw new DOMException("x", "UnknownError"); return o.call(this, n); }`
       → Alert status "Status unavailable", Open alerts "Couldn't load your alerts." + Retry; other sections still show. Then run `IDBObjectStore.prototype.index = o` and press Retry → normal status returns
-- [ ] Navigate to `#/overview` and immediately to `#/history` → the Health History placeholder stays (no late Overview content)
+- [ ] Navigate to `#/overview` and immediately to `#/history` → the Health History page stays (no late Overview content)
 
 **Responsive, keyboard, accessibility**
 
@@ -180,7 +181,7 @@ Not yet checked: a real screen reader (VoiceOver/NVDA), Firefox, Safari.
 ## 9. Medical Officer dashboard & Crew Monitor (Sprint 5)
 
 Run `python3 -m http.server 8080`, open <http://localhost:8080/login.html>, and
-reload once so the current service worker cache `astrohealth-v0.7.0` takes over.
+reload once so the current service worker cache `astrohealth-v0.8.0` takes over.
 All data is synthetic seed data.
 
 **`medofficer` and `medbackup` — `#/overview`**
@@ -226,7 +227,7 @@ Not yet checked: a real screen reader, Firefox, Safari.
 ## 10. Physical Health & Mental Wellbeing (Sprint 6)
 
 Run `python3 -m http.server 8080`, open <http://localhost:8080/login.html>, and
-reload once so the current service worker cache `astrohealth-v0.7.0` takes over.
+reload once so the current service worker cache `astrohealth-v0.8.0` takes over.
 All data is synthetic. No private journal in this sprint.
 
 **Astronaut — `#/physical`** (e.g. `reyes`)
@@ -271,7 +272,7 @@ Not yet checked: a real screen reader, Firefox, Safari.
 ## 11. Simulation Center (Sprint 7, `#/simulation`)
 
 Run `python3 -m http.server 8080`, open <http://localhost:8080/login.html>, and
-reload once so the current service worker cache `astrohealth-v0.7.0` takes over.
+reload once so the current service worker cache `astrohealth-v0.8.0` takes over.
 All data is synthetic. Sprint 7 shipped without risk evaluation; **since
 Sprint 8**, after each generated reading the demonstration risk rules are
 evaluated for that crew member and may open, escalate or clear an alert
@@ -340,7 +341,7 @@ Completed regression suites, each using an isolated fresh browser profile and da
 ## 12. Risk Engine and Alerts (Sprint 8, `#/alerts`)
 
 Run `python3 -m http.server 8080`, open <http://localhost:8080/login.html>, and
-reload once so the current service worker cache `astrohealth-v0.7.0` takes over.
+reload once so the current service worker cache `astrohealth-v0.8.0` takes over.
 All data is synthetic. The rules use the stored demonstration thresholds —
 **not clinically validated**, not evidence-backed, not NASA thresholds — and
 every alert screen says "Demonstration threshold — not clinically validated."
@@ -385,3 +386,46 @@ every alert screen says "Demonstration threshold — not clinically validated."
 - 375 / 768 / 1440 px: no page-level horizontal overflow on the list and detail; keyboard only: Tab + Enter acknowledge, typed note, Space confirmation, Enter resolve; accessibility tree: 3 named filters, "Evaluate crew now" button, alert links, headings, evidence table, status region.
 - No console errors. No external requests.
 - Not yet checked: a real screen reader, Firefox, Safari.
+
+## 13. Health History, Reports and Settings (Sprint 9)
+
+Run `python3 -m http.server 8080`, open <http://localhost:8080/login.html>, and
+reload once so the current service worker cache `astrohealth-v0.8.0` takes over.
+All data is synthetic. Sprint 9 writes nothing to the database.
+
+**Health History (`#/history`)**
+
+- [ ] `haddad`: "Your health history", 7 / 14 / 30-day range (aria-pressed), "Show" category checkboxes, entries grouped by UTC day, newest first, UTC `<time>`; includes "Daily check-in completed · private" (no score) and ALT-0181 lines linking to `#/alerts/ALT-0181`
+- [ ] No scores, message text, response text, alert explanations or notes anywhere; vital-sign batches say "Source not recorded"; simulated readings say "Simulated · Simulation Center"
+- [ ] More than 100 activities → "Show older (N more)" reveals the next 100 without reloading; more than 500 → "Showing the latest 500 activities for this range."
+- [ ] `haddad` `#/history/AH-01` → "Crew member not found"
+- [ ] `medofficer` `#/history` → crew picker; `#/history/AH-01` → shared check-ins only, no "private" line and nothing hinting one exists; `#/history/AH-99` and `#/history/a-01` → not found
+
+**Reports (`#/reports`)**
+
+- [ ] `haddad`: "Health summary · AH-01", disclaimer ("Synthetic data · research and educational prototype · not a medical device · …"), physical table (days with data, missing days, average of daily averages, min, max, difference from stored baseline), alerts in the period with "Demonstration threshold — not clinically validated.", activity counts, provenance (last 7 days), "Not included in this report" list; 30 days → "Source breakdown is unavailable for this period." for the older dates
+- [ ] "Print report" opens the browser print dialog only when pressed; the preview shows only the report (no sidebar, top bar or buttons)
+- [ ] `medofficer`: crew summary (open alerts by severity, latest vital-sign time, days with data, shared check-ins) and per-crew links; `#/reports/AH-01` shows "Shared daily check-ins" only (no total)
+- [ ] Nothing is stored: no new record in IndexedDB `reports`, no new `missionEvents`
+
+**Settings (`#/settings`)**
+
+- [ ] Text size (Standard / Large / Larger) and Motion (Follow system setting / Reduce motion) apply immediately, survive a reload, update a second open tab, and are separate per user on this browser; "Reset my display preferences" resets only the signed-in user
+- [ ] Mission and Units are read-only; `medofficer` also sees "Demonstration risk thresholds (read-only)" with "Demonstration thresholds — not clinically validated." and the simulation default speed; `haddad` doesn't
+- [ ] With site storage blocked: the choice applies to this tab with the notice "…applies to this tab only."
+
+**General**
+
+- [ ] Offline (after one online visit): all three pages load; keyboard only with a visible focus ring; 1440 / 768 / 375 px without horizontal page scrolling; no console errors; no request to another host
+
+**Results — 2026-11-14 (headless Chrome via DevTools Protocol; every suite in its own new browser profile and IndexedDB database, run on the Sprint 9 working tree):**
+
+- Sprint 9: 11/11 passed.
+- Regression suites: Login 15/15 · Database 32/32 · Sprint 4 15/15 · Sprint 5 14/14 · Sprint 6 12/12 · Sprint 7 11/11 · Sprint 8 11/11 (harness expectations updated only for intended Sprint 9 changes: cache `astrohealth-v0.8.0`; `#/history`, `#/reports` and `#/settings` are real pages, so the late-result checks now confirm the History page instead of a placeholder).
+- History: `haddad` (30 days) sees only his own activity, "Daily check-in completed · private" without scores, ALT-0181 lines linked to `#/alerts/ALT-0181`, "Source not recorded" on vital-sign batches; `#/history/AH-02` → not found. `medofficer` picker → `#/history/AH-01` shows the same 27 shared check-in lines and no private line; `#/history/AH-99` and `#/history/a-01` → not found. After an AH-03 low-oxygen simulation: "Simulation started", simulated readings, "ALT-0191 Low SpO₂ opened (warning)", "escalated to critical", "Simulation stopped", labelled "Simulated · Simulation Center". No IDs, scores, message text or notes in the page HTML.
+- Reports: the same service call with the same time gave identical models; crew summary with 4 crew members; `#/reports/AH-01` shows shared check-ins only; the astronaut report shows the disclaimer, exclusions, provenance rows (including "Source not recorded") and, for 30 days, "Source breakdown is unavailable for this period."; with print media emulated, the sidebar, top bar and controls are hidden and only the report shows. The `reports` store stayed empty and `settings` unchanged for the whole suite.
+- Preferences: "Larger" applied (body text 17.5 px), synchronized to a second tab, persisted after reload, stored as `{ textSize, motion }` per user only; `chen` started at the defaults and her reset left Haddad's entry untouched; with storage blocked the choice applied to the tab with the notice "…applies to this tab only."; astronauts see no thresholds.
+- Offline reload (cache `astrohealth-v0.8.0`): History, Reports and Settings all loaded.
+- Keyboard only: arrow key changed the text-size radio, Tab + Enter changed the history range; accessibility tree: "Date range" and "Show" groups, 5 category checkboxes, "Text size" and "Motion" radio groups (5 radios), 4 report tables and headings; 375 / 768 / 1440 px without page-level horizontal overflow.
+- No console errors. No external requests.
+- Not yet checked: a real screen reader, Firefox, Safari, or printing to paper (print media was emulated).

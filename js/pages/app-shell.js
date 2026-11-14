@@ -16,7 +16,9 @@
 //    Officer); #/crew (incl. #/crew/AH-0n) → Crew Monitor (Medical Officer);
 //    #/physical and #/wellbeing (incl. /AH-0n) → both roles (Sprint 6);
 //    #/simulation → Simulation Center (Medical Officer only, Sprint 7);
-//    #/alerts (incl. /ALT-0nnn) → Alerts, both roles (Sprint 8).
+//    #/alerts (incl. /ALT-0nnn) → Alerts, both roles (Sprint 8);
+//    #/history (incl. /AH-0n), #/reports (incl. /AH-0n), #/settings → both
+//    roles (Sprint 9). Personal display preferences are applied at startup.
 //    Every other route still shows a placeholder until its sprint. Each
 //    navigation aborts the previous view's async work, so a late result can
 //    never overwrite the route that is now on screen.
@@ -34,6 +36,10 @@ import { renderPhysicalHealth } from "./physical-health.js";
 import { renderWellbeing } from "./wellbeing.js";
 import { renderSimulationCenter } from "./simulation-center.js";
 import { renderAlerts } from "./alerts.js";
+import { renderHistory } from "./history.js";
+import { renderReports } from "./reports.js";
+import { renderSettings } from "./settings.js";
+import { preferences } from "../core/preferences.js";
 import { APP_NAME } from "../core/config.js";
 import { icon } from "../components/icon.js";
 import { el, $, $$, clear } from "../core/utils/dom.js";
@@ -50,12 +56,18 @@ const ROUTE_VIEWS = Object.freeze({
   "#/wellbeing": Object.freeze({ astronaut: renderWellbeing, medical_officer: renderWellbeing }),
   "#/simulation": Object.freeze({ medical_officer: renderSimulationCenter }),
   "#/alerts": Object.freeze({ astronaut: renderAlerts, medical_officer: renderAlerts }),
+  "#/history": Object.freeze({ astronaut: renderHistory, medical_officer: renderHistory }),
+  "#/reports": Object.freeze({ astronaut: renderReports, medical_officer: renderReports }),
+  "#/settings": Object.freeze({ astronaut: renderSettings, medical_officer: renderSettings }),
 });
 
 const session = requireSession(); // redirects to login.html when null
 if (session) startShell(session);
 
 function startShell(current) {
+  // Personal display preferences (browser-only, per user; presentation only).
+  preferences.apply(current.userId);
+  preferences.subscribe(current.userId, () => {});
   const shell = $("[data-auth-shell]");
   const nav = $("[data-nav]");
   const view = $("[data-route-view]");

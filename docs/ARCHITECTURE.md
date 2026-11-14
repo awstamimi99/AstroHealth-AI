@@ -51,8 +51,8 @@ test suite.
 | --- | --- | --- | --- |
 | Pages / UI | `*.html`, `js/pages/`, `css/pages/` | | Build DOM with `el()` — never `innerHTML` with data |
 | Shared components | `js/components/`, `css/components.css` | core | Showcased in `tests/browser/styleguide.html` |
-| Core | `js/core/` | core | config, event bus, environment check, utils |
-| Services | `js/services/` | | The only layer pages call for data. Current: `mission-service.js` (mission name/day), `astronaut-overview-service.js` (read-only astronaut Overview: own data only, status from open alerts only, never a health assessment), `crew-monitor-service.js` (read-only Medical Officer crew snapshot and crew-member detail: verified officer only, shared wellbeing only, no journal or mission events, ranked by open alerts), `access-control.js` (Sprint 6 identity checks: verified astronaut / Medical Officer, strict crew-ID resolution), `physical-health-service.js` (read-only physical readings, 7/30-day daily-summary trends, numeric baseline differences, open physical alerts), `wellbeing-service.js` (own check-ins; shared-only officer view; the check-in write: validated, explicitly shared or private, saved atomically with a score-free `checkin_completed` event), `simulation-service.js` (Sprint 7 Simulation Center: verified Medical Officer only; start / advance / pause / resume / stop of one synthetic run at a time; no risk evaluation, no alerts — see [Simulation Center](#simulation-center-sprint-7)), `risk-service.js` (Sprint 8: evaluates the demonstration risk rules for a crew member — Medical Officer only, after a committed simulation step or an explicit "Evaluate crew now"; one atomic transaction per astronaut), `alerts-service.js` (Sprint 8: role-scoped alert list, detail by public alert number, acknowledge / resolve — see [Risk Engine and Alerts](#risk-engine-and-alerts-sprint-8)) |
+| Core | `js/core/` | core | config, event bus, environment check, utils, `preferences.js` (Sprint 9: browser-only personal display preferences) |
+| Services | `js/services/` | | The only layer pages call for data. Current: `mission-service.js` (mission name/day), `astronaut-overview-service.js` (read-only astronaut Overview: own data only, status from open alerts only, never a health assessment), `crew-monitor-service.js` (read-only Medical Officer crew snapshot and crew-member detail: verified officer only, shared wellbeing only, no journal or mission events, ranked by open alerts), `access-control.js` (Sprint 6 identity checks: verified astronaut / Medical Officer, strict crew-ID resolution), `physical-health-service.js` (read-only physical readings, 7/30-day daily-summary trends, numeric baseline differences, open physical alerts), `wellbeing-service.js` (own check-ins; shared-only officer view; the check-in write: validated, explicitly shared or private, saved atomically with a score-free `checkin_completed` event), `simulation-service.js` (Sprint 7 Simulation Center: verified Medical Officer only; start / advance / pause / resume / stop of one synthetic run at a time; no risk evaluation, no alerts — see [Simulation Center](#simulation-center-sprint-7)), `risk-service.js` (Sprint 8: evaluates the demonstration risk rules for a crew member — Medical Officer only, after a committed simulation step or an explicit "Evaluate crew now"; one atomic transaction per astronaut), `alerts-service.js` (Sprint 8: role-scoped alert list, detail by public alert number, acknowledge / resolve — see [Risk Engine and Alerts](#risk-engine-and-alerts-sprint-8)), `history-service.js`, `reports-service.js`, `settings-service.js` (Sprint 9: read-only history timeline, dynamic printable reports, read-only settings — see [Health History, Reports and Settings](#health-history-reports-and-settings-sprint-9)) |
 | Risk engine | `js/engine/`, `js/engine/rules/` | | Deterministic, explainable rules; unit-testable. Pure: imports only other `js/engine/` files (a unit test enforces this). Sprint 8: `rules/physical-rules.js` (catalog) and `risk-engine.js` (evaluate + plan) |
 | Simulation | `js/simulation/` | | Generates **synthetic** data; tag UI with `.sim-tag`. `scenarios.js` is the pure, import-free scenario catalog (Sprint 7) |
 | Database | `js/db/`, `js/db/repositories/` | contract | IndexedDB wrapper + storage-only repositories; contract in `docs/DATA-MODEL.md` |
@@ -405,6 +405,70 @@ screens say: "Demonstration threshold — not clinically validated."
   quality }`), the explanation (why this severity tier) and `evaluation`
   (`{ ruleVersion, evaluatedAt, considered, excluded, limitation }`) —
   documented as optional non-indexed metadata in `docs/DATA-MODEL.md` §3.9.
+
+## Health History, Reports and Settings (Sprint 9)
+
+Read-only features. Sprint 9 writes **nothing** to IndexedDB: no
+`reportsRepo` record, no `missionEvents`, no `settingsRepo.set`.
+
+- **History** (`history-service.js`, `#/history`, `#/history/AH-0n`) — built
+  from `missionEvents` for one verified astronaut and a 7 / 14 / 30-day UTC
+  range (whole days, inclusive). **Stored `summary` and `data` are never
+  returned or rendered** (seeded shared check-in events contain scores and
+  response events contain reply text). An explicit allow-list
+  (`describeEvent`) writes every line from narrowly validated fields:
+  | Category | Event types | Text (examples) |
+  | --- | --- | --- |
+  | Readings | `measurement_recorded` | "Simulated reading: SpO₂ 92 % (step 3)" (only when the referenced simulation run exists), "12 vital-sign samples recorded", "Sleep duration recorded: 6.2 h" |
+  | Wellbeing activity | `checkin_completed`, `cognitive_check_completed` | "Daily check-in completed · shared"; "· private" **only for its own astronaut**; "Cognitive check completed" — never a score |
+  | Alerts | `risk_detected`, `alert_generated`, `alert_escalated`, `alert_condition_cleared`, `alert_acknowledged`, `alert_resolved` | public `ALT-` number + title (internal id resolved in the service; "an alert" without a link if the lookup fails) — no explanation, no notes |
+  | Messages | `message_sent`, `message_acknowledged`, `astronaut_response` | allow-listed template label only; never message or response text |
+  | Simulation | `simulation_started` / `_paused` / `_stopped` | "Simulation started: Low oxygen saturation demonstration" |
+
+  `settings_changed`, `report_generated`, `data_reset`, `data_imported` and
+  unknown types are omitted. The Medical Officer never receives an event that
+  reveals a private check-in. Snapshot: sorted by timestamp desc, category
+  rank, internal tie-breaker; capped at 500 (`totalAvailable`,
+  `returnedCount`, `truncated`); internal ids removed; the page reveals 100 at
+  a time from the loaded snapshot (no id cursor).
+- **Provenance** — never inferred. Labels: `simulation` → "Simulated ·
+  Simulation Center", `seed` → "Synthetic seed data", `manual` → "Manual
+  entry", otherwise "Source not recorded". History marks a reading as
+  simulated only when its event references a stored simulation run; other
+  reading events say "Source not recorded". Reports count sources only from
+  raw measurement records with a canonical `source`, inside the last 7 UTC
+  days (raw retention); older dates say "Source breakdown is unavailable for
+  this period."
+- **Reports** (`reports-service.js`, `#/reports`, `#/reports/AH-0n`) —
+  generated dynamically and printed with `window.print()` (via
+  `css/print.css`) only when the user presses "Print report"; no PDF
+  library. `astronaut_health` (own, or a crew member for the Medical Officer)
+  and `crew_summary` (Medical Officer). Pure builders
+  (`buildHealthReport`, `buildCrewSummary`) take an explicit `generatedAt`
+  and never read the clock: identical input → deeply equal model. Missing
+  data shows "No data"; nothing is estimated. Every report states the
+  disclaimer and lists what is excluded: private journal, wellbeing scores,
+  cognitive scores, alert explanations, Medical Officer notes, message
+  bodies and responses, passwords and session data, internal IDs. Check-ins
+  appear as counts only (the Medical Officer gets the shared count only).
+- **Settings** (`settings-service.js`, `#/settings`) — read-only mission and
+  units for both roles; read-only demonstration thresholds ("Demonstration
+  thresholds — not clinically validated.") and simulation default speed for
+  the Medical Officer only.
+- **Preferences** (`js/core/preferences.js`) — browser-only
+  `localStorage["astrohealth.prefs.v1"] = { [userId]: { textSize, motion } }`.
+  Only `textSize` (standard / large / larger) and `motion` (system / reduce)
+  are accepted; malformed data falls back to defaults; reset removes only
+  the current user's entry; blocked storage keeps the choice in memory for
+  the tab. Applied as `data-text-size` / `data-motion` on `<html>` (CSS hooks
+  in `css/base.css`; `prefers-reduced-motion` is still respected); other
+  tabs update through the browser `storage` event. Preferences never affect
+  data, alerts, thresholds, simulation or risk evaluation.
+- **Deferred** — stored report snapshots (need public report references and
+  a retention/deletion design; `reportsRepo` has no delete); editable
+  thresholds and shared settings (need validation, an audit trail with
+  `settings_changed`, atomic writes and stated consequences); ranges beyond 30
+  days; a message-history view.
 
 ## Session contract
 

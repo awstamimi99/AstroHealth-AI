@@ -248,6 +248,40 @@ hr {
   }
 }
 
+/* ---- Personal display preferences (Sprint 9, js/core/preferences.js) ------
+   Set on <html> per signed-in user, browser-only. They change presentation
+   only — never data, alerts or risk rules. Text sizes scale the type tokens. */
+html[data-text-size="large"] {
+  --text-2xs: 12.38px;
+  --text-xs: 14.06px;
+  --text-sm: 15.75px;
+  --text-md: 16.88px;
+  --text-lg: 20.25px;
+  --text-xl: 24.75px;
+  --text-2xl: 31.5px;
+  --text-3xl: 42.75px;
+  --text-4xl: 67.5px;
+}
+html[data-text-size="larger"] {
+  --text-2xs: 13.75px;
+  --text-xs: 15.62px;
+  --text-sm: 17.5px;
+  --text-md: 18.75px;
+  --text-lg: 22.5px;
+  --text-xl: 27.5px;
+  --text-2xl: 35px;
+  --text-3xl: 47.5px;
+  --text-4xl: 75px;
+}
+html[data-motion="reduce"] *,
+html[data-motion="reduce"] *::before,
+html[data-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
 /* Content only shown on paper (see print.css). */
 .print-only {
   display: none;
