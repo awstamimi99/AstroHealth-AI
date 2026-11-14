@@ -35,6 +35,21 @@ export function getSwStatus() {
   return status;
 }
 
+/** Public offline state used by pages and diagnostics. */
+export async function getOfflineStatus() {
+  let cachedFiles = 0;
+  if ("caches" in window) {
+    try {
+      const keys = await caches.keys();
+      const appCache = keys.find((key) => key.startsWith("astrohealth-v"));
+      if (appCache) cachedFiles = (await (await caches.open(appCache)).keys()).length;
+    } catch {
+      // Cache inspection is optional; registration status remains useful.
+    }
+  }
+  return { online: navigator.onLine, serviceWorker: status, cachedFiles };
+}
+
 /** Subscribe to status changes. Calls `fn` immediately. Returns unsubscribe. */
 export function onSwStatus(fn) {
   listeners.add(fn);

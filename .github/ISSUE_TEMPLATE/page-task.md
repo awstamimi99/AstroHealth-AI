@@ -7,8 +7,8 @@ labels: task
 
 ## Owner team
 
-- [ ] Team 1 (login.html, app.html, js/auth, js/db, js/services, js/engine, js/simulation, app pages)
-- [ ] Team 2 (index.html, about.html, landing/about CSS & JS, data/team.json, data/references.json)
+- [ ] Team 1 (login.html, app.html, js/auth, js/services, js/engine, js/simulation, app pages)
+- [ ] Team 2 (public website, data files, assets/images, and js/db)
 
 ## Goal
 

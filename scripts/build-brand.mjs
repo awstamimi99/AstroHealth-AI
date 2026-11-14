@@ -3,7 +3,8 @@
 //
 //   assets/brand/logo-mark.svg        512×512 rounded square + heartbeat line
 //   assets/brand/logo-full.svg        mark + "AstroHealth AI" + tagline
-//   assets/app-icons/favicon.svg      same as the mark
+//   assets/brand/favicon.svg and assets/app-icons/favicon.svg
+//                                      same as the mark
 //   assets/app-icons/icon-192.png     PWA icon
 //   assets/app-icons/icon-512.png     PWA icon
 //   assets/app-icons/icon-maskable-512.png   full-bleed, safe-zone padding
@@ -83,8 +84,9 @@ mkdirSync(out("assets/app-icons"), { recursive: true });
 
 writeFileSync(out("assets/brand/logo-mark.svg"), markSvg);
 writeFileSync(out("assets/brand/logo-full.svg"), fullSvg);
+writeFileSync(out("assets/brand/favicon.svg"), markSvg);
 writeFileSync(out("assets/app-icons/favicon.svg"), markSvg);
-console.log("✓ logo-mark.svg, logo-full.svg, favicon.svg");
+console.log("✓ logo-mark.svg, logo-full.svg, brand/favicon.svg, app-icons/favicon.svg");
 
 /** Render an SVG string to a square PNG of the given size. */
 function png(svg, size, file) {

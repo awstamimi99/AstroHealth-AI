@@ -36,3 +36,24 @@ Always test through a local server: `npm run serve` → <http://localhost:8080>.
 ## 5. Print (Team 1 reports)
 
 - [ ] <kbd>Ctrl/Cmd</kbd>+<kbd>P</kbd> on app.html → white page, black text, no sidebar or topbar
+
+## 6. Login & authentication (demo only — not real security)
+
+Demo accounts (password `demo`): `haddad` (astronaut, a-01), `medofficer` and
+`medbackup` (Medical Officer).
+
+- [ ] Open `app.html` signed out → you land on `login.html`
+- [ ] Empty submit → "Enter your username." (focus moves to Username); then "Enter your password."
+- [ ] Wrong password **and** unknown username → the same "Username or password is incorrect."
+- [ ] Demo account button only **fills** the form; nothing happens until you press Sign in
+- [ ] Show/hide password button announces "Show password" / "Hide password"
+- [ ] `haddad` → `app.html#/overview`, header shows "Cmdr. Sami Haddad · Astronaut · SH", 7 nav items
+- [ ] As `haddad`, type `app.html#/crew` and `#/simulation` → "Access denied" view (not the page)
+- [ ] `medofficer` → 9 nav items; Crew Monitor and Simulation Center open
+- [ ] Reload `app.html` → still signed in; open `login.html` → sent back to the app
+- [ ] DevTools → Application → Local Storage → `astrohealth.session` has no password, hash or salt
+- [ ] Two tabs on `app.html`; log out in one → the other returns to `login.html` too
+- [ ] Logging out does **not** delete data (IndexedDB `astrohealth` still has 6 users)
+- [ ] After one online visit: DevTools → Network → Offline → sign in still works
+- [ ] Keyboard only: Tab order is skip link → username → password → show/hide → Sign in → demo accounts; focus ring always visible
+- [ ] 375 px wide: no horizontal scrolling on `login.html` or `app.html`

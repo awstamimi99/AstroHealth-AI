@@ -7,7 +7,7 @@
 // every page also has a tiny inline fallback that shows the same message.
 
 export const ENV_WARNING_TEXT =
-  "Run via a local server (python3 -m http.server 8080) — offline mode and the database need it.";
+  "Run via a local server: python3 -m http.server 8080 — offline mode and the database need it.";
 
 /** True when the page was opened directly from disk. */
 export function isFileProtocol() {
