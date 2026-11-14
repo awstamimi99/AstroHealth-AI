@@ -72,8 +72,8 @@ For a release, bump `CACHE_VERSION` in `sw.js` and `APP_VERSION` in
 ## Folder map
 
 ```
-index.html  about.html      Landing + about pages            (Team 2)
-login.html  app.html        Sign-in + authenticated app      (Team 1)
+index.html  about.html      Landing + about pages
+login.html  app.html        Sign-in + authenticated app
 manifest.webmanifest        PWA manifest
 sw.js                       Service worker (offline cache)
 
@@ -90,11 +90,11 @@ js/
   sw-register.js            Registers sw.js, exposes offline status
   core/                     config, event bus, environment check, utils (SHARED)
   components/icon.js        icon("name") → inline SVG             (SHARED)
-  auth/ db/ services/ engine/ simulation/ pages/   (Team 1, + Team 2's landing.js)
+  auth/ db/ services/ engine/ simulation/ pages/
 
 vendor/                     Chart.js + Lucide icons, copied from npm
 assets/                     fonts/, brand/, app-icons/, images/
-data/                       team.json, references.json          (Team 2)
+data/                       team.json, references.json
 scripts/                    Dev-time Node scripts (not shipped)
 tests/browser/styleguide.html   ★ Every component, live
 tests/manual/checklists.md  Manual QA checklists
@@ -122,7 +122,7 @@ policy*, *Python policy*, *Offline policy*, *check:offline scope*).
 
 ## For contributors
 
-- 👉 **[CONTRIBUTING.md](CONTRIBUTING.md)** — team ownership, branches, PR rules.
+- 👉 **[CONTRIBUTING.md](CONTRIBUTING.md)** — solo-project governance, branches, PR rules.
 - 👉 **[AGENTS.md](AGENTS.md)** — strict rules for future AI-assisted sessions (safety rules, API and Python policy).
 - 👉 **[Style guide](tests/browser/styleguide.html)** — open <http://localhost:8080/tests/browser/styleguide.html> and copy markup from there.
 - 👉 **[Architecture](docs/ARCHITECTURE.md)** and **[Licences](docs/LICENSES.md)**.
@@ -131,5 +131,6 @@ policy*, *Python policy*, *Offline policy*, *check:offline scope*).
 
 `data/references.json` contains objects with `id`, `title`, `authors`,
 `publisher`, `year`, `url`, `accessed`, and `verified`. Never invent citations.
-New sources start with `"verified": false` and stay unverified until a second
-team member checks their details against the real source.
+New sources start with `"verified": false` and stay unverified until their
+details have been checked against the real source (by the owner, while the
+project is solo).

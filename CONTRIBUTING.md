@@ -1,46 +1,55 @@
 # Contributing to AstroHealth AI
 
-Two teams build on one shared foundation. This file says who owns what and
-how changes get in.
+AstroHealth AI is a **solo project**, owned and maintained by
+**awstamimi99**. There are no Team 1 / Team 2 roles and no cross-team review
+requirements. The owner may work across every area of the repository. Branch
+names such as `team1/*` and `team2/*` are historical only.
 
-## Team ownership
+GitHub collaborator permissions are managed in the repository settings, not
+in these documents.
 
-| Area | Owner | Files |
+## Areas of the repository
+
+| Area | Files | Extra care |
 | --- | --- | --- |
-| **Authenticated app** | **Team 1** | `login.html`, `app.html`, `js/auth/`, `js/services/`, `js/engine/`, `js/simulation/`, `js/pages/` (app pages), `css/pages/` (app pages) |
-| **Public site + database** | **Team 2** | `index.html`, `about.html`, `css/pages/landing.css`, `css/pages/about.css`, `js/pages/landing.js`, `data/team.json`, `data/references.json`, `assets/images/`, `js/db/` |
-| **Shared foundation** | **Both** — PR needs **one reviewer from each team** | `css/tokens.css`, `css/base.css`, `css/layout.css`, `css/components.css`, `js/components/`, `js/core/`, `assets/fonts/`, `assets/brand/`, `vendor/`, `sw.js`, `manifest.webmanifest`, `docs/DATA-MODEL.md` |
+| **Authenticated app** | `login.html`, `app.html`, `js/auth/`, `js/services/`, `js/engine/`, `js/simulation/`, app files in `js/pages/` and `css/pages/` | Role and route rules (canonical roles only) |
+| **Public site** | `index.html`, `about.html`, landing/about CSS and JS, `data/team.json`, `data/references.json`, `assets/images/` | Citations are never invented |
+| **Database** | `js/db/`, `docs/DATA-MODEL.md` | Contract changes update the doc, the mock and the tests together |
+| **Core / shared foundation** | `css/tokens.css`, `css/base.css`, `css/layout.css`, `css/components.css`, `js/components/`, `js/core/`, `assets/fonts/`, `assets/brand/`, `vendor/`, `sw.js`, `manifest.webmanifest` | Used by every page. Run the full test suite and the relevant checklists |
 
 Need a new shared component? Add it to `css/components.css` **and** to
 `tests/browser/styleguide.html` in the same PR.
 
-## Team contract
+## Module contracts
 
 - The landing page's **"Launch Dashboard"** button links to `login.html`.
 - The session lives in `localStorage["astrohealth.session"]` (`SESSION_KEY` in `js/core/config.js`).
-  - **Only Team 1 writes it** (login/logout in `js/auth/`).
-  - **Team 2 may only read it** (e.g. to show "Continue to dashboard").
-- Team 2 documents stores, fields, keys, indexes, and exact repository function
-  signatures in `docs/DATA-MODEL.md` before implementing IndexedDB. A Team 1
-  reviewer must approve database schema PRs.
-- Repositories only read and write data. Team 1 services own permissions,
-  validation, timeline logging, risk rules, and events.
-- Until the real database is merged, Team 1 may use
-  `js/db/mock-repositories.js` with the documented repository signatures.
+  - **Only `js/auth/` writes it** (login/logout).
+  - Other code (e.g. the landing page) may only **read** it.
+- Stores, fields, keys, indexes, migrations and exact repository function
+  signatures are documented in `docs/DATA-MODEL.md`. Any database contract
+  change updates that file, `js/db/mock-repositories.js` and the relevant tests
+  in the same change.
+- Repositories only read and write data. Services (`js/services/`) own
+  permissions, validation, timeline logging, risk rules, and events.
+- `js/db/mock-repositories.js` keeps the documented repository signatures for
+  tests and prototyping.
 - Every page keeps the footer disclaimer:
   *Research & educational prototype · Not a medical device · Not affiliated with or endorsed by NASA · All health data synthetic.*
 
 ## Workflow
 
-1. Never push to `main` directly.
-2. Branch from `main`:
-   - Team 1: `team1/<task>` — e.g. `team1/login-form`
-   - Team 2: `team2/<task>` — e.g. `team2/landing-hero`
-3. Keep PRs **small** (one page section / one feature).
-4. Open a PR using the template; **at least 1 review** before merging
-   (shared files: one reviewer from each team; database schema changes also
-   require a Team 1 reviewer).
-5. Before every PR:
+1. For feature work, branch from `main` and open a pull request
+   (recommended). Use a short descriptive name, e.g. `feature/crew-monitor`,
+   `fix/drawer-focus`, `docs/api-policy`. Existing `team1/*` and `team2/*`
+   branches are historical names.
+2. Keep PRs **small** (one page section / one feature).
+3. Use the PR template. Reviewer approval is **optional** while the project is
+   solo; the owner may merge their own PR once the checks below pass.
+4. Core/shared files, database contract changes and Python/API changes need
+   the extra steps in the table above and in `docs/ARCHITECTURE.md`. They don't
+   need a second reviewer.
+5. Before every PR (and before merging):
    ```bash
    npm run test:unit         # must pass
    npm run check:offline     # must pass (static frontend: no remote assets)

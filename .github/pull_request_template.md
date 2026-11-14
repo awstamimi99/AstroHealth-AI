@@ -2,11 +2,15 @@
 
 <!-- One or two sentences. Link the issue: Closes #123 -->
 
-## Team
+## Area
 
-- [ ] Team 1 (login / app / dashboards)
-- [ ] Team 2 (landing / about)
-- [ ] Shared files touched (tokens, base, layout, components, js/core, js/components, assets, vendor, sw.js, manifest) → **needs one reviewer from EACH team**
+- [ ] Authenticated app (login / app / dashboards)
+- [ ] Public site (landing / about)
+- [ ] Database (`js/db/`, `docs/DATA-MODEL.md`) → doc, mock and tests updated together
+- [ ] Core/shared files (tokens, base, layout, components, js/core, js/components, assets, vendor, sw.js, manifest) → full test suite and relevant checklists run
+- [ ] Python/API → architecture documented, security reviewed against the API policy, tests added
+
+Reviewer approval is optional (solo project).
 
 ## Screenshots
 

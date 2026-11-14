@@ -1,14 +1,16 @@
 ---
 name: Page task
-about: A page, section or component one team will build
-title: "[Team ?] "
+about: A page, section or component to build
+title: ""
 labels: task
 ---
 
-## Owner team
+## Area
 
-- [ ] Team 1 (login.html, app.html, js/auth, js/services, js/engine, js/simulation, app pages)
-- [ ] Team 2 (public website, data files, assets/images, and js/db)
+- [ ] Authenticated app (login.html, app.html, js/auth, js/services, js/engine, js/simulation, app pages)
+- [ ] Public site (index.html, about.html, data files, assets/images)
+- [ ] Database (js/db, docs/DATA-MODEL.md)
+- [ ] Core/shared files (design system, js/core, js/components, sw.js, manifest)
 
 ## Goal
 

@@ -1,12 +1,13 @@
 # AstroHealth AI — Data model & database contract
 
 > **Status:** v1 — **frozen for Sprint 2 integration** (see section 16). Changes
-> now need a reviewer from each team and an update to this file in the same PR.
+> now need an update to this file, the mock repositories and the relevant
+> tests in the same change.
 > Research & educational prototype · Not a medical device · All data synthetic.
 
-This file is the contract between **Team 2** (who build `js/db/`) and
-**Team 1** (whose services call it). The code in `js/db/` must always match
-this document. If you change one, change the other in the same PR.
+This file is the contract between the **database layer** (`js/db/`) and the
+**services** that call it (`js/services/`). The code in `js/db/` must always
+match this document. If you change one, change the other in the same change.
 
 ---
 
@@ -21,11 +22,11 @@ this document. If you change one, change the other in the same PR.
   Pages and services never touch the database directly.
 - Repositories **only read and write**. They do **not** check permissions,
   evaluate risk rules, decide alerts, write timeline events for you, or touch
-  the UI. Team 1's services (`js/services/`) do all of that.
+  the UI. The services (`js/services/`) do all of that.
 - Every repository function is `async` and returns a Promise. Failures are
   thrown as a **`DatabaseError`** (section 6).
 
-### How to import (Team 1)
+### How to import (services)
 
 ```js
 // One import point for everything:
@@ -366,7 +367,7 @@ written to `missionEvents`.
 | --- | --- | --- | --- | --- |
 | `id` | string | yes | **PK** | `sim_…` |
 | `astronautId` | string | yes | `by_astronaut` | target astronaut |
-| `scenarioId` | string | yes | | `"low_oxygen"` etc. (Team 1 defines the list) |
+| `scenarioId` | string | yes | | `"low_oxygen"` etc. (the simulation service defines the list) |
 | `status` | `"running"` \| `"paused"` \| `"stopped"` \| `"completed"` | yes | `by_status` | default `"running"` |
 | `speed` | number | yes | | 1, 2, 4, 8 |
 | `operatorId` | string | yes | | user id of the medical officer |
@@ -798,7 +799,7 @@ await withTransaction(["alerts", "alertActions", "missionEvents"], "readwrite", 
   `DB_VERSION`, inside the upgrade transaction.
 - **Never edit a past migration** — devices that already ran it won't run it
   again. Any change (new store, new index, renamed field) = bump
-  `DB_VERSION` in `js/core/config.js` (shared file, needs both teams) and add
+  `DB_VERSION` in `js/core/config.js` (core file: run the full test suite) and add
   `MIGRATIONS[2]`, which transforms existing data. Also bump the backup
   `schemaVersion` handling in `backup.js` and update this document.
 - Another tab running an older version is closed automatically
@@ -818,7 +819,7 @@ await withTransaction(["alerts", "alertActions", "missionEvents"], "readwrite", 
 older than `today − keepRawDays`. For **each day, in one transaction**, it
 recomputes that day's summaries **exactly from the raw readings**, saves them,
 and deletes the raw readings. A crash can't lose a day. It then sets
-`meta.lastCompactedAt`. Suggested use (Team 1): call it once per app start
+`meta.lastCompactedAt`. Suggested use (services): call it once per app start
 when `lastCompactedAt` is older than a day.
 
 Simulation tip: logging a `measurement_recorded` event for *every* simulated
@@ -903,7 +904,7 @@ Record counts after seeding (identical every time):
 - Import **replaces all data** in one transaction (all or nothing), then adds
   a `data_imported` event. So after a round trip `missionEvents` has
   exactly one more record.
-- Saving to / loading from a file is UI work (Team 1): `JSON.stringify(await exportAll())`.
+- Saving to / loading from a file is UI work (app pages): `JSON.stringify(await exportAll())`.
 
 ---
 
@@ -954,7 +955,7 @@ there's no cross-tab sharing.
 2. Every astronaut has exactly one demo login. The sixth account,
    `medbackup`, is a backup Medical Officer demo account and has no astronaut
    profile.
-3. Team 1 owns the scenario and message-template lists. Current seed IDs are
+3. The services own the scenario and message-template lists. Current seed IDs are
    `rest_and_reassess`, `check_vital_signs`, and `will_comply`; centralize the
    final lists before building the Simulation Center and messaging UI.
 4. `invalid` readings are ignored. `suspect` readings remain visible for data
@@ -966,9 +967,10 @@ there's no cross-tab sharing.
 
 ## 16. Database API frozen for Sprint 2 integration
 
-This section is the stable contract Team 1 builds services and dashboards
-on. Changing anything here needs a reviewed PR (one reviewer from each team)
-that updates this file, the tests and the mock in the same change.
+This section is the stable contract that services and dashboards are built
+on. Changing anything here needs a change (PR recommended) that updates this
+file, the tests and the mock together. A second reviewer is optional (solo
+project).
 
 ### Database
 
@@ -1019,7 +1021,7 @@ users store, by sessions and by backup import).
 
 ### Who owns what
 
-| Database layer (`js/db/`, Team 2) | Services (`js/services/`, Team 1) |
+| Database layer (`js/db/`) | Services (`js/services/`) |
 | --- | --- |
 | persistence, schema, migrations | permissions and role checks |
 | storage validation (section 2) | business validation (ranges, required answers…) |
@@ -1086,7 +1088,7 @@ Exactly one login per astronaut profile.
 There is no per-record "synthetic" flag: **all data in this prototype is
 synthetic.** Where it comes from is stored in `source` on measurements and
 wellbeing check-ins (`"seed"` = demo history, `"simulation"` = Simulation
-Center, `"manual"` = entered in the app). Team 1 must:
+Center, `"manual"` = entered in the app). The app (services and pages) must:
 
 1. Show the `.sim-tag` "SIMULATED" label on every vital-sign / wellbeing
    value or chart whose data has `source: "seed"` or `"simulation"`, and on
@@ -1095,7 +1097,7 @@ Center, `"manual"` = entered in the app). Team 1 must:
 3. Label thresholds from `settings.thresholds` as demonstration values, not
    clinically validated.
 
-Risk detection is rule-based and lives in Team 1's services, not here. No
+Risk detection is rule-based and lives in the services, not here. No
 data here is real NASA or crew health data.
 
 ### Migration rule

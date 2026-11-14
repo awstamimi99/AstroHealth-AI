@@ -54,17 +54,30 @@ machine-learning capabilities.
   medical device, not affiliated with or endorsed by NASA. Never claim NASA
   affiliation, NASA endorsement, or clinical validity.
 
-## Ownership
+## Project governance (solo project)
 
-| Area | Owner |
-| --- | --- |
-| Login and dashboards: `login.html`, `app.html`, `js/auth/`, `js/services/`, `js/engine/`, `js/simulation/`, app files in `js/pages/` and `css/pages/` | Team 1 |
-| Website and database: `index.html`, `about.html`, landing/about CSS and JS, `data/`, `assets/images/`, `js/db/` | Team 2 |
-| Design system, core JS, fonts, brand, vendor files, service worker, manifest, and `docs/DATA-MODEL.md` | Shared |
+AstroHealth AI is a solo project, owned and maintained by **awstamimi99**.
+There are no Team 1 / Team 2 roles and no cross-team review requirements.
+Branch names such as `team1/*` and `team2/*` are historical only.
 
-Only edit files owned by the team named in the task unless explicitly told
-otherwise. Shared changes require one reviewer from each team. Team 2 documents
-the database contract in `docs/DATA-MODEL.md`; Team 1 must review schema PRs.
+- The owner may work across every area of the repository. Still keep each
+  change focused on the task you were given.
+- **Core and shared files** need extra care and the full test run (unit tests,
+  `check:offline`, and the relevant browser/manual checklists). They do not
+  need anyone else's approval. These are the design system (`css/tokens.css`,
+  `base.css`, `layout.css`, `components.css`), `js/core/`, `js/components/`,
+  `sw.js`, `manifest.webmanifest`, fonts, brand and vendor files.
+- **Database contract changes** (`js/db/`, `docs/DATA-MODEL.md`) must update
+  `docs/DATA-MODEL.md`, the mock repositories and the relevant tests in the
+  same change, and follow the migration rules there.
+- **Python/API changes** need documented architecture (endpoints, payloads,
+  errors) in `docs/ARCHITECTURE.md`, a security review against the API policy,
+  and tests.
+- Pull requests are recommended for feature work. Reviewer approval is
+  optional while the project is solo.
+- GitHub collaborator permissions are managed in the repository settings, not
+  in these documents. Changing them is outside the scope of documentation
+  tasks.
 
 Before a PR, run `npm run test:unit` and `npm run check:offline`. The check
 protects the static frontend from remote assets and unapproved URLs. It
