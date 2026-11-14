@@ -3,7 +3,7 @@
 //   import { APP_NAME, SESSION_KEY } from "./core/config.js";
 
 export const APP_NAME = "AstroHealth AI";
-export const APP_VERSION = "0.4.0";
+export const APP_VERSION = "0.5.0";
 
 // IndexedDB database name (stores are listed in docs/ARCHITECTURE.md).
 export const DB_NAME = "astrohealth";

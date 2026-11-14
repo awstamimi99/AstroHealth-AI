@@ -1,6 +1,7 @@
 // tests/unit/fake-dom.mjs — a tiny fake DOM for page-module unit tests.
 // Just enough for el(), icon() and the page renderers: elements, text,
-// attributes, dataset, style.setProperty, listeners/click, focus, and
+// attributes, dataset, style.setProperty, listeners/click/dispatch, focus,
+// input value + checked, textContent setter, and
 // querySelectorAll("[attr]"). Importing it installs globals (Node,
 // document, self, BroadcastChannel stub). Not a test file itself.
 
@@ -20,6 +21,7 @@ export class FakeNode {
     this.append(...nodes);
   }
   get textContent() { return this.childNodes.map((c) => c.textContent).join(""); }
+  set textContent(v) { this.replaceChildren(String(v)); }
 }
 export class FakeText extends FakeNode {
   constructor(text) { super(); this.data = text; }
@@ -47,6 +49,10 @@ export class FakeElement extends FakeNode {
   hasAttribute(k) { return this.attributes.has(k); }
   addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); }
   click() { for (const fn of this.listeners.click || []) fn({ target: this, preventDefault() {} }); }
+  /** Fire listeners for any event type (e.g. "submit", "change"). */
+  dispatch(type) { for (const fn of this.listeners[type] || []) fn({ target: this, preventDefault() {} }); }
+  /** Inputs: value reflects the attribute (enough for radio groups). */
+  get value() { return this.getAttribute("value") ?? ""; }
   set innerHTML(v) { this.svgMarkup = String(v); } // only icon() uses it, with built-in SVG markup
   focus() { globalThis.document.activeElement = this; }
   /** Supports "[attr]" only — all the renderer needs. */

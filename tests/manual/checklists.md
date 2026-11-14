@@ -62,7 +62,7 @@ Demo accounts (password `demo`): `haddad` (astronaut, a-01), `medofficer` and
 
 Run `python3 -m http.server 8080`, then open <http://localhost:8080/login.html>.
 If you visited before, reload once so the current service worker
-(cache `astrohealth-v0.4.0`) takes over. If the mission chips show
+(cache `astrohealth-v0.5.0`) takes over. If the mission chips show
 "Not available", the browser holds data seeded before the `mission` setting
 existed: run `resetDatabase()` or clear site data.
 
@@ -72,7 +72,7 @@ existed: run `resetDatabase()` or clear site data.
 - [ ] Top bar shows **Mission ODYSSEY-7** and **Mission Day 147** on the seed day (from the synthetic seed, not hardcoded)
 - [ ] Bell is a plain link to Alerts with **no** number on it
 - [ ] Sidebar has 7 items; **Crew Monitor** and **Simulation Center** are not shown
-- [ ] Each item except Overview opens its placeholder: icon, title, "will be completed in a later sprint" (no numbers, charts, forms or alerts). Overview is the Sprint 4 Astronaut Overview (section 8)
+- [ ] Each item except Overview, Physical Health and Mental Wellbeing opens its placeholder: icon, title, "will be completed in a later sprint" (no numbers, charts, forms or alerts). Overview is the Sprint 4 Astronaut Overview (section 8); Physical Health and Mental Wellbeing are Sprint 6 pages (section 10)
 - [ ] The active item has `aria-current="page"`; the page heading and browser tab title change; the page does not reload
 - [ ] After choosing a route, focus is on the page heading (screen reader announces it)
 - [ ] Type `#/crew` (and `#/simulation`, `#/crew/AH-01`) → **Access denied**: lock icon, "available to the Medical Officer role only. You are signed in as Astronaut.", "Go to Overview" link, focus on the heading
@@ -119,7 +119,7 @@ existed: run `resetDatabase()` or clear site data.
 
 Run `python3 -m http.server 8080` and open <http://localhost:8080/login.html>.
 Returning browsers: reload once so the current service worker cache
-`astrohealth-v0.4.0` takes over. All data is synthetic seed data; values are relative to the moment
+`astrohealth-v0.5.0` takes over. All data is synthetic seed data; values are relative to the moment
 the database was seeded, so "today" items depend on the UTC time of seeding.
 
 **Expected per account** (seeded today after 08:00 UTC)
@@ -142,7 +142,7 @@ the database was seeded, so "today" items depend on the UTC time of seeding.
 - [ ] Today's routine: check-in "Completed today" + "Shared with the Medical Officer" or "Private — not shared" (no mood/stress scores); vital signs "Recorded today"; cognitive check "Last completed …" (never "due"/"overdue")
 - [ ] Sleep: 7 UTC dates with bars and values, summary sentence (nights recorded, average, baseline, nights below baseline); missing nights say "No data"
 - [ ] A message shows "From the Medical Officer" only when its sender is a stored `medical_officer` account (verified in the service); no sender id appears anywhere on the page
-- [ ] Quick links go to `#/physical`, `#/wellbeing`, `#/history`, `#/alerts` and those pages show their placeholders
+- [ ] Quick links go to `#/physical`, `#/wellbeing`, `#/history`, `#/alerts` (Physical Health and Mental Wellbeing are the Sprint 6 pages; History and Alerts are still placeholders)
 
 **Routing by role (current, since Sprint 5)**
 
@@ -179,8 +179,8 @@ Not yet checked: a real screen reader (VoiceOver/NVDA), Firefox, Safari.
 ## 9. Medical Officer dashboard & Crew Monitor (Sprint 5)
 
 Run `python3 -m http.server 8080`, open <http://localhost:8080/login.html>, and
-reload once so the service worker cache `astrohealth-v0.4.0` takes over. All
-data is synthetic seed data.
+reload once so the current service worker cache `astrohealth-v0.5.0` takes over.
+All data is synthetic seed data.
 
 **`medofficer` and `medbackup` — `#/overview`**
 
@@ -220,4 +220,49 @@ data is synthetic seed data.
 
 **Results — 2026-11-14 (headless Chrome via DevTools Protocol, fresh profile):**
 14/14 checks passed — both Medical Officer accounts (summary counts, queue order), crew list (4 once each, order, readings, messages, dates-only sharing), selection + focus + back, direct nested URL + refresh, 4 unknown/malformed IDs → not found, privacy (3 private check-ins hidden, no journal text, no unshared check-in events), late-result guard, 1440/768/375 px (3/2/1 columns, no overflow), keyboard (fresh tab), accessibility tree, offline detail reload, astronaut Overview unchanged + 3× Access denied. No console errors, no external requests.
+Not yet checked: a real screen reader, Firefox, Safari.
+
+## 10. Physical Health & Mental Wellbeing (Sprint 6)
+
+Run `python3 -m http.server 8080`, open <http://localhost:8080/login.html>, and
+reload once so the current service worker cache `astrohealth-v0.5.0` takes over.
+All data is synthetic. No private journal in this sprint.
+
+**Astronaut — `#/physical`** (e.g. `reyes`)
+
+- [ ] "Your physical health" with your own name and crew ID only — no other astronaut appears
+- [ ] Latest readings: Heart rate, SpO₂, Blood pressure (systolic/diastolic from one sample), Sleep duration; UTC time + age; SIMULATED or "Manual entry"; "Data quality: suspect" / "No newer reading" when relevant
+- [ ] Each reading says e.g. "3 bpm above the stored personal baseline of 70 bpm." and the section says it is descriptive, not a clinical assessment — never normal/abnormal/healthy/safe
+- [ ] Trends: "7 days" / "30 days" toggle (`aria-pressed`); a table per measure (Date, Average, Min, Max, Readings), missing days say "No data"; note that daily values include suspect readings and exclude invalid ones; no daily steps
+- [ ] Data quality list and open **physical** alerts only (Reyes: ALT-0190), read-only
+- [ ] `#/physical/AH-01` (any nested URL) → "Crew member not found"
+
+**Astronaut — `#/wellbeing`** (e.g. `haddad`)
+
+- [ ] Daily check-in form: six questions (fieldset + legend + scale text), native radio buttons, nothing preselected; "Who can see this check-in?" with "Only me (private)" and "Share with the Medical Officer", neither preselected
+- [ ] Submit with answers missing → error summary (focused) listing the questions; each unanswered question is outlined with its own message; answers you gave are kept
+- [ ] Private check-in on a day that already has one → "You already checked in today … Add another check-in?" → confirm → "Check-in saved. It is private" (focused); form clears; history shows it as **Private**
+- [ ] Shared check-in → "All six scores will be shared with the Medical Officer. This check-in can't be edited, and sharing can't be changed or revoked in this version." → confirm → (same-day confirmation, if any) → "saved and shared"; history shows **Shared with the Medical Officer**
+- [ ] Cancel on either confirmation saves nothing and returns focus to "Save check-in"
+- [ ] Double/triple clicking the final confirmation saves exactly one check-in
+- [ ] Recent averages are labelled "Based on your own check-ins (private and shared)"; cognitive check shows last-completed time only; open wellbeing alerts only (Chen: ALT-0189)
+- [ ] `#/wellbeing/AH-01` → "Crew member not found"
+
+**Medical Officer (`medofficer`, `medbackup`)**
+
+- [ ] `#/physical` and `#/wellbeing` show a crew picker: names and crew IDs only
+- [ ] `#/physical/AH-04`: Jonas Reyes, read-only, links to crew detail / shared wellbeing / picker; focus on the name after choosing from the picker
+- [ ] `#/wellbeing/AH-01`: only shared check-ins ("Shared by the astronaut"), summary "Based only on check-ins shared by the astronaut.", the notice "Private check-ins and the private journal are never shown or counted.", no form
+- [ ] A shared check-in the astronaut just saved appears; a private one never appears and isn't counted (Haddad's seeded private days Nov 10, Nov 3, Oct 26 are absent)
+- [ ] `#/physical/AH-99`, `#/physical/a-04`, `#/wellbeing/ah-01`, `#/wellbeing/AH-01/x` → "Crew member not found"; refresh on `#/wellbeing/AH-03` keeps Mei Chen
+
+**General**
+
+- [ ] 1440 / 768 / 375 px: reading cards 4 / 2 / 1 columns; trend tables become one block per day at 375 px; no horizontal scrolling
+- [ ] Keyboard only: Tab reaches each radio group, Space selects, Enter submits, the confirmation is reachable and focused, the saved message receives focus
+- [ ] Accessibility pane: 7 named groups (fieldsets) and their radios; status/alert regions
+- [ ] Offline (after one online visit): reload and save a check-in → saved locally; no console errors; no request to another host
+
+**Results — 2026-11-14 (headless Chrome via DevTools Protocol, fresh profile):**
+12/12 Sprint 6 checks passed — Reyes physical (own data, baseline wording, 7→30 toggle, ALT-0190, 3 nested URLs → not found); Haddad validation (6 errors, summary focused, answers kept); private check-in with same-day confirmation (one record + one score-free event `{shared:0}`); shared check-in with share + same-day confirmation (triple click → exactly one record, event `{shared:1}`, no scores); Medical Officer pickers, `#/physical/AH-04` (focus on name), `#/wellbeing/AH-01` (28 shared shown incl. the new one, 4 private hidden, count matches IndexedDB); 4 bad IDs → not found, nested refresh; 1440/768/375 px (4/2/1 columns, no overflow); keyboard-only check-in (fresh tab); accessibility tree (7 named groups, 50 radios); offline save. No console errors, no external requests.
 Not yet checked: a real screen reader, Firefox, Safari.
