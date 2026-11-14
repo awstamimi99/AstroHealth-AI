@@ -1,0 +1,122 @@
+/* css/pages/reports.css — #/reports (Sprint 9). Print-friendly: css/print.css
+   (media="print") hides the app chrome, buttons and .no-print. */
+
+.reports,
+.reports__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+.reports__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.reports__title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+}
+.reports__note,
+.report__note {
+  color: var(--color-text-3);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+.reports-crew,
+.reports-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.report {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+.report__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.report__title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+.report__meta {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+.report__disclaimer {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+}
+.report__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.report__h3 {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+.report__list {
+  margin: 0;
+  padding-left: var(--space-5);
+  font-size: var(--text-sm);
+}
+.report-table {
+  font-variant-numeric: tabular-nums;
+}
+.report-table__caption {
+  caption-side: top;
+  text-align: left;
+  color: var(--color-text-3);
+  font-size: var(--text-xs);
+  padding-bottom: var(--space-1);
+}
+@media (max-width: 599px) {
+  .report-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .report-table,
+  .report-table tbody,
+  .report-table tr,
+  .report-table th,
+  .report-table td {
+    display: block;
+    width: 100%;
+  }
+  .report-table tr {
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+  .report-table td::before {
+    content: attr(data-label) ": ";
+    color: var(--color-text-3);
+  }
+}
+@media print {
+  .report {
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  .report__section,
+  .report-table tr {
+    break-inside: avoid;
+  }
+  .report-table-wrap {
+    overflow: visible !important;
+  }
+}

@@ -1,0 +1,133 @@
+/* css/pages/history.css — #/history (Sprint 9). Built on card, badge,
+   segmented, sim-tag and state. Category = icon + text; provenance = text. */
+
+.history,
+.history__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+.history__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.history__title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+.history__subtitle,
+.history__empty {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+.history__note {
+  color: var(--color-text-3);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+.history__notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-info);
+  border-radius: var(--radius-md);
+  background: var(--color-info-tint);
+  font-size: var(--text-sm);
+}
+.history__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.history .badge {
+  white-space: normal;
+}
+.history-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.history-picker .btn {
+  width: 100%;
+  justify-content: flex-start;
+}
+.history-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+.history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  min-width: 0;
+}
+.history-filters__legend {
+  padding: 0 var(--space-1);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
+}
+.history-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 32px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.history-filter:focus-within {
+  box-shadow: var(--focus-ring);
+}
+.history-day {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.history-day__title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border-subtle);
+}
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.history-entry {
+  display: grid;
+  grid-template-columns: 12rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) 0;
+  font-size: var(--text-sm);
+}
+.history-entry__time {
+  color: var(--color-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.history-entry__body {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 767px) {
+  .history-entry {
+    grid-template-columns: minmax(0, 1fr);
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+}
