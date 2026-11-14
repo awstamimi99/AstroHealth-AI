@@ -61,8 +61,8 @@ Demo accounts (password `demo`): `haddad` (astronaut, a-01), `medofficer` and
 ## 7. Application shell & role-based navigation (Sprint 3)
 
 Run `python3 -m http.server 8080`, then open <http://localhost:8080/login.html>.
-If you visited before this sprint, reload once so the new service worker
-(cache `astrohealth-v0.2.0`) takes over. If the mission chips show
+If you visited before, reload once so the current service worker
+(cache `astrohealth-v0.4.0`) takes over. If the mission chips show
 "Not available", the browser holds data seeded before the `mission` setting
 existed: run `resetDatabase()` or clear site data.
 
@@ -72,7 +72,7 @@ existed: run `resetDatabase()` or clear site data.
 - [ ] Top bar shows **Mission ODYSSEY-7** and **Mission Day 147** on the seed day (from the synthetic seed, not hardcoded)
 - [ ] Bell is a plain link to Alerts with **no** number on it
 - [ ] Sidebar has 7 items; **Crew Monitor** and **Simulation Center** are not shown
-- [ ] Each item opens its placeholder: icon, title, "will be completed in a later sprint" (no numbers, charts, forms or alerts)
+- [ ] Each item except Overview opens its placeholder: icon, title, "will be completed in a later sprint" (no numbers, charts, forms or alerts). Overview is the Sprint 4 Astronaut Overview (section 8)
 - [ ] The active item has `aria-current="page"`; the page heading and browser tab title change; the page does not reload
 - [ ] After choosing a route, focus is on the page heading (screen reader announces it)
 - [ ] Type `#/crew` (and `#/simulation`, `#/crew/AH-01`) → **Access denied**: lock icon, "available to the Medical Officer role only. You are signed in as Astronaut.", "Go to Overview" link, focus on the heading
@@ -84,8 +84,15 @@ existed: run `resetDatabase()` or clear site data.
 
 - [ ] Lands on `#/overview`; "Dr. Lena Ortiz", "Medical Officer", "LO"
 - [ ] 9 sidebar items; Crew Monitor and Simulation Center visible with the "MO" tag
-- [ ] Both open their normal placeholder (no Access denied)
+- [ ] `#/overview` and `#/crew` (Crew Monitor) open the functional Sprint 5 views — verify them with section 9
+- [ ] `#/simulation` (Simulation Center) still opens its placeholder (no Access denied)
+- [ ] Astronauts still get Access denied on both `#/crew` and `#/simulation` (see the Astronaut list above)
 - [ ] Log out → `login.html`
+
+> **Historical — Sprint 3 release (app version 0.2.0), no longer current:** the
+> service worker cache was `astrohealth-v0.2.0`, and for the Medical Officer
+> `#/overview`, `#/crew` and `#/simulation` were all placeholders. Use the
+> current expectations above.
 
 **Sessions across tabs**
 
@@ -111,8 +118,8 @@ existed: run `resetDatabase()` or clear site data.
 ## 8. Astronaut Overview (Sprint 4, `#/overview`)
 
 Run `python3 -m http.server 8080` and open <http://localhost:8080/login.html>.
-Returning browsers: reload once so the service worker cache `astrohealth-v0.3.0`
-takes over. All data is synthetic seed data; values are relative to the moment
+Returning browsers: reload once so the current service worker cache
+`astrohealth-v0.4.0` takes over. All data is synthetic seed data; values are relative to the moment
 the database was seeded, so "today" items depend on the UTC time of seeding.
 
 **Expected per account** (seeded today after 08:00 UTC)
@@ -137,9 +144,10 @@ the database was seeded, so "today" items depend on the UTC time of seeding.
 - [ ] A message shows "From the Medical Officer" only when its sender is a stored `medical_officer` account (verified in the service); no sender id appears anywhere on the page
 - [ ] Quick links go to `#/physical`, `#/wellbeing`, `#/history`, `#/alerts` and those pages show their placeholders
 
-**Medical Officer** (`medofficer`)
+**Routing by role (current, since Sprint 5)**
 
-- [ ] `#/overview` shows "Medical Officer overview" with links to Crew Monitor and Alerts only — no astronaut names, crew IDs, alerts or readings
+- [ ] Astronaut `#/overview` is this Sprint 4 Astronaut Overview, unchanged
+- [ ] Medical Officer `#/overview` delegates to the Sprint 5 Medical Officer dashboard — it never shows an astronaut's personal Overview. Verify the Medical Officer workflow with section 9.
 
 **States**
 
@@ -160,6 +168,56 @@ the database was seeded, so "today" items depend on the UTC time of seeding.
 - [ ] After one online visit, DevTools → Network → Offline → reload `app.html#/overview` → the Overview renders from local data
 - [ ] Console: no errors · Network: no request to another host
 
-**Results — 2026-11-14 (headless Chrome via DevTools Protocol, fresh profile, seeded 14:15 UTC):**
-15/15 checks passed — the four astronauts above (status, alerts, messages, no leakage, labels, UTC times, banned wording), refresh + other routes still placeholders + quick links, late-result guard, Retry after an induced alerts failure, keyboard (fresh tab; 5/5 Overview targets with focus ring; drawer skipped at 375 px), accessibility tree (one h1, 8 ordered h2, 4 named vital cards), 1440/768/375 px (4/2/1 columns, no overflow), Medical Officer placeholder, signed-out `#/overview` → login → back, offline reload (cache `astrohealth-v0.3.0`). No console errors, no external requests.
+**Results — Sprint 4 release, 2026-11-14 (historical; app version 0.3.0; headless Chrome via DevTools Protocol, fresh profile, seeded 14:15 UTC):**
+15/15 checks passed — the four astronauts above (status, alerts, messages, no leakage, labels, UTC times, banned wording), refresh + other routes still placeholders + quick links, late-result guard, Retry after an induced alerts failure, keyboard (fresh tab; 5/5 Overview targets with focus ring; drawer skipped at 375 px), accessibility tree (one h1, 8 ordered h2, 4 named vital cards), 1440/768/375 px (4/2/1 columns, no overflow), the Medical Officer placeholder that Sprint 4 showed at `#/overview` (since replaced by the Sprint 5 dashboard), signed-out `#/overview` → login → back, offline reload (cache `astrohealth-v0.3.0` at that time). No console errors, no external requests.
+
+**Regression after Sprint 5, 2026-11-14 (app version 0.4.0):**
+The unmodified Sprint 4 harness now fails 3 of 15 checks, all because of intended Sprint 5 changes: it still expects the old Medical Officer placeholder at `#/overview` and the old cache `astrohealth-v0.3.0`, and its signed-out check then fails as a cascade (the Medical Officer session from the failed check is still open). With only those two cross-role/cache expectations updated — Medical Officer `#/overview` is the crew dashboard; cache is `astrohealth-v0.4.0` — the regression run passes 15/15. All astronaut checks pass unchanged. No console errors, no external requests.
+
 Not yet checked: a real screen reader (VoiceOver/NVDA), Firefox, Safari.
+
+## 9. Medical Officer dashboard & Crew Monitor (Sprint 5)
+
+Run `python3 -m http.server 8080`, open <http://localhost:8080/login.html>, and
+reload once so the service worker cache `astrohealth-v0.4.0` takes over. All
+data is synthetic seed data.
+
+**`medofficer` and `medbackup` — `#/overview`**
+
+- [ ] "Welcome, <name>", Medical Officer, mission line, synthetic-data notice
+- [ ] Crew summary: "4 crew members · 2 with open alerts"; counts Critical 0 · Watch 1 · Info 1 · Status unavailable 0 · Data needs review 0 · No open alerts 2 (each with icon + text + colour)
+- [ ] "Review first" is a numbered list: 1. Jonas Reyes · AH-04 (Watch, ALT-0190) 2. Mei Chen · AH-03 (Info, ALT-0189); each "Review" goes to `#/crew/AH-0n`
+- [ ] Wording: "based on stored open alerts only. This is not a health assessment." — never healthy, safe, normal, cleared, fit for duty or a score
+
+**`#/crew`**
+
+- [ ] Four cards, each astronaut exactly once, in the order Reyes, Chen, Haddad, Karim
+- [ ] Each card: state badge + reason, open-alert count, Heart rate / SpO₂ / Sleep duration with UTC time and SIMULATED tag (no blood pressure), last shared check-in date, message status, "View details"
+- [ ] Haddad: "1 awaiting acknowledgement"; Reyes: "1 replied"
+- [ ] "Open alerts across the crew": ALT-0190 (Reyes), ALT-0189 (Chen) with names, Synthetic tag, no buttons, link to `#/alerts`
+- [ ] "Shared wellbeing check-ins": dates only — no mood/stress numbers
+
+**`#/crew/AH-0n` (detail)**
+
+- [ ] From a card, "View details" opens the detail and focus moves to the name heading; the sidebar still marks Crew Monitor as current
+- [ ] Reyes `#/crew/AH-04`: Watch + reason; ALT-0190; Heart rate, SpO₂, Blood pressure, Sleep duration; up to 7 shared check-ins with scores ("Mood 4 / 5"); 7-night sleep summary; "Last completed …" cognitive check (no score); the Medical Officer message marked Replied with Jonas's reply text; no buttons
+- [ ] Haddad `#/crew/AH-01`: message "Awaiting acknowledgement"; none of his 3 private check-ins appear; no journal text anywhere
+- [ ] Direct URL `app.html#/crew/AH-03` and refresh → Mei Chen's detail
+- [ ] `#/crew/AH-99`, `#/crew/a-01`, `#/crew/AH-01/x`, `#/crew/ah-01` → "Crew member not found" with "Back to Crew Monitor" (no astronaut selected)
+- [ ] Signed out, `app.html#/crew/AH-03` → login; after sign-in you land on `#/crew` (known limitation: nested returnTo isn't kept)
+
+**Astronaut (`haddad`)**
+
+- [ ] `#/overview` is the unchanged astronaut Overview (Sprint 4)
+- [ ] `#/crew`, `#/crew/AH-01`, `#/crew/AH-04` → Access denied; no Crew Monitor in the sidebar
+
+**Responsive, keyboard, accessibility, offline**
+
+- [ ] 1440 px: 3 crew columns · 768 px: 2 · 375 px: 1; no horizontal scrolling on `#/overview`, `#/crew`, `#/crew/AH-04`
+- [ ] Tab reaches every crew link/button with a visible focus ring; at 375 px Tab never enters the closed drawer
+- [ ] Accessibility pane: one h1; h2s Welcome / Crew summary / Review first on `#/overview`; the queue is an ordered list; crew cards are named articles
+- [ ] After one online visit, Network → Offline → reload `#/crew/AH-04` → still renders; console has no errors; no request to another host
+
+**Results — 2026-11-14 (headless Chrome via DevTools Protocol, fresh profile):**
+14/14 checks passed — both Medical Officer accounts (summary counts, queue order), crew list (4 once each, order, readings, messages, dates-only sharing), selection + focus + back, direct nested URL + refresh, 4 unknown/malformed IDs → not found, privacy (3 private check-ins hidden, no journal text, no unshared check-in events), late-result guard, 1440/768/375 px (3/2/1 columns, no overflow), keyboard (fresh tab), accessibility tree, offline detail reload, astronaut Overview unchanged + 3× Access denied. No console errors, no external requests.
+Not yet checked: a real screen reader, Firefox, Safari.
