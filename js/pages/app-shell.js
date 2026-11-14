@@ -11,10 +11,12 @@
 // 5. Mission name + Mission Day come from the seeded settings record via
 //    js/services/mission-service.js ("Not available" if it can't be read).
 //
-// 6. Route views: #/overview is rendered by js/pages/astronaut-overview.js
-//    (ROUTE_VIEWS below). Every other route still shows a placeholder until
-//    its sprint. Each navigation aborts the previous view's async work, so a
-//    late result can never overwrite the route that is now on screen.
+// 6. Route views (ROUTE_VIEWS below) are chosen by route AND role:
+//    #/overview → astronaut Overview (astronaut) or crew summary (Medical
+//    Officer); #/crew (incl. #/crew/AH-0n) → Crew Monitor (Medical Officer).
+//    Every other route still shows a placeholder until its sprint. Each
+//    navigation aborts the previous view's async work, so a late result can
+//    never overwrite the route that is now on screen.
 //
 // Dashboards are NOT built here. The mobile drawer is handled by js/app.js.
 
@@ -23,13 +25,20 @@ import { getSession, clearSession, onSessionChange, roleLabel, initialsOf } from
 import { routesForRole, homeRouteFor, findRoute } from "../auth/routes.js";
 import { getMissionContext } from "../services/mission-service.js";
 import { renderAstronautOverview } from "./astronaut-overview.js";
+import { renderMedicalOfficerOverview } from "./officer-overview.js";
+import { renderCrewMonitor } from "./crew-monitor.js";
 import { APP_NAME } from "../core/config.js";
 import { icon } from "../components/icon.js";
 import { el, $, $$, clear } from "../core/utils/dom.js";
 
-/** Routes with a real view. Anything not listed shows the placeholder. */
+/**
+ * Routes with a real view, per role. Anything not listed shows the
+ * placeholder. Route guards (checkRoute) still run first, so e.g. an
+ * astronaut never reaches the Crew Monitor view.
+ */
 const ROUTE_VIEWS = Object.freeze({
-  "#/overview": renderAstronautOverview,
+  "#/overview": Object.freeze({ astronaut: renderAstronautOverview, medical_officer: renderMedicalOfficerOverview }),
+  "#/crew": Object.freeze({ medical_officer: renderCrewMonitor }),
 });
 
 const session = requireSession(); // redirects to login.html when null
@@ -139,10 +148,10 @@ function startShell(current) {
     title.textContent = route.title;
     document.title = `${route.title} — ${APP_NAME}`;
     markActive(route.path);
-    const renderView = ROUTE_VIEWS[route.path];
+    const renderView = ROUTE_VIEWS[route.path]?.[current.role];
     if (renderView) {
       viewController = new AbortController();
-      renderView(clear(view), current, { signal: viewController.signal });
+      renderView(clear(view), current, { signal: viewController.signal, hash: location.hash, focus });
     } else {
       clear(view).append(placeholderView(route));
     }

@@ -200,17 +200,39 @@ test("mission: getMissionContext never throws when the database is unavailable",
 
 // ---- Sprint 4: route views ------------------------------------------------------
 
-test("app-shell delegates only #/overview to a real view; every other route keeps its placeholder", () => {
+test("app-shell route views are chosen by route AND role; every other route keeps its placeholder", () => {
   const shell = read("js/pages/app-shell.js");
   assert.match(shell, /import \{ renderAstronautOverview \} from "\.\/astronaut-overview\.js";/);
-  const map = /const ROUTE_VIEWS = Object\.freeze\(\{([\s\S]*?)\}\);/.exec(shell);
+  assert.match(shell, /import \{ renderMedicalOfficerOverview \} from "\.\/officer-overview\.js";/);
+  assert.match(shell, /import \{ renderCrewMonitor \} from "\.\/crew-monitor\.js";/);
+  const map = /const ROUTE_VIEWS = Object\.freeze\(\{([\s\S]*?)\n\}\);/.exec(shell);
   assert.ok(map, "ROUTE_VIEWS map exists");
-  const entries = [...map[1].matchAll(/"(#\/[a-z-]+)":\s*(\w+)/g)].map((m) => [m[1], m[2]]);
-  assert.deepEqual(entries, [["#/overview", "renderAstronautOverview"]]);
-  // Unmapped routes still render placeholderView, and restricted routes still show Access denied first.
-  assert.match(shell, /const renderView = ROUTE_VIEWS\[route\.path\];[\s\S]*?else \{\s*clear\(view\)\.append\(placeholderView\(route\)\);/);
+  const entries = [...map[1].matchAll(/"(#\/[a-z-]+)":\s*Object\.freeze\(\{([^}]*)\}\)/g)].map((m) => [
+    m[1],
+    Object.fromEntries([...m[2].matchAll(/(\w+):\s*(\w+)/g)].map((x) => [x[1], x[2]])),
+  ]);
+  assert.deepEqual(entries, [
+    ["#/overview", { astronaut: "renderAstronautOverview", medical_officer: "renderMedicalOfficerOverview" }],
+    ["#/crew", { medical_officer: "renderCrewMonitor" }],
+  ]);
+  // Sprint 4 astronaut Overview unchanged; no astronaut view for #/crew.
+  assert.equal(entries[0][1].astronaut, "renderAstronautOverview");
+  assert.ok(!("astronaut" in entries[1][1]), "astronauts have no #/crew view");
+  // Unmapped routes still render placeholderView, and route guards run before any view.
+  assert.match(shell, /const renderView = ROUTE_VIEWS\[route\.path\]\?\.\[current\.role\];[\s\S]*?else \{\s*clear\(view\)\.append\(placeholderView\(route\)\);/);
   assert.ok(shell.indexOf("if (!allowed)") < shell.indexOf("const renderView = ROUTE_VIEWS"), "guard runs before any view");
-  for (const r of ROUTES.filter((x) => x.path !== "#/overview")) assert.ok(!entries.some(([p]) => p === r.path), r.path);
+  for (const r of ROUTES.filter((x) => !["#/overview", "#/crew"].includes(x.path))) assert.ok(!entries.some(([p]) => p === r.path), r.path);
+});
+
+test("30. astronauts can't reach #/crew or any nested crew-detail route (Access denied before any view)", () => {
+  const astronaut = { role: "astronaut", userId: "u-haddad" };
+  const officer = { role: "medical_officer", userId: "u-medofficer" };
+  for (const hash of ["#/crew", "#/crew/AH-01", "#/crew/AH-04", "#/crew/a-01", "#/crew/AH-01/x", "#/crew?x=1"]) {
+    const a = checkRoute(astronaut, hash);
+    assert.equal(a.allowed, false, hash);
+    assert.equal(a.route.path, "#/crew", `${hash} → Access denied for the crew route`);
+    assert.equal(checkRoute(officer, hash).allowed, true, hash);
+  }
 });
 
 test("app-shell aborts the previous view on every navigation and on logout (no stale overwrite)", () => {
@@ -219,7 +241,7 @@ test("app-shell aborts the previous view on every navigation and on logout (no s
   const abortAt = render.indexOf("viewController?.abort()");
   assert.ok(abortAt > 0, "renderRoute aborts the previous view");
   assert.ok(abortAt < render.indexOf("checkRoute("), "…before deciding what to render");
-  assert.match(render, /viewController = new AbortController\(\);\s*renderView\(clear\(view\), current, \{ signal: viewController\.signal \}\);/);
+  assert.match(render, /viewController = new AbortController\(\);\s*renderView\(clear\(view\), current, \{ signal: viewController\.signal, hash: location\.hash, focus \}\);/);
   assert.match(/function leave\([\s\S]*?\n  \}\n/.exec(shell)[0], /viewController\?\.abort\(\)/);
 });
 

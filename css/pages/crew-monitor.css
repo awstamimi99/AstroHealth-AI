@@ -1,0 +1,297 @@
+/* css/pages/crew-monitor.css — Medical Officer views (Sprint 5):
+   #/overview (crew summary), #/crew (crew cards), #/crew/AH-0n (detail).
+   Built on card, badge, alert-item, sim-tag, banner, state and skeleton.
+   Every status has colour + icon + text. Orange is never a warning. */
+
+.crew {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+/* ---- Header & sections ------------------------------------------------------ */
+.crew__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.crew__welcome {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+.crew__subtitle {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+.crew__notice {
+  margin-top: var(--space-2);
+  align-items: flex-start;
+}
+.crew__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.crew__title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+.crew__text {
+  overflow-wrap: anywhere;
+}
+.crew__note,
+.crew__meta {
+  color: var(--color-text-3);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+.crew__empty {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+.crew__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* Badges are nowrap in components.css; allow wrapping on narrow screens. */
+.crew .badge {
+  white-space: normal;
+}
+.crew__status-badge {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+}
+.crew__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+.crew__error p {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.crew__plain-list,
+.crew__alerts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.crew__plain-list li {
+  overflow-wrap: anywhere;
+}
+.crew__alerts .alert-item__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.crew__alerts .alert-item__title,
+.crew__alerts .alert-item__text {
+  overflow-wrap: anywhere;
+}
+
+/* ---- Summary counts (#/overview) ------------------------------------------------ */
+.crew-counts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.crew-counts__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+.crew-counts__value {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Priority queue (#/overview) --------------------------------------------------- */
+.crew-queue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-5);
+}
+.crew-queue__item {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+.crew-queue__item > * + * {
+  margin-top: var(--space-2);
+}
+.crew-queue__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.crew-queue__name {
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+
+/* ---- Crew cards (#/crew) ----------------------------------------------------------- */
+.crew-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.crew-grid--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.crew-grid > li {
+  display: flex;
+  min-width: 0;
+}
+.crew-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.crew-card__name {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+.crew-card__vitals {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-1) 0;
+  padding: var(--space-2) 0;
+  border-top: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border-subtle);
+  list-style: none;
+}
+.crew-card > p:last-child {
+  margin-top: auto;
+}
+.crew-vital {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+}
+.crew-vital__label {
+  min-width: 7.5em;
+  color: var(--color-text-2);
+  font-size: var(--text-xs);
+}
+.crew-vital__value {
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.crew-vital__time {
+  flex-basis: 100%;
+  color: var(--color-text-3);
+  font-size: var(--text-2xs);
+}
+.crew-vital__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/* ---- Detail (#/crew/AH-0n) ------------------------------------------------------- */
+.crew-detail__vital {
+  min-width: 0;
+}
+.crew-detail__value {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.crew-shared {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.crew-shared__item {
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+.crew-shared__date {
+  margin-bottom: var(--space-2);
+  color: var(--color-text-2);
+  font-size: var(--text-xs);
+}
+.crew-shared__scores {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.crew-shared__scores dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.crew-message {
+  padding: var(--space-3);
+  border-left: 3px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-elevated);
+}
+.crew-message__body,
+.crew-message__reply {
+  overflow-wrap: anywhere;
+}
+.crew-message__reply {
+  margin-top: var(--space-2);
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+
+/* ---- Loading -------------------------------------------------------------------- */
+.crew__loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ---- Responsive ------------------------------------------------------------------ */
+@media (max-width: 1279px) {
+  .crew-grid,
+  .crew-grid--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 699px) {
+  .crew-grid,
+  .crew-grid--4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
