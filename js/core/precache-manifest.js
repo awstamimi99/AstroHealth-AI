@@ -78,6 +78,7 @@ self.PRECACHE_URLS = [
   "./js/db/types.js",
   "./js/pages/app-shell.js",
   "./js/pages/login.js",
+  "./js/services/mission-service.js",
   "./js/sw-register.js",
   "./login.html",
   "./manifest.webmanifest",
