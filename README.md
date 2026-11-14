@@ -99,5 +99,13 @@ docs/                       ARCHITECTURE.md, LICENSES.md
 ## For contributors
 
 - 👉 **[CONTRIBUTING.md](CONTRIBUTING.md)** — team ownership, branches, PR rules.
+- 👉 **[AGENTS.md](AGENTS.md)** — strict rules for future AI-assisted sessions.
 - 👉 **[Style guide](tests/browser/styleguide.html)** — open <http://localhost:8080/tests/browser/styleguide.html> and copy markup from there.
 - 👉 **[Architecture](docs/ARCHITECTURE.md)** and **[Licences](docs/LICENSES.md)**.
+
+## Reference data
+
+`data/references.json` contains objects with `id`, `title`, `authors`,
+`publisher`, `year`, `url`, `accessed`, and `verified`. Never invent citations.
+New sources start with `"verified": false` and stay unverified until a second
+team member checks their details against the real source.
