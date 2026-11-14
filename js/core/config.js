@@ -3,14 +3,14 @@
 //   import { APP_NAME, SESSION_KEY } from "./core/config.js";
 
 export const APP_NAME = "AstroHealth AI";
-export const APP_VERSION = "0.8.0";
+export const APP_VERSION = "0.9.0";
 
 // IndexedDB database name (stores are listed in docs/ARCHITECTURE.md).
 export const DB_NAME = "astrohealth";
 export const DB_VERSION = 1;
 
 // localStorage key for the logged-in session.
-// CONTRACT: written ONLY by Team 1 (js/auth). Team 2 may only READ it.
+// CONTRACT: written ONLY by js/auth. Other code may only READ it.
 export const SESSION_KEY = "astrohealth.session";
 
 // BroadcastChannel name used by the event bus to sync tabs.
@@ -24,7 +24,7 @@ export const DISCLAIMER =
   "Research & educational prototype · Not a medical device · " +
   "Not affiliated with or endorsed by NASA · All health data synthetic";
 
-// Hash routes inside app.html (Team 1's router reads this list).
+// Hash routes inside app.html (the app shell's router reads this list).
 // `moOnly: true` = visible to the Medical Officer role only.
 export const ROUTES = [
   { path: "#/overview", label: "Overview", title: "Overview", icon: "layout-dashboard", roles: ["astronaut", "medical_officer"] },

@@ -258,7 +258,7 @@ function messageSection(messages, data, onRetry) {
         el("p", { class: "overview__tags" }, el("span", { class: "sim-tag" }, "Synthetic")),
       ]),
       messages.moreCount ? el("p", { class: "overview__meta" }, `and ${messages.moreCount} more unacknowledged message${messages.moreCount === 1 ? "" : "s"} from the Medical Officer`) : null,
-      el("p", { class: "overview__note" }, "Read-only here. Acknowledging and replying will be added in a later sprint."),
+      el("p", { class: "overview__note" }, "Read-only here. Medical Officer alert actions are handled on the Alerts page."),
     ];
   }
   return section("ov-message-title", "Message from the Medical Officer", body);
@@ -407,7 +407,7 @@ export function medicalOfficerPlaceholder() {
     el("div", { class: "state" }, [
       el("span", { class: "state__icon" }, icon("layout-dashboard")),
       el("h2", { class: "state__title", id: "ov-mo-title" }, "Medical Officer overview"),
-      el("p", { class: "state__text" }, "Your overview will be built in a later sprint. Astronauts' personal overviews are not shown here."),
+      el("p", { class: "state__text" }, "Astronaut personal overviews are available only when signed in with an astronaut account."),
       el("p", { class: "overview__links" }, [
         el("a", { class: "btn btn--secondary btn--sm", href: "#/crew" }, [icon("users"), "Crew Monitor"]),
         el("a", { class: "btn btn--secondary btn--sm", href: "#/alerts" }, [icon("bell"), "Alerts"]),

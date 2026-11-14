@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0B1018">
-  <meta name="description" content="AstroHealth AI — offline-first crew health monitoring prototype for communication-limited space missions.">
+  <meta name="description" content="AstroHealth AI — research and educational prototype exploring explainable crew health monitoring with synthetic data. Not a medical device.">
   <title>AstroHealth AI — Crew Health System</title>
 
   <link rel="manifest" href="manifest.webmanifest">
@@ -974,7 +974,7 @@
         <a href="#capabilities">Capabilities</a>
         <a href="#how-it-works">How it works</a>
         <a href="#offline">Offline</a>
-        <a href="#research">Research</a>
+        <a href="#research">Background</a>
         <a href="#team">Team</a>
       </nav>
 
@@ -988,14 +988,14 @@
     <main>
       <section class="hero" id="mission">
         <div class="hero-copy">
-          <div class="eyebrow">NASA space apps challenge · student project</div>
+          <div class="eyebrow">NASA Space Apps Challenge · student project · not affiliated with or endorsed by NASA</div>
           <h1>
-            Autonomous health risk detection for
+            Explainable crew health monitoring for
             <span class="highlight">communication-limited</span>
             space missions.
           </h1>
           <p>
-            An offline-first monitoring and decision-support system that helps astronauts and medical officers detect, understand and respond to health risks when every second matters.
+            A research and educational prototype. Astronauts and a Medical Officer review synthetic health records, deterministic demonstration rules and a clear alert audit trail — stored on this device and usable offline after the first visit.
           </p>
 
           <div class="cta-row">
@@ -1004,17 +1004,17 @@
           </div>
 
           <div class="metric-strip">
-            <div class="metric"><strong>100%</strong><span>Offline capable</span></div>
-            <div class="metric"><strong>0</strong><span>Data gaps</span></div>
+            <div class="metric"><strong>4</strong><span>Demonstration rules</span></div>
             <div class="metric"><strong>2</strong><span>Crew roles</span></div>
-            <div class="metric"><strong>9</strong><span>Risk models</span></div>
+            <div class="metric"><strong>100%</strong><span>Synthetic data</span></div>
+            <div class="metric"><strong>Offline</strong><span>After first visit</span></div>
           </div>
         </div>
 
-        <div class="hero-panel" aria-label="Live system preview">
+        <div class="hero-panel" aria-label="Illustration of the dashboard with synthetic values">
           <div class="preview-card">
             <div class="preview-card__top">
-              <div class="live-tag"><span class="live-tag__dot"></span> Live preview</div>
+              <div class="live-tag"><span class="live-tag__dot"></span> Illustration</div>
               <div class="live-tag">Synthetic data</div>
             </div>
 
@@ -1036,12 +1036,12 @@
               <div class="mini-box">
                 <div class="label">Heart</div>
                 <strong>97</strong>
-                <div class="delta"><span class="up">▲</span> stable</div>
+                <div class="delta">synthetic example</div>
               </div>
               <div class="mini-box">
                 <div class="label">Sleep</div>
                 <strong>6.1</strong>
-                <div class="delta"><span class="up">▲</span> normal</div>
+                <div class="delta">synthetic example</div>
               </div>
             </div>
           </div>
@@ -1054,30 +1054,30 @@
           <div class="feature-copy">
             <h2 class="section-title">When help is minutes away, the crew needs answers now.</h2>
             <p>
-              A crew may be minutes or hours from Earth support. Our platform detects early changes in physical health and mental wellbeing, then communicates the best next steps with minimal data transfer and maximum clarity.
+              A crew may be minutes or hours from Earth support. AstroHealth AI explores how stored readings, wellbeing check-ins and simple, explainable rules could help a crew and a Medical Officer see what changed and review it together. Everything in this prototype uses synthetic data.
             </p>
           </div>
 
           <div class="feature-grid">
             <article class="card">
               <div class="icon">⏱</div>
-              <h3>Minutes</h3>
-              <p>One minute to review critical detections and prioritize lifesaving next actions.</p>
+              <h3>Review</h3>
+              <p>See each alert with its rule, the readings behind it and its full audit trail in one place.</p>
             </article>
             <article class="card">
               <div class="icon">☾</div>
               <h3>Sleep</h3>
-              <p>Track fatigue and disruption against each mission’s cognitive and operational limits.</p>
+              <p>Nightly sleep duration compared with a stored demonstration threshold over consecutive nights.</p>
             </article>
             <article class="card">
-              <div class="icon">💧</div>
-              <h3>Fluids</h3>
-              <p>Monitor hydration and early signs of physiologic stress in long-duration operations.</p>
+              <div class="icon">❤</div>
+              <h3>Vital signs</h3>
+              <p>Heart rate, SpO₂ and blood pressure readings with trends and clear data-quality labels.</p>
             </article>
             <article class="card">
               <div class="icon">🧠</div>
-              <h3>Isolation</h3>
-              <p>Surface social strain and behavioral drift before they become mission-level risks.</p>
+              <h3>Wellbeing check-ins</h3>
+              <p>Private by default: only check-ins an astronaut chooses to share are visible to the Medical Officer.</p>
             </article>
           </div>
         </div>
@@ -1085,38 +1085,38 @@
 
       <section class="section" id="how-it-works">
         <div class="section-kicker">02 · Core capabilities</div>
-        <h2 class="section-title">Everything runs on board.</h2>
+        <h2 class="section-title">Everything runs on this device.</h2>
 
         <div class="cap-grid">
           <article class="card cap-card">
             <div class="cap-icon">❤</div>
             <h3>Physical Health Monitoring</h3>
-            <p>Track heart rate, SpO₂, blood pressure, activity and fatigue across time.</p>
+            <p>Review synthetic heart rate, SpO₂, blood pressure and sleep readings with 7- and 30-day trends.</p>
           </article>
           <article class="card cap-card">
             <div class="cap-icon">🧠</div>
             <h3>Mental Wellbeing Monitoring</h3>
-            <p>Detect stress, sleep disruption and isolation before they become operational risks.</p>
+            <p>Daily check-ins with explicit sharing — private check-ins and the private journal stay with the astronaut.</p>
           </article>
           <article class="card cap-card">
             <div class="cap-icon">⚙</div>
-            <h3>Autonomous Risk Detection</h3>
-            <p>Continuously assess patterns and identify only the signals that matter most.</p>
+            <h3>Explainable Demonstration Rules</h3>
+            <p>Four deterministic rules (heart rate, SpO₂, blood pressure, sleep) run after each simulation step or when the Medical Officer asks. Each alert shows the rule, readings and threshold used.</p>
           </article>
           <article class="card cap-card">
             <div class="cap-icon">🚨</div>
-            <h3>Emergency Alerts</h3>
-            <p>Prioritized alerts include next actions and brief medical guidance when contact is limited.</p>
+            <h3>Alerts With an Audit Trail</h3>
+            <p>The Medical Officer acknowledges and resolves alerts and every change is recorded. No diagnosis and no treatment advice.</p>
           </article>
           <article class="card cap-card">
             <div class="cap-icon">📡</div>
             <h3>Offline Operation</h3>
-            <p>Run locally with resilient local storage, caching and minimal bandwidth requirements.</p>
+            <p>After the first successful visit, the app and its locally stored records keep working without a network.</p>
           </article>
           <article class="card cap-card">
             <div class="cap-icon">🧾</div>
-            <h3>Historical Health Analysis</h3>
-            <p>Review trends across time to explain sudden changes and chronic drift.</p>
+            <h3>History &amp; Reports</h3>
+            <p>A safe activity timeline and printable summaries built from the stored synthetic records.</p>
           </article>
         </div>
       </section>
@@ -1129,54 +1129,54 @@
           <article class="card process-card">
             <div class="icon-box">🩺</div>
             <h3>Health Data</h3>
-            <p>Vitals and crew check-ins from wearable sensors and onboard assessments.</p>
+            <p>Synthetic demo readings and check-ins stored in this browser — no real sensors and no real crew data.</p>
           </article>
           <article class="card process-card">
             <div class="icon-box">🛰</div>
             <h3>Local Processing</h3>
-            <p>Onboard rules and models run near-real time without continuous connection.</p>
+            <p>Deterministic demonstration rules run in the browser, only after a simulation step or when the Medical Officer asks.</p>
           </article>
           <article class="card process-card">
             <div class="icon-box">🔎</div>
-            <h3>Risk Detection</h3>
-            <p>Flag unusual patterns and changes based on crew baselines and mission conditions.</p>
+            <h3>Rule Evaluation</h3>
+            <p>Consecutive readings beyond a stored demonstration threshold open an alert; suspect or stale readings are never used.</p>
           </article>
           <article class="card process-card">
             <div class="icon-box">⚠</div>
             <h3>Alerts</h3>
-            <p>Clear, ranked warnings reach crew and mission control with no extra delay.</p>
+            <p>Ranked alerts appear consistently in the Medical Officer and astronaut views on this device.</p>
           </article>
           <article class="card process-card">
             <div class="icon-box">🩹</div>
-            <h3>Medical Response</h3>
-            <p>Recommended actions are ready even when communications are degraded.</p>
+            <h3>Human Review</h3>
+            <p>The Medical Officer reviews the evidence and records the outcome. The app does not recommend treatment.</p>
           </article>
         </div>
       </section>
 
       <section class="section" id="science">
         <div class="section-kicker">04 · Offline technology</div>
-        <h2 class="section-title">No internet. No problem.</h2>
+        <h2 class="section-title">No internet after the first visit.</h2>
 
         <div class="offline-wrap">
           <div class="offline-list">
             <ul>
-              <li>Indexed local storage and risk models allow analysis even when communications are degraded.</li>
-              <li>Service workers cache the app and health logic for resilient offline operation.</li>
-              <li>Onboard rules reduce transfer payloads while still supporting mission-level alerts.</li>
-              <li>Context-aware scoring prioritizes only the highest-risk signals from sparse or delayed data.</li>
+              <li>Records are stored locally in IndexedDB, so dashboards keep working without a network.</li>
+              <li>A service worker caches the app's own files after the first successful visit.</li>
+              <li>Demonstration rules run in the browser on stored data; nothing is sent to a server.</li>
+              <li>No external fonts, scripts or analytics are loaded.</li>
             </ul>
           </div>
 
           <div class="card status-panel">
             <div class="status-panel__head">
               <h3>Offline readiness</h3>
-              <span class="status-pill">Ready</span>
+              <span class="status-pill">Example</span>
             </div>
             <div class="status-metrics">
               <div class="mini-box"><div class="label">Network</div><strong>Offline</strong></div>
               <div class="mini-box"><div class="label">Worker</div><strong>Active</strong></div>
-              <div class="mini-box"><div class="label">Cached</div><strong>312 / 312</strong></div>
+              <div class="mini-box"><div class="label">Cached</div><strong>App files</strong></div>
               <div class="mini-box"><div class="label">Database</div><strong>Local</strong></div>
             </div>
           </div>
@@ -1184,36 +1184,36 @@
       </section>
 
       <section class="section" id="research">
-        <div class="section-kicker">05 · Research &amp; evidence</div>
+        <div class="section-kicker">05 · Background</div>
         <h2 class="section-title">Designed around the realities of spaceflight.</h2>
         <p class="feature-copy">
-          Research summary based on the team dossier you provided. Add source links and full citations when they are available.
+          General project background summarised by the team. Verified source links have not been added yet, so these summaries are not citations.
         </p>
 
         <div class="research-grid">
           <article class="card research-card">
             <div class="cap-icon">🛰</div>
             <h3>Distance from Earth</h3>
-            <p>Medical support can be delayed on deep-space missions, so crews need onboard guidance that works without a live connection.</p>
-            <span class="ref">Project research summary</span>
+            <p>Medical support can be delayed on deep-space missions, so crews need tools that keep working without a live connection.</p>
+            <span class="ref">General background · sources not yet verified</span>
           </article>
           <article class="card research-card">
             <div class="cap-icon">🧬</div>
             <h3>Spaceflight health risks</h3>
             <p>Fluid shifts, changes to bone and muscle, motion sickness, and cardiovascular changes can affect crew health in altered gravity.</p>
-            <span class="ref">Project research summary</span>
+            <span class="ref">General background · sources not yet verified</span>
           </article>
           <article class="card research-card">
             <div class="cap-icon">🧠</div>
             <h3>Habitat &amp; wellbeing</h3>
-            <p>Air quality, radiation, disrupted sleep, isolation, and stress are among the risks described in the team dossier.</p>
-            <span class="ref">Project research summary</span>
+            <p>Air quality, radiation, disrupted sleep, isolation and stress are spaceflight challenges the team set out to consider.</p>
+            <span class="ref">General background · sources not yet verified</span>
           </article>
           <article class="card research-card">
             <div class="cap-icon">⏳</div>
             <h3>Environment-aware monitoring</h3>
             <p>Health priorities change between spacecraft, station, suit, and planetary habitat—so monitoring should account for crew location.</p>
-            <span class="ref">Project research summary</span>
+            <span class="ref">General background · sources not yet verified</span>
           </article>
         </div>
       </section>

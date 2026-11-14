@@ -70,6 +70,12 @@
           <p class="login__subtitle">Access the AstroHealth mission console.</p>
         </header>
 
+        <!-- One-time notice after "Reset synthetic demo data" (login.html?reset=1). -->
+        <div class="banner login__form-error" id="reset-notice" role="status" hidden>
+          <i data-icon="circle-check"></i>
+          <p class="banner__text">Synthetic demo data was reset on this device. Please sign in again.</p>
+        </div>
+
         <!-- Form-level problems (e.g. local data unavailable). Empty = hidden. -->
         <div class="banner banner--critical login__form-error" id="form-error" role="alert" hidden>
           <i data-icon="circle-alert"></i>

@@ -1,6 +1,6 @@
 // js/auth/session.js
 // The demo login session, stored at localStorage["astrohealth.session"].
-// CONTRACT: only Team 1 code (js/auth/) creates, updates or deletes it.
+// CONTRACT: only js/auth/ creates, updates or deletes it.
 // Other code may READ it with getSession().
 //
 //   import { createSession, getSession, clearSession, onSessionChange } from "../auth/session.js";

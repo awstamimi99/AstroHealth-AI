@@ -1,6 +1,6 @@
 // js/db/mock-repositories.js
 // In-memory repositories with the SAME names and signatures as the real ones
-// (js/db/index.js). Use them in Team 1 unit tests or while prototyping:
+// (js/db/index.js). Use them in unit tests or while prototyping:
 //
 //   import { alertsRepo, resetMock } from "../db/mock-repositories.js";
 //   await resetMock();               // fresh demo data (default)

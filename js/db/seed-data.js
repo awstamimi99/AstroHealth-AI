@@ -355,7 +355,7 @@ export function buildSeedData({ now = Date.now(), seed = DEMO_SEED } = {}) {
       explanation: "Systolic pressure 142–146 mmHg on 3 consecutive readings (baseline 118 mmHg).",
       suggestedAction: `Repeat the measurement at rest. ${suggested}`,
       acknowledgedAt: detectedAt + 12 * MINUTE_MS, clearedAt, resolvedAt: clearedAt + 30 * MINUTE_MS,
-      resolutionNote: "Readings back in normal range after rest. No further action.",
+      resolutionNote: "Readings returned toward the stored baseline after rest. Demo alert closed.",
     });
   }
 

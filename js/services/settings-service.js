@@ -3,9 +3,11 @@
 //   getSettingsView(session, options)
 //
 // Astronaut: mission, canonical units, data/privacy explanation.
-// Medical Officer: additionally the demonstration thresholds (read-only) and
-// the simulation default speed (read-only). Thresholds and simulation
-// configuration are NEVER returned to astronauts.
+// Medical Officer: additionally the demonstration thresholds (read-only), the
+// simulation default speed (read-only) and `canResetDemo` (shows the "Reset
+// synthetic demo data" control; demo-reset-service.js re-checks the role).
+// Thresholds, simulation configuration and the reset flag are NEVER returned
+// to astronauts.
 //
 // This service never calls settingsRepo.set and writes nothing. Personal
 // display preferences are browser-only (js/core/preferences.js).
@@ -68,6 +70,7 @@ export function createSettingsService({ repos }) {
       const units = UNIT_ROWS.map(([key, label]) => ({ key, label, unit: METRIC_UNITS[key] }));
       const view = { viewer: role, mission, units, privacy: [...PRIVACY_NOTES] };
       if (role === "officer") {
+        view.canResetDemo = true; // the reset itself is authorized again by demo-reset-service.js
         try {
           const t = await repos.settingsRepo.get("thresholds");
           const metrics = t && typeof t === "object" && t.metrics && typeof t.metrics === "object" ? t.metrics : null;

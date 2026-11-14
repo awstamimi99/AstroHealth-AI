@@ -5,7 +5,7 @@
 //
 // Route-level rules only. Data-level privacy (an astronaut seeing only their
 // own data, the Medical Officer never seeing private journals or unshared
-// check-ins) must ALSO be enforced by Team 1's services when pages are built.
+// check-ins) is ALSO enforced by the services in js/services/.
 
 import { ROUTES, DEFAULT_ROUTE } from "../core/config.js";
 

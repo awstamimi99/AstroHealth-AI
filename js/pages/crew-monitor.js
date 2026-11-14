@@ -172,7 +172,7 @@ function messagesSection(messages, data, onRetry) {
   }
   return section("crew-detail-messages-title", "Messages", [
     ...body,
-    el("p", { class: "crew__note" }, "Read-only. Senders are verified against stored accounts. Replying and acknowledging will come in a later sprint."),
+    el("p", { class: "crew__note" }, "Read-only message history. Senders are verified against stored accounts; alert actions are handled on the Alerts page."),
   ]);
 }
 

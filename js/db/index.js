@@ -1,5 +1,5 @@
 // js/db/index.js
-// THE single import point for the database layer (Team 1 imports from here):
+// THE single import point for the database layer (services import from here):
 //
 //   import { alertsRepo, measurementsRepo, withTransaction, DatabaseError } from "../db/index.js";
 //

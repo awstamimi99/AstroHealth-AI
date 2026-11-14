@@ -1,4 +1,4 @@
-// js/pages/app-shell.js — authentication + role-aware shell for app.html (Team 1)
+// js/pages/app-shell.js — authentication + role-aware shell for app.html
 //
 // 1. No valid session → redirect to login.html (before the shell is shown).
 // 2. Show the signed-in user (name, role, initials) and ONLY the nav items
@@ -14,14 +14,15 @@
 // 6. Route views (ROUTE_VIEWS below) are chosen by route AND role:
 //    #/overview → astronaut Overview (astronaut) or crew summary (Medical
 //    Officer); #/crew (incl. #/crew/AH-0n) → Crew Monitor (Medical Officer);
-//    #/physical and #/wellbeing (incl. /AH-0n) → both roles (Sprint 6);
-//    #/simulation → Simulation Center (Medical Officer only, Sprint 7);
-//    #/alerts (incl. /ALT-0nnn) → Alerts, both roles (Sprint 8);
+//    #/physical and #/wellbeing (incl. /AH-0n) → both roles;
+//    #/simulation → Simulation Center (Medical Officer only);
+//    #/alerts (incl. /ALT-0nnn) → Alerts, both roles;
 //    #/history (incl. /AH-0n), #/reports (incl. /AH-0n), #/settings → both
-//    roles (Sprint 9). Personal display preferences are applied at startup.
-//    Every other route still shows a placeholder until its sprint. Each
-//    navigation aborts the previous view's async work, so a late result can
-//    never overwrite the route that is now on screen.
+//    roles. Personal display preferences are applied at startup. A route
+//    without a view for the role (should not happen) shows a neutral
+//    "not available" card. Each navigation aborts the previous view's async
+//    work, so a late result can never overwrite the route that is now on
+//    screen.
 //
 // Dashboards are NOT built here. The mobile drawer is handled by js/app.js.
 
@@ -40,14 +41,16 @@ import { renderHistory } from "./history.js";
 import { renderReports } from "./reports.js";
 import { renderSettings } from "./settings.js";
 import { preferences } from "../core/preferences.js";
+import { bus } from "../core/event-bus.js";
 import { APP_NAME } from "../core/config.js";
 import { icon } from "../components/icon.js";
 import { el, $, $$, clear } from "../core/utils/dom.js";
 
 /**
- * Routes with a real view, per role. Anything not listed shows the
- * placeholder. Route guards (checkRoute) still run first, so e.g. an
- * astronaut never reaches the Crew Monitor view.
+ * Routes with a real view, per role. Every route in config.js is mapped for
+ * every role allowed to open it; placeholderView() is only a defensive
+ * fallback. Route guards (checkRoute) still run first, so e.g. an astronaut
+ * never reaches the Crew Monitor view.
  */
 const ROUTE_VIEWS = Object.freeze({
   "#/overview": Object.freeze({ astronaut: renderAstronautOverview, medical_officer: renderMedicalOfficerOverview }),
@@ -114,13 +117,13 @@ function startShell(current) {
   }
 
   // ---- Route views ------------------------------------------------------------------
-  // Placeholders only: no metrics, forms or alerts until each dashboard sprint.
+  // Defensive fallback for a route/role pair without a view. Shows no data.
   function placeholderView(route) {
     return el("section", { class: "card", "aria-labelledby": "route-placeholder-title" }, [
       el("div", { class: "state" }, [
         el("span", { class: "state__icon" }, icon(route.icon)),
         el("h2", { class: "state__title", id: "route-placeholder-title" }, route.title),
-        el("p", { class: "state__text" }, `The ${route.title} section will be completed in a later sprint. No health data is shown here yet.`),
+        el("p", { class: "state__text" }, `The ${route.title} section isn't available for this account in this version. No health data is shown here.`),
       ]),
     ]);
   }
@@ -204,6 +207,19 @@ function startShell(current) {
   $("[data-logout]").addEventListener("click", () => {
     clearSession(); // the IndexedDB data is NOT touched
     leave();
+  });
+
+  // "Reset synthetic demo data" (Settings, Medical Officer) succeeded here or in
+  // another tab (the bus mirrors it): sign out, drop everything on screen and
+  // open the login page with a one-time notice. No payload is sent or read.
+  bus.on("demo:reset", () => {
+    clearSession();
+    viewController?.abort();
+    shell.style.visibility = "hidden";
+    showUser(null);
+    clear(nav);
+    clear(view);
+    location.replace("login.html?reset=1");
   });
 
   // Signed out (or someone else signed in) in another tab → follow along.
