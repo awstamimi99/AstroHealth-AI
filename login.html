@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0B1018">
-  <meta name="description" content="Sign in to AstroHealth AI.">
+  <meta name="description" content="Sign in to AstroHealth AI with a demonstration account. Runs offline; all data stays on this device.">
   <title>Sign in — AstroHealth AI</title>
 
   <link rel="manifest" href="manifest.webmanifest">
@@ -13,11 +13,17 @@
 
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/base.css">
+  <!-- layout.css provides the shared .offline-card used in the brand panel -->
+  <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/components.css">
-  <!-- Team 1: add css/pages/login.css here -->
+  <link rel="stylesheet" href="css/pages/login.css">
 
+  <!-- Shared bootstrap: icons, service worker, offline indicator, file:// warning -->
   <script type="module" src="js/app.js"></script>
-  <!-- Team 1: add <script type="module" src="js/pages/login.js"></script> here -->
+  <!-- Login page logic (redirects away if already signed in) -->
+  <script type="module" src="js/pages/login.js"></script>
+
+  <!-- Modules don't run on file:// — this tiny fallback explains why. -->
   <script>
     if (location.protocol === "file:") document.addEventListener("DOMContentLoaded", function () {
       var b = document.createElement("div"); b.className = "env-warning"; b.setAttribute("role", "alert");
@@ -25,27 +31,110 @@
       document.body.prepend(b);
     });
   </script>
-  <style>
-    /* PLACEHOLDER ONLY — Team 1 replaces this page. */
-    .placeholder { min-height: calc(100vh - 60px); display: grid; place-content: center; padding: var(--space-6) var(--space-4); }
-    .placeholder .card { width: min(420px, 100%); display: grid; gap: var(--space-4); }
-    .placeholder p { color: var(--color-text-2); }
-  </style>
 </head>
-<body>
-  <a class="skip-link" href="#main">Skip to main content</a>
+<body class="login-page">
+  <a class="skip-link" href="#login-form">Skip to sign-in form</a>
 
-  <main id="main" class="placeholder">
-    <div class="card">
-      <a class="logo" href="index.html">
-        <img class="logo__mark" src="assets/brand/logo-mark.svg" alt="" width="36" height="36">
+  <main id="main" class="login">
+    <!-- Left: brand panel (decorative space scene is pure CSS) -->
+    <section class="login__hero" aria-label="About AstroHealth AI">
+      <a class="logo login__logo" href="index.html">
+        <img class="logo__mark" src="assets/brand/logo-mark.svg" alt="" width="44" height="44">
         <span class="logo__text"><span class="logo__name">AstroHealth AI</span><span class="logo__tag">Crew Health System</span></span>
       </a>
-      <h1 class="card__title">Login page — Team 1 builds here</h1>
-      <p>Team 1 writes the session to <code>localStorage["astrohealth.session"]</code> and then opens <code>app.html</code>.</p>
-      <a class="btn btn--primary btn--block" href="app.html"><i data-icon="lock"></i> Open app shell (placeholder)</a>
-      <a class="btn btn--ghost btn--block" href="index.html"><i data-icon="arrow-right"></i> Back to index.html</a>
-    </div>
+
+      <div class="login__hero-copy">
+        <p class="login__headline">Crew health,<br><span class="login__accent">monitored on board.</span></p>
+        <p class="login__lead">Sign in with a demonstration account to open the mission health console.
+          Everything runs on this device — it keeps working without a network connection.</p>
+        <div class="login__status">
+          <div class="offline-card" data-offline-status role="status">
+            <span class="offline-card__icon"><i data-icon="wifi"></i></span>
+            <div>
+              <p class="offline-card__title">Checking offline status…</p>
+              <p class="offline-card__text">Offline mode</p>
+            </div>
+          </div>
+          <span class="chip"><i data-icon="database"></i> Local data only</span>
+        </div>
+      </div>
+
+      <div class="login__planet" aria-hidden="true"></div>
+    </section>
+
+    <!-- Right: sign-in panel -->
+    <section class="login__panel" aria-labelledby="signin-title">
+      <div class="login__panel-inner">
+        <header>
+          <h1 id="signin-title" class="login__title">Sign in</h1>
+          <p class="login__subtitle">Access the AstroHealth mission console.</p>
+        </header>
+
+        <!-- Form-level problems (e.g. local data unavailable). Empty = hidden. -->
+        <div class="banner banner--critical login__form-error" id="form-error" role="alert" hidden>
+          <i data-icon="circle-alert"></i>
+          <p class="banner__text" id="form-error-text"></p>
+        </div>
+
+        <form id="login-form" class="login__form" novalidate tabindex="-1">
+          <div class="field" id="username-field">
+            <label class="field__label" for="username">Username</label>
+            <div class="field__control">
+              <i data-icon="user"></i>
+              <input id="username" name="username" type="text" required
+                     autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"
+                     aria-describedby="username-error">
+            </div>
+            <p class="field__error" id="username-error" role="alert"></p>
+          </div>
+
+          <div class="field" id="password-field">
+            <label class="field__label" for="password">Password</label>
+            <div class="field__control">
+              <i data-icon="lock"></i>
+              <input id="password" name="password" type="password" required
+                     autocomplete="current-password" aria-describedby="password-error">
+              <button class="icon-btn login__reveal" id="reveal" type="button"
+                      aria-controls="password" aria-pressed="false" aria-label="Show password">
+                <i data-icon="eye"></i>
+              </button>
+            </div>
+            <p class="field__error" id="password-error" role="alert"></p>
+          </div>
+
+          <button class="btn btn--primary btn--lg btn--block" id="submit" type="submit">
+            <span id="submit-label">Sign in</span>
+            <i data-icon="arrow-right"></i>
+          </button>
+          <p class="sr-only" id="login-status" role="status"></p>
+        </form>
+
+        <section class="login__demo" aria-labelledby="demo-title">
+          <h2 id="demo-title" class="login__overline">Demo accounts</h2>
+          <p class="login__hint" id="demo-hint">Choosing an account only fills in its demo username and password — press <strong>Sign in</strong> to continue.</p>
+          <div class="login__demo-grid">
+            <button class="login__demo-card" type="button" data-demo-username="haddad" data-demo-label="Astronaut" aria-describedby="demo-hint">
+              <span class="login__demo-role"><i data-icon="user"></i> Astronaut</span>
+              <span class="login__demo-cred">haddad / demo</span>
+              <span class="sr-only">— fill demo credentials</span>
+            </button>
+            <button class="login__demo-card" type="button" data-demo-username="medofficer" data-demo-label="Medical Officer" aria-describedby="demo-hint">
+              <span class="login__demo-role"><i data-icon="shield"></i> Medical Officer</span>
+              <span class="login__demo-cred">medofficer / demo</span>
+              <span class="sr-only">— fill demo credentials</span>
+            </button>
+          </div>
+        </section>
+
+        <div class="banner banner--warning login__note">
+          <i data-icon="triangle-alert"></i>
+          <p class="banner__text"><strong>Demonstration login.</strong> Accounts and roles are simulated in this
+            browser and do not protect real medical data.</p>
+        </div>
+
+        <a class="btn btn--ghost login__back" href="index.html"><i data-icon="arrow-right" class="login__back-icon"></i> Back to home</a>
+      </div>
+    </section>
   </main>
 
   <footer class="disclaimer">

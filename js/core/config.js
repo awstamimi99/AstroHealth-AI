@@ -27,15 +27,15 @@ export const DISCLAIMER =
 // Hash routes inside app.html (Team 1's router reads this list).
 // `moOnly: true` = visible to the Medical Officer role only.
 export const ROUTES = [
-  { path: "#/overview", label: "Overview", title: "Overview", icon: "layout-dashboard", roles: ["astronaut", "medical-officer"] },
-  { path: "#/physical", label: "Physical Health", title: "Physical Health", icon: "heart", roles: ["astronaut", "medical-officer"] },
-  { path: "#/wellbeing", label: "Mental Wellbeing", title: "Mental Wellbeing", icon: "brain", roles: ["astronaut", "medical-officer"] },
-  { path: "#/crew", label: "Crew Monitor", title: "Crew Monitor", icon: "users", roles: ["medical-officer"], moOnly: true },
-  { path: "#/history", label: "Health History", title: "Health History", icon: "history", roles: ["astronaut", "medical-officer"] },
-  { path: "#/simulation", label: "Simulation Center", title: "Simulation Center", icon: "flask-conical", roles: ["medical-officer"], moOnly: true },
-  { path: "#/alerts", label: "Alerts", title: "Alerts", icon: "bell", roles: ["astronaut", "medical-officer"] },
-  { path: "#/reports", label: "Reports", title: "Reports", icon: "file-text", roles: ["astronaut", "medical-officer"] },
-  { path: "#/settings", label: "Settings", title: "Settings", icon: "settings", roles: ["astronaut", "medical-officer"] },
+  { path: "#/overview", label: "Overview", title: "Overview", icon: "layout-dashboard", roles: ["astronaut", "medical_officer"] },
+  { path: "#/physical", label: "Physical Health", title: "Physical Health", icon: "heart", roles: ["astronaut", "medical_officer"] },
+  { path: "#/wellbeing", label: "Mental Wellbeing", title: "Mental Wellbeing", icon: "brain", roles: ["astronaut", "medical_officer"] },
+  { path: "#/crew", label: "Crew Monitor", title: "Crew Monitor", icon: "users", roles: ["medical_officer"], moOnly: true },
+  { path: "#/history", label: "Health History", title: "Health History", icon: "history", roles: ["astronaut", "medical_officer"] },
+  { path: "#/simulation", label: "Simulation Center", title: "Simulation Center", icon: "flask-conical", roles: ["medical_officer"], moOnly: true },
+  { path: "#/alerts", label: "Alerts", title: "Alerts", icon: "bell", roles: ["astronaut", "medical_officer"] },
+  { path: "#/reports", label: "Reports", title: "Reports", icon: "file-text", roles: ["astronaut", "medical_officer"] },
+  { path: "#/settings", label: "Settings", title: "Settings", icon: "settings", roles: ["astronaut", "medical_officer"] },
 ];
 
 export const DEFAULT_ROUTE = "#/overview";

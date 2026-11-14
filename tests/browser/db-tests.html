@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0B1018">
+  <title>Database Tests — AstroHealth AI</title>
+  <link rel="icon" href="../../assets/app-icons/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../../css/tokens.css">
+  <link rel="stylesheet" href="../../css/base.css">
+  <link rel="stylesheet" href="../../css/components.css">
+  <style>
+    /* Test-page layout only. */
+    .dbt { max-width: 980px; margin: 0 auto; padding: var(--space-7) var(--space-5) var(--space-9); }
+    .dbt header { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-end; justify-content: space-between; margin-bottom: var(--space-6); }
+    .dbt h1 { font-size: var(--text-2xl); }
+    .dbt header p { color: var(--color-text-2); max-width: 60ch; }
+    .dbt-summary { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+    .dbt-row { display: grid; grid-template-columns: 90px minmax(0, 1fr) auto; gap: var(--space-3); align-items: start; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border-subtle); }
+    .dbt-row:last-child { border-bottom: 0; }
+    .dbt-row__name { font-weight: var(--weight-semibold); }
+    .dbt-row__detail { color: var(--color-text-2); font-size: var(--text-xs); margin-top: 2px; overflow-wrap: anywhere; }
+    .dbt-row__time { color: var(--color-text-3); font-size: var(--text-xs); }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <main id="main" class="dbt">
+    <header>
+      <div>
+        <h1>Database tests</h1>
+        <p>Runs the real IndexedDB layer (<code>js/db/</code>) against a separate database
+          <code>astrohealth-test</code>, so your demo data is never touched. Serve via
+          <code>npm run serve</code>.</p>
+      </div>
+      <div class="dbt-summary" id="summary" aria-live="polite">
+        <span class="badge badge--neutral">Running…</span>
+      </div>
+    </header>
+    <div class="card" style="padding: 0" id="results" role="list" aria-label="Test results"></div>
+  </main>
+  <footer class="disclaimer">
+    Research &amp; educational prototype · Not a medical device · Not affiliated with or endorsed by NASA · All health data synthetic
+  </footer>
+
+  <script type="module">
+    import * as db from "../../js/db/index.js";
+    import * as mock from "../../js/db/mock-repositories.js";
+    import { el } from "../../js/core/utils/dom.js";
+    import { icon } from "../../js/components/icon.js";
+    import { bus } from "../../js/core/event-bus.js";
+
+    const TEST_DB = "astrohealth-test";
+    // SAFETY: switch to the test database BEFORE any test runs. The runner
+    // refuses to start if this didn't work, so the real "astrohealth"
+    // database is never seeded, reset, imported over or deleted here.
+    await db.useDatabaseName(TEST_DB);
+    const DAY = 24 * 60 * 60 * 1000;
+    const tests = [];
+    const test = (name, fn) => tests.push({ name, fn });
+
+    // ---- tiny assertion helpers ------------------------------------------
+    function assert(condition, message) {
+      if (!condition) throw new Error(message || "assertion failed");
+    }
+    function equal(actual, expected, message) {
+      const a = JSON.stringify(actual);
+      const e = JSON.stringify(expected);
+      if (a !== e) throw new Error(`${message || "values differ"}: expected ${e}, got ${a}`);
+    }
+    async function rejects(promise, code, message) {
+      try {
+        await promise;
+      } catch (err) {
+        if (!(err instanceof db.DatabaseError)) throw new Error(`${message}: expected DatabaseError, got ${err}`);
+        if (code && err.code !== code) throw new Error(`${message}: expected code ${code}, got ${err.code} (${err.message})`);
+        return err;
+      }
+      throw new Error(`${message}: expected an error, but it succeeded`);
+    }
+    /** { storeName: count } for every store */
+    async function counts() {
+      return db.withTransaction(db.STORE_NAMES, "readonly", async (tx, stores) => {
+        const values = await Promise.all(db.STORE_NAMES.map((n) => db.requestToPromise(stores[n].count())));
+        return Object.fromEntries(db.STORE_NAMES.map((n, i) => [n, values[i]]));
+      });
+    }
+
+    // ---- the tests ----------------------------------------------------------
+
+    test("open + upgrade creates schema v1 (15 stores, all indexes)", async () => {
+      await db.useDatabaseName(TEST_DB);
+      await db.deleteDatabase(); // start fresh
+      const conn = await db.openDatabase();
+      equal(conn.name, TEST_DB, "database name");
+      equal(conn.version, 1, "version");
+      equal([...conn.objectStoreNames].sort(), [...db.STORE_NAMES].sort(), "stores");
+      const tx = conn.transaction(db.STORE_NAMES, "readonly");
+      for (const [name, def] of Object.entries(db.SCHEMA)) {
+        const store = tx.objectStore(name);
+        equal(store.keyPath, def.keyPath, `${name} keyPath`);
+        equal([...store.indexNames].sort(), def.indexes.map((i) => i[0]).sort(), `${name} indexes`);
+      }
+      equal(await db.metaRepo.get("schemaVersion"), 1, "meta.schemaVersion");
+      return "15 stores, indexes match schema.js";
+    });
+
+    test("unique indexes are exactly users.username, astronauts.crewId, alerts.by_number", async () => {
+      const conn = await db.openDatabase();
+      const tx = conn.transaction(db.STORE_NAMES, "readonly");
+      const unique = [];
+      for (const name of db.STORE_NAMES) {
+        const store = tx.objectStore(name);
+        for (const index of store.indexNames) if (store.index(index).unique) unique.push(`${name}.${index}`);
+      }
+      equal(unique.sort(), ["alerts.by_number", "astronauts.crewId", "users.username"], "unique indexes");
+    });
+
+    let seedCounts;
+    test("seedDemoData() is idempotent (run twice → same counts)", async () => {
+      const first = await db.seedDemoData();
+      assert(first.seeded, "first run should seed");
+      seedCounts = await counts();
+      equal(seedCounts, first.counts, "stored counts = reported counts");
+      const second = await db.seedDemoData();
+      equal(second.seeded, false, "second run");
+      equal(await counts(), seedCounts, "counts after second run");
+      return `${seedCounts.measurements} measurements, ${seedCounts.missionEvents} events, ${seedCounts.alerts} alerts`;
+    });
+
+    test("seed story: 4 astronauts, Mission Day 147, 2 open alerts", async () => {
+      equal((await db.astronautsRepo.getAll()).map((a) => a.crewId), ["AH-01", "AH-02", "AH-03", "AH-04"], "crew");
+      const mission = await db.settingsRepo.get("mission");
+      equal(mission.name, "ODYSSEY-7", "mission name");
+      equal(Math.floor((Date.now() - mission.startDate) / DAY) + 1, 147, "mission day");
+      equal(await db.alertsRepo.countOpen(), 2, "open alerts");
+      equal(await db.alertsRepo.countOpen({ astronautId: "a-04" }), 1, "open alerts a-04");
+      const a4 = await db.astronautsRepo.getByCrewId("AH-04");
+      assert(a4.latest.sleepDuration.value < 6.5, "a-04 short sleep in latest cache");
+    });
+
+    test("verifyPassword: right / wrong / unknown, never returns the hash", async () => {
+      const ok = await db.usersRepo.verifyPassword("  MedOfficer ", "demo");
+      assert(ok, "medofficer/demo should log in");
+      equal(ok.role, "medical_officer", "role");
+      assert(!("passwordHash" in ok) && !("salt" in ok), "no secrets returned");
+      equal(await db.usersRepo.verifyPassword("medofficer", "wrong"), null, "wrong password");
+      equal(await db.usersRepo.verifyPassword("nobody", "demo"), null, "unknown user");
+      equal((await db.usersRepo.verifyPassword("chen", "demo")).astronautId, "a-03", "chen → a-03");
+    });
+
+    test("all six demo accounts sign in; exactly one login per astronaut", async () => {
+      const expected = { haddad: "a-01", karim: "a-02", chen: "a-03", reyes: "a-04", medofficer: "", medbackup: "" };
+      for (const [username, astronautId] of Object.entries(expected)) {
+        const user = await db.usersRepo.verifyPassword(username, "demo");
+        assert(user, `${username} should sign in`);
+        equal([user.role, user.astronautId], [astronautId ? db.ROLES.ASTRONAUT : db.ROLES.MEDICAL_OFFICER, astronautId], username);
+        assert(!("passwordHash" in user) && !("salt" in user), `${username}: no secrets`);
+      }
+      const users = await db.usersRepo.getAll();
+      equal(users.length, 6, "six accounts");
+      const linked = users.filter((u) => u.role === "astronaut").map((u) => u.astronautId).sort();
+      equal(linked, ["a-01", "a-02", "a-03", "a-04"], "one astronaut login per profile");
+      assert(users.every((u) => !("passwordHash" in u) && !("salt" in u)), "getAll is safe");
+      equal(await db.usersRepo.getByUsername("nobody"), null, "missing user → null");
+    });
+
+    test("users: exact roles and astronautId rules are enforced on add and update", async () => {
+      const base = { username: "tester", displayName: "Tester", password: "pw" };
+      await rejects(db.usersRepo.add({ ...base, role: "medical-officer" }), "INVALID", "hyphenated role");
+      await rejects(db.usersRepo.add({ ...base, role: "astronaut" }), "INVALID", "astronaut without astronautId");
+      await rejects(db.usersRepo.add({ ...base, role: "medical_officer", astronautId: "a-01" }), "INVALID", "MO linked to astronaut");
+      await rejects(db.usersRepo.update("u-medofficer", { astronautId: "a-02" }), "INVALID", "update MO → astronaut link");
+      equal((await db.usersRepo.getAll()).length, 6, "nothing added");
+    });
+
+    test("unique username → CONSTRAINT error", async () => {
+      await rejects(
+        db.usersRepo.add({ username: "MEDOFFICER", displayName: "Dup", role: "medical_officer", astronautId: "", password: "x" }),
+        "CONSTRAINT",
+        "duplicate username"
+      );
+    });
+
+    test("measurements.add updates astronauts.latest + daily summary (same transaction)", async () => {
+      const now = Date.now();
+      const before = (await db.astronautsRepo.getById("a-01")).latest.heartRate;
+      const m = await db.measurementsRepo.add({ astronautId: "a-01", metric: "heartRate", value: 99, timestamp: now, source: "manual" });
+      equal(m.unit, "bpm", "unit filled in");
+      equal((await db.astronautsRepo.getById("a-01")).latest.heartRate, { value: 99, timestamp: now }, "latest moved forward");
+
+      await db.measurementsRepo.add({ astronautId: "a-01", metric: "heartRate", value: 40, timestamp: before.timestamp - DAY });
+      equal((await db.astronautsRepo.getById("a-01")).latest.heartRate.value, 99, "older reading does not replace latest");
+
+      const today = db.toDateKey(now);
+      const [summary] = await db.dailySummariesRepo.getRange("a-01", "heartRate", today, today);
+      equal(summary.max >= 99, true, "today's summary includes the new max");
+
+      const pair = await db.measurementsRepo.addMany([
+        { astronautId: "a-02", metric: "bpSystolic", value: 121, timestamp: now, sampleId: "smp_test_bp" },
+        { astronautId: "a-02", metric: "bpDiastolic", value: 79, timestamp: now, sampleId: "smp_test_bp" },
+      ]);
+      equal((await db.measurementsRepo.getBySample("smp_test_bp")).length, 2, "BP pair by sampleId");
+      equal(pair.length, 2, "addMany result");
+    });
+
+    test("measurements: unit and metric rules are enforced", async () => {
+      await rejects(db.measurementsRepo.add({ astronautId: "a-01", metric: "spo2", value: 0.97, unit: "ratio", timestamp: 1 }), "INVALID", "wrong unit");
+      await rejects(db.measurementsRepo.add({ astronautId: "a-99", metric: "spo2", value: 97, timestamp: 1 }), "NOT_FOUND", "unknown astronaut");
+    });
+
+    test("measurements.addMany is atomic: an unknown astronaut mid-batch saves nothing", async () => {
+      const before = await counts();
+      const latestBefore = (await db.astronautsRepo.getById("a-01")).latest;
+      await rejects(db.measurementsRepo.addMany([
+        { astronautId: "a-01", metric: "heartRate", value: 77, timestamp: Date.now() + 1000 },
+        { astronautId: "a-01", metric: "spo2", value: 97, timestamp: Date.now() + 1000 },
+        { astronautId: "a-99", metric: "heartRate", value: 77, timestamp: Date.now() + 1000 },
+      ]), "NOT_FOUND", "unknown astronaut");
+      equal(await counts(), before, "no store changed (measurements, astronauts, dailySummaries)");
+      equal((await db.astronautsRepo.getById("a-01")).latest, latestBefore, "latest unchanged");
+    });
+
+    test("latest cache: invalid readings skipped, suspect kept, only moves forward; ids immutable", async () => {
+      const t = Date.now() + 60000;
+      await db.measurementsRepo.add({ astronautId: "a-02", metric: "spo2", value: 50, timestamp: t + 1, quality: "invalid" });
+      assert((await db.astronautsRepo.getById("a-02")).latest.spo2.value !== 50, "invalid reading must not update latest");
+      const today = db.toDateKey(t + 1);
+      const [day] = await db.dailySummariesRepo.getRange("a-02", "spo2", today, today);
+      assert(day.min > 50, "invalid reading excluded from the daily summary");
+      const suspect = await db.measurementsRepo.add({ astronautId: "a-02", metric: "spo2", value: 81, timestamp: t, quality: "suspect" });
+      equal(suspect.quality, "suspect", "suspect reading stored as-is (no risk decision in the repository)");
+      equal((await db.astronautsRepo.getById("a-02")).latest.spo2.value, 81, "suspect updates latest");
+      await db.astronautsRepo.updateLatest("a-02", "spo2", 99, t - 5000);
+      equal((await db.astronautsRepo.getById("a-02")).latest.spo2.value, 81, "older value ignored");
+      await rejects(db.astronautsRepo.updateLatest("a-02", "temperature", 37, t + 5), "INVALID", "unknown metric");
+      await rejects(db.astronautsRepo.update("a-02", { crewId: "AH-77" }), "INVALID", "crewId is immutable");
+      equal(await db.astronautsRepo.getById("a-99"), null, "missing → null");
+      equal(await db.astronautsRepo.getByCrewId("AH-99"), null, "missing crewId → null");
+    });
+
+    test("range queries by compound index (bounds inclusive, sorted)", async () => {
+      const all = await db.measurementsRepo.getRange("a-03", "spo2");
+      assert(all.length >= 84, "7 days of SpO₂ readings");
+      const from = all[10].timestamp;
+      const to = all[20].timestamp;
+      const range = await db.measurementsRepo.getRange("a-03", "spo2", from, to);
+      equal(range.length, 11, "inclusive bounds");
+      assert(range.every((m, i) => m.astronautId === "a-03" && m.metric === "spo2" && (i === 0 || range[i - 1].timestamp <= m.timestamp)), "filtered + oldest first");
+      const recent = await db.measurementsRepo.getRecent("a-03", "spo2", 5);
+      equal(recent.map((m) => m.id), all.slice(-5).map((m) => m.id), "getRecent = last 5, chart order");
+      equal((await db.measurementsRepo.getLatest("a-03", "spo2")).id, all.at(-1).id, "getLatest");
+      const days = await db.dailySummariesRepo.getRange("a-03", "spo2");
+      assert(days.length >= 30, "30 days of summaries");
+    });
+
+    test("withTransaction rolls back everything when an error is thrown mid-way", async () => {
+      const before = await counts();
+      const latestBefore = (await db.astronautsRepo.getById("a-04")).latest;
+      const err = await rejects(
+        db.withTransaction(["measurements", "astronauts", "dailySummaries", "alerts", "meta"], "readwrite", async (tx) => {
+          await db.measurementsRepo.add({ astronautId: "a-04", metric: "heartRate", value: 150, timestamp: Date.now() + 5000 }, { tx });
+          await db.alertsRepo.add({ astronautId: "a-04", ruleId: "PHY-01", severity: "warning", category: "physical" }, { tx });
+          throw new Error("forced failure");
+        }),
+        "TRANSACTION_FAILED",
+        "forced error"
+      );
+      equal(await counts(), before, "no store changed");
+      equal((await db.astronautsRepo.getById("a-04")).latest, latestBefore, "latest cache unchanged");
+      equal(await db.metaRepo.get("alertCounter"), 190, "alert counter unchanged");
+      return err.message;
+    });
+
+    test("awaiting non-DB work inside a transaction → TRANSACTION_INACTIVE (clear hint)", async () => {
+      const err = await rejects(
+        db.withTransaction(["meta"], "readwrite", async (tx) => {
+          await new Promise((r) => setTimeout(r, 30)); // ← the mistake
+          await db.metaRepo.set("x", 1, { tx });
+        }),
+        "TRANSACTION_INACTIVE",
+        "await setTimeout inside tx"
+      );
+      assert(/only await database calls/.test(err.message), "message explains the fix");
+      equal(await db.metaRepo.get("x"), null, "nothing written");
+    });
+
+    test("service-style transaction (alerts + alertActions + missionEvents) commits together", async () => {
+      const alert = await db.alertsRepo.getOpenByDedupeKey("a-03:WB-01");
+      const now = Date.now();
+      const result = await db.withTransaction(["alerts", "alertActions", "missionEvents"], "readwrite", async (tx) => {
+        const updated = await db.alertsRepo.update(alert.id, { status: "acknowledged", acknowledgedAt: now, acknowledgedBy: "u-medofficer" }, { tx });
+        await db.alertActionsRepo.add({ alertId: alert.id, action: "acknowledged", userId: "u-medofficer", timestamp: now }, { tx });
+        await db.eventsRepo.add({ type: "alert_acknowledged", astronautId: alert.astronautId, actorUserId: "u-medofficer", refStore: "alerts", refId: alert.id, summary: `${alert.number} acknowledged` }, { tx });
+        return updated.status;
+      });
+      equal(result, "acknowledged", "callback result returned after commit");
+      equal((await db.alertsRepo.getById(alert.id)).status, "acknowledged", "alert committed");
+      equal((await db.alertActionsRepo.getByAlert(alert.id)).map((a) => a.action), ["created", "acknowledged"], "action committed");
+    });
+
+    test("service-style transaction: final write fails in the browser → all three writes roll back", async () => {
+      const alert = await db.alertsRepo.getOpenByDedupeKey("a-04:PHY-05"); // acknowledged
+      const before = await counts();
+      const existingEventId = (await db.eventsRepo.getRange({ limit: 1 }))[0].id;
+      const err = await rejects(
+        db.withTransaction(["alerts", "alertActions", "missionEvents"], "readwrite", async (tx) => {
+          await db.alertsRepo.update(alert.id, { status: "resolved", resolvedAt: Date.now(), resolvedBy: "u-medofficer" }, { tx });
+          await db.alertActionsRepo.add({ alertId: alert.id, action: "resolved", userId: "u-medofficer" }, { tx });
+          // Duplicate primary key → the BROWSER rejects this write (ConstraintError).
+          await db.eventsRepo.add({ id: existingEventId, type: "alert_resolved", astronautId: alert.astronautId }, { tx });
+        }),
+        "CONSTRAINT",
+        "duplicate event id"
+      );
+      equal(await counts(), before, "no store changed");
+      equal((await db.alertsRepo.getById(alert.id)).status, "acknowledged", "alert update rolled back");
+      equal((await db.alertActionsRepo.getByAlert(alert.id)).map((a) => a.action), ["created", "acknowledged"], "action rolled back");
+      return err.message;
+    });
+
+    test("transactions fail clearly when a required store is missing or the tx is readonly", async () => {
+      const err = await rejects(
+        db.withTransaction(["alerts"], "readwrite", (tx) => db.alertsRepo.add({ astronautId: "a-01", ruleId: "PHY-01", severity: "warning", category: "physical" }, { tx })),
+        "INVALID",
+        "alertsRepo.add needs meta"
+      );
+      assert(/does not include the "meta" store/.test(err.message), "message names the missing store");
+      await rejects(
+        db.withTransaction(["alerts", "meta"], "readonly", (tx) => db.alertsRepo.add({ astronautId: "a-01", ruleId: "PHY-01", severity: "warning", category: "physical" }, { tx })),
+        "INVALID",
+        "write inside readonly tx"
+      );
+      equal(await db.metaRepo.get("alertCounter"), 190, "counter untouched");
+    });
+
+    test("alert actions: chronological, ties ordered by id; adding an action never changes the alert", async () => {
+      // Uses resolved ALT-0181 so later tests that inspect ALT-0190's history are unaffected.
+      const [alert] = await db.alertsRepo.query({ astronautId: "a-01", status: "resolved" });
+      await db.alertActionsRepo.add({ id: "act_tie_b", alertId: alert.id, action: "escalated", timestamp: alert.detectedAt + 1 });
+      await db.alertActionsRepo.add({ id: "act_tie_a", alertId: alert.id, action: "escalated", timestamp: alert.detectedAt + 1 });
+      const ids = (await db.alertActionsRepo.getByAlert(alert.id)).map((a) => a.id);
+      assert(ids.indexOf("act_tie_a") === ids.indexOf("act_tie_b") - 1, `tie order: ${ids.join(", ")}`);
+      equal((await db.alertsRepo.getById(alert.id)).status, "resolved", "alert unchanged");
+      equal(await db.alertsRepo.getOpenByDedupeKey(alert.dedupeKey), null, "resolved alert is never returned as open");
+      await rejects(db.alertsRepo.update(alert.id, { number: "ALT-9999" }), "INVALID", "alert number immutable");
+      await rejects(db.alertsRepo.update(alert.id, { status: "Closed" }), "INVALID", "undocumented status");
+    });
+
+    test("alert dedupe lookup (open = new or acknowledged)", async () => {
+      equal((await db.alertsRepo.getOpenByDedupeKey("a-04:PHY-05")).number, "ALT-0190", "acknowledged alert is open");
+      equal((await db.alertsRepo.getOpenByDedupeKey("a-03:WB-01")).number, "ALT-0189", "new alert is open");
+      equal(await db.alertsRepo.getOpenByDedupeKey("a-01:PHY-03"), null, "resolved alert is not open");
+      equal(await db.alertsRepo.getOpenByDedupeKey("a-02:NOPE"), null, "unknown key");
+    });
+
+    test("alert numbers continue the sequence (ALT-0191, ALT-0192)", async () => {
+      const a = await db.alertsRepo.add({ astronautId: "a-01", ruleId: "PHY-02", type: "low_spo2", severity: "critical", category: "physical", number: "IGNORED" });
+      const b = await db.alertsRepo.add({ astronautId: "a-01", ruleId: "PHY-01", severity: "warning", category: "physical" });
+      equal([a.number, b.number], ["ALT-0191", "ALT-0192"], "numbers");
+      equal(await db.metaRepo.get("alertCounter"), 192, "counter");
+      const critical = await db.alertsRepo.query({ astronautId: "a-01", severity: "critical" });
+      equal(critical.map((x) => x.number), ["ALT-0191"], "query by astronaut + severity");
+      const open = await db.alertsRepo.query({ status: ["new", "acknowledged"] });
+      assert(open.every((x, i) => i === 0 || open[i - 1].detectedAt >= x.detectedAt), "newest first");
+      equal(open.length, 4, "open alerts after adding 2");
+      const acked = await db.alertsRepo.update(a.id, { status: "acknowledged", acknowledgedAt: Date.now(), acknowledgedBy: "u-medofficer" });
+      equal(acked.number, "ALT-0191", "update keeps number");
+    });
+
+    test("boolean-free indexes: getSharedRange returns only shared check-ins", async () => {
+      const all = [];
+      for (const id of ["a-01", "a-02", "a-03", "a-04"]) all.push(...(await db.wellbeingRepo.getRange(id)));
+      const shared = await db.wellbeingRepo.getSharedRange();
+      equal(shared.length, all.filter((w) => w.sharedWithMedical === 1).length, "same as manual filter");
+      assert(shared.every((w) => w.sharedWithMedical === 1), "all shared");
+      equal(all.length - shared.length, 3, "3 private check-ins hidden");
+      const added = await db.wellbeingRepo.add({ astronautId: "a-02", mood: 4, stress: 2, sleepQuality: 4, fatigue: 2, isolation: 1, wellbeing: 4, sharedWithMedical: true });
+      equal(added.sharedWithMedical, 1, "true stored as 1");
+      equal((await db.wellbeingRepo.getSharedRange()).length, shared.length + 1, "visible in index");
+      await rejects(db.wellbeingRepo.add({ timestamp: 1 }), "INVALID", "missing astronautId");
+    });
+
+    test("messages, events, settings, journal queries", async () => {
+      equal((await db.messagesRepo.getUnacknowledged("a-01")).length, 1, "a-01 unacknowledged message");
+      const alert = await db.alertsRepo.getOpenByDedupeKey("a-04:PHY-05");
+      equal((await db.messagesRepo.getByAlert(alert.id))[0].response.templateId, "will_comply", "message by alert");
+      const timeline = await db.eventsRepo.getRange({ astronautId: ["a-04", "crew"], limit: 5 });
+      assert(timeline.length === 5 && timeline.every((e, i) => i === 0 || timeline[i - 1].timestamp >= e.timestamp), "newest first, limited");
+      const alertEvents = await db.eventsRepo.getRange({ types: ["alert_generated"] });
+      equal(alertEvents.length, 4, "4 seeded alert_generated events");
+      const saved = await db.settingsRepo.set("simulation", { speed: 4 }, "u-medofficer");
+      equal(saved.updatedBy, "u-medofficer", "updatedBy");
+      equal((await db.settingsRepo.getAll()).simulation.speed, 4, "getAll map");
+      equal((await db.journalRepo.getByAstronaut("a-03")).length, 2, "journal entries");
+      equal((await db.alertActionsRepo.getByAlert(alert.id)).map((a) => a.action), ["created", "acknowledged"], "action history");
+    });
+
+    test("privacy: journal never in events; unshared check-ins have no scores; no cross-crew journal query", async () => {
+      const journal = [];
+      for (const id of ["a-01", "a-02", "a-03", "a-04"]) journal.push(...(await db.journalRepo.getByAstronaut(id)));
+      const events = await db.eventsRepo.getRange();
+      const text = JSON.stringify(events);
+      assert(journal.length === 3 && journal.every((j) => !text.includes(j.text)), "journal text leaked into events");
+      assert(!events.some((e) => e.refStore === "privateJournal"), "journal referenced by an event");
+      const all = [];
+      for (const id of ["a-01", "a-02", "a-03", "a-04"]) all.push(...(await db.wellbeingRepo.getRange(id)));
+      const unshared = new Set(all.filter((w) => w.sharedWithMedical === 0).map((w) => w.id));
+      const leaks = events.filter((e) => unshared.has(e.refId) && (/mood|stress/.test(e.summary) || e.data?.mood !== undefined));
+      equal(leaks.length, 0, "unshared scores in events");
+      equal(Object.keys(db.journalRepo).sort(), ["add", "getByAstronaut"], "journal API has no crew-wide query");
+    });
+
+    test("reports are frozen snapshots; settings/meta: missing → null, unstorable values → INVALID", async () => {
+      const snapshot = { heartRate: { avg: 72 } };
+      const report = await db.reportsRepo.add({ type: "astronaut_health", title: "Test", generatedBy: "u-medofficer", astronautId: "a-01", snapshot });
+      snapshot.heartRate.avg = 999;
+      equal((await db.reportsRepo.getById(report.id)).snapshot.heartRate.avg, 72, "stored copy unchanged");
+      equal((await db.reportsRepo.getAll({ astronautId: "a-01" }))[0].id, report.id, "newest first");
+      equal(await db.settingsRepo.get("missing-key"), null, "missing setting");
+      equal(await db.metaRepo.get("missing-key"), null, "missing meta");
+      await rejects(db.settingsRepo.set("bad", { run() {} }), "INVALID", "functions can't be stored");
+      equal(await db.settingsRepo.get("bad"), null, "nothing written");
+    });
+
+    test("export → reset → import round-trip gives identical counts", async () => {
+      const exported = await db.exportAll();
+      equal(exported.app, "AstroHealth AI", "app");
+      equal(exported.schemaVersion, 1, "schemaVersion");
+      const before = await counts();
+      equal(Object.fromEntries(db.STORE_NAMES.map((n) => [n, exported.stores[n].length])), before, "export has every record");
+      assert(exported.stores.users[0].passwordHash, "backup keeps password hashes (documented)");
+
+      const reset = await db.resetDatabase({ userId: "u-medofficer" });
+      equal(reset.counts.missionEvents, seedCounts.missionEvents + 1, "reset = seed + data_reset event");
+      equal(await db.metaRepo.get("alertCounter"), 190, "counter back to seed value");
+
+      const json = JSON.stringify(exported);
+      await db.importAll(json, { userId: "u-medofficer" });
+      const after = await counts();
+      equal({ ...after, missionEvents: after.missionEvents - 1 }, before, "identical (+1 data_imported event)");
+      equal(await db.metaRepo.get("alertCounter"), 192, "counter restored");
+      const [last] = await db.eventsRepo.getRange({ types: "data_imported" });
+      equal(last.actorUserId, "u-medofficer", "import logged");
+    });
+
+    test("importAll rejects incompatible files (and changes nothing)", async () => {
+      const before = await counts();
+      await rejects(db.importAll({ app: "Other", schemaVersion: 1, stores: {} }), "INCOMPATIBLE_BACKUP", "other app");
+      await rejects(db.importAll({ app: "AstroHealth AI", schemaVersion: 99, stores: {} }), "INCOMPATIBLE_BACKUP", "newer schema");
+      await rejects(db.importAll({ app: "AstroHealth AI", schemaVersion: 1, stores: { hacks: [] } }), "INCOMPATIBLE_BACKUP", "unknown store");
+      await rejects(db.importAll("{not json"), "INCOMPATIBLE_BACKUP", "bad JSON");
+      equal(await counts(), before, "unchanged");
+    });
+
+    test("importAll: malformed indexed fields or duplicates never partially replace the database", async () => {
+      const before = await counts();
+      const good = await db.exportAll();
+      const broken = [
+        (f) => { f.stores.wellbeingAssessments[0].sharedWithMedical = true; },   // boolean in an index
+        (f) => { f.stores.alerts[0].status = null; },                           // null in an index
+        (f) => { delete f.stores.measurements[5].timestamp; },                  // missing indexed field
+        (f) => { f.stores.users[1].username = f.stores.users[0].username; },    // unique clash
+        (f) => { f.stores.alerts.push({ ...f.stores.alerts[0] }); },            // duplicate primary key
+      ];
+      for (const breakIt of broken) {
+        const file = structuredClone(good);
+        breakIt(file);
+        await rejects(db.importAll(file), "INCOMPATIBLE_BACKUP", breakIt.toString());
+      }
+      equal(await counts(), before, "database untouched");
+      equal(db.validateBackup(good).stores.users.length, 6, "validateBackup is public and accepts a real export");
+    });
+
+    test("compactMeasurements rolls old raw readings into summaries", async () => {
+      const now = Date.now();
+      const cutoff = db.startOfUtcDay(now) - 7 * DAY;
+      const oldDay = db.toDateKey(now - 20 * DAY);
+      const [summaryBefore] = await db.dailySummariesRepo.getRange("a-01", "sleepDuration", oldDay, oldDay);
+      const rawBefore = await db.measurementsRepo.countAll();
+
+      const result = await db.compactMeasurements({ keepRawDays: 7 });
+      assert(result.daysCompacted >= 20, `compacted ${result.daysCompacted} days`);
+      equal(await db.measurementsRepo.countAll(), rawBefore - result.readingsDeleted, "raw deleted");
+      const oldest = (await db.measurementsRepo.getRange("a-01", "sleepDuration"))[0];
+      assert(oldest.timestamp >= cutoff, "no raw reading older than the cutoff");
+      const [summaryAfter] = await db.dailySummariesRepo.getRange("a-01", "sleepDuration", oldDay, oldDay);
+      equal([summaryAfter.avg, summaryAfter.count], [summaryBefore.avg, summaryBefore.count], "summary preserved exactly");
+      assert((await db.metaRepo.get("lastCompactedAt")) >= now, "lastCompactedAt set");
+      equal((await db.compactMeasurements()).daysCompacted, 0, "second run has nothing to do");
+      return `${result.daysCompacted} days, ${result.readingsDeleted} readings → summaries`;
+    });
+
+    test("getStorageInfo + requestPersistentStorage don't throw", async () => {
+      const info = await db.getStorageInfo();
+      assert("usage" in info && "quota" in info && typeof info.persisted === "boolean", "shape");
+      assert(typeof (await db.requestPersistentStorage()) === "boolean", "boolean");
+      return info.usage != null ? `${Math.round(info.usage / 1024)} KB used` : "estimate unavailable";
+    });
+
+    test("mock-repositories exposes the same repositories and function names", async () => {
+      const names = Object.keys(db).filter((k) => k.endsWith("Repo"));
+      equal(names.length, 15, "15 real repositories");
+      for (const name of names) {
+        assert(mock[name], `mock is missing ${name}`);
+        equal(Object.keys(mock[name]).sort(), Object.keys(db[name]).sort(), `${name} functions`);
+      }
+      assert(typeof mock.withTransaction === "function", "mock.withTransaction");
+      await mock.resetMock();
+      const open = await mock.alertsRepo.query({ status: ["new", "acknowledged"] });
+      equal(open.map((a) => a.number).sort(), ["ALT-0189", "ALT-0190"], "mock is seeded with the same open alerts");
+      return `${names.length} repositories match`;
+    });
+
+    test("versionchange: another tab upgrading closes our connection; newer DB → VERSION error", async () => {
+      // Runs LAST: it leaves the test database at version 2 (deleted afterwards).
+      let notified = false;
+      const stop = bus.on("db:versionchange", () => (notified = true));
+      await db.openDatabase();
+      await new Promise((resolve, reject) => {
+        const request = indexedDB.open(TEST_DB, 2); // simulates a newer app version in another tab
+        request.onupgradeneeded = () => request.result.createObjectStore("future");
+        request.onsuccess = () => { request.result.close(); resolve(); };
+        request.onerror = () => reject(request.error);
+        request.onblocked = () => reject(new Error("blocked: our connection did not close on versionchange"));
+      });
+      stop();
+      assert(notified, "db:versionchange event emitted");
+      const err = await rejects(db.openDatabase(), "VERSION", "older app opening a newer database");
+      return err.message;
+    });
+
+    // ---- runner -------------------------------------------------------------
+
+    if (db.getDatabaseName() !== TEST_DB) {
+      throw new Error(`Refusing to run: database is "${db.getDatabaseName()}", expected "${TEST_DB}"`);
+    }
+    const resultsEl = document.getElementById("results");
+    const summaryEl = document.getElementById("summary");
+    const results = [];
+
+    for (const t of tests) {
+      const started = performance.now();
+      let status = "PASS";
+      let detail = "";
+      try {
+        detail = (await t.fn()) || "";
+      } catch (err) {
+        status = "FAIL";
+        detail = err?.message || String(err);
+        console.error(`[db-tests] ${t.name}:`, err);
+      }
+      const ms = Math.round(performance.now() - started);
+      results.push({ name: t.name, status, detail, ms });
+      const ok = status === "PASS";
+      resultsEl.append(
+        el("div", { class: "dbt-row", role: "listitem" }, [
+          el("span", { class: ["badge", ok ? "badge--ok" : "badge--critical"] }, [icon(ok ? "circle-check" : "circle-alert"), status]),
+          el("div", {}, [el("p", { class: "dbt-row__name" }, t.name), detail ? el("p", { class: "dbt-row__detail" }, detail) : null]),
+          el("span", { class: "dbt-row__time mono" }, `${ms} ms`),
+        ])
+      );
+    }
+
+    // Clean up the test database.
+    await db.deleteDatabase().catch(() => {});
+
+    const failed = results.filter((r) => r.status === "FAIL").length;
+    summaryEl.replaceChildren(
+      el("span", { class: "badge badge--ok" }, [icon("circle-check"), `${results.length - failed} passed`]),
+      el("span", { class: ["badge", failed ? "badge--critical" : "badge--neutral"] }, [icon(failed ? "circle-alert" : "check"), `${failed} failed`])
+    );
+    document.title = `${failed ? "✗" : "✓"} Database Tests — AstroHealth AI`;
+    window.dbTestResults = { done: true, passed: results.length - failed, failed, results };
+  </script>
+</body>
+</html>

@@ -19,7 +19,8 @@
   <!-- Team 1: add css/pages/*.css here -->
 
   <script type="module" src="js/app.js"></script>
-  <!-- Team 1: add your router, e.g. <script type="module" src="js/pages/router.js"></script> -->
+  <!-- Auth guard + role-aware shell: redirects to login.html without a valid session -->
+  <script type="module" src="js/pages/app-shell.js"></script>
   <script>
     if (location.protocol === "file:") document.addEventListener("DOMContentLoaded", function () {
       var b = document.createElement("div"); b.className = "env-warning"; b.setAttribute("role", "alert");
@@ -31,9 +32,11 @@
 <body>
   <a class="skip-link" href="#main">Skip to main content</a>
 
-  <!-- PLACEHOLDER SHELL — Team 1 builds the real app here.
-       Structure and classes come from css/layout.css (shared). -->
-  <div class="app-shell">
+  <noscript><p class="disclaimer">AstroHealth AI needs JavaScript. Please enable it and reload.</p></noscript>
+
+  <!-- App shell (css/layout.css). Hidden until js/pages/app-shell.js has
+       confirmed a valid session, so signed-out visitors never see it. -->
+  <div class="app-shell" data-auth-shell style="visibility: hidden">
     <aside class="sidebar" id="sidebar" aria-label="Main navigation">
       <div class="sidebar__header">
         <a class="logo" href="#/overview">
@@ -44,20 +47,8 @@
 
       <nav aria-label="Dashboard sections">
         <p class="sidebar__section-label">Monitoring</p>
-        <ul class="nav" role="list">
-          <li><a class="nav__item is-active" href="#/overview" aria-current="page"><i data-icon="layout-dashboard"></i><span class="nav__label">Overview</span></a></li>
-          <li><a class="nav__item" href="#/physical"><i data-icon="heart"></i><span class="nav__label">Physical Health</span></a></li>
-          <li><a class="nav__item" href="#/wellbeing"><i data-icon="brain"></i><span class="nav__label">Mental Wellbeing</span></a></li>
-          <li><a class="nav__item" href="#/crew"><i data-icon="users"></i><span class="nav__label">Crew Monitor</span><span class="nav__tag" title="Medical Officer only">MO</span></a></li>
-          <li><a class="nav__item" href="#/history"><i data-icon="history"></i><span class="nav__label">Health History</span></a></li>
-        </ul>
-        <p class="sidebar__section-label">Operations</p>
-        <ul class="nav" role="list">
-          <li><a class="nav__item" href="#/simulation"><i data-icon="flask-conical"></i><span class="nav__label">Simulation Center</span><span class="nav__tag" title="Medical Officer only">MO</span></a></li>
-          <li><a class="nav__item" href="#/alerts"><i data-icon="bell"></i><span class="nav__label">Alerts</span><span class="nav__count" aria-label="3 unread alerts">3</span></a></li>
-          <li><a class="nav__item" href="#/reports"><i data-icon="file-text"></i><span class="nav__label">Reports</span></a></li>
-          <li><a class="nav__item" href="#/settings"><i data-icon="settings"></i><span class="nav__label">Settings</span></a></li>
-        </ul>
+        <!-- Filled by js/pages/app-shell.js from ROUTES, for the signed-in role only -->
+        <ul class="nav" role="list" data-nav></ul>
       </nav>
 
       <div class="sidebar__footer">
@@ -76,7 +67,7 @@
     <div class="app-main">
       <header class="topbar">
         <button class="icon-btn topbar__menu" type="button" data-drawer-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Open menu"><i data-icon="menu"></i></button>
-        <h1 class="topbar__title">Overview</h1>
+        <h1 class="topbar__title" id="page-title" tabindex="-1">Overview</h1>
         <div class="topbar__chips">
           <span class="chip"><i data-icon="rocket"></i> Mission <strong>DEMO-1</strong></span>
           <span class="chip"><i data-icon="calendar"></i> Mission Day <strong>—</strong></span>
@@ -86,24 +77,19 @@
             <i data-icon="bell"></i><span class="topbar__bell-count" aria-hidden="true">3</span>
           </button>
           <div class="topbar__user">
-            <span class="avatar avatar--brand" aria-hidden="true">MO</span>
+            <span class="avatar avatar--brand" aria-hidden="true" data-user-initials></span>
             <div class="topbar__user-text">
-              <p class="topbar__user-name">Placeholder User</p>
-              <p class="topbar__user-role">Medical Officer</p>
+              <p class="topbar__user-name" data-user-name></p>
+              <p class="topbar__user-role" data-user-role></p>
             </div>
-            <a class="icon-btn" href="login.html" aria-label="Log out"><i data-icon="log-out"></i></a>
+            <button class="icon-btn icon-btn--bordered" type="button" data-logout aria-label="Log out"><i data-icon="log-out"></i></button>
           </div>
         </div>
       </header>
 
       <main class="content" id="main">
-        <div class="card">
-          <div class="state">
-            <span class="state__icon"><i data-icon="layout-dashboard"></i></span>
-            <p class="state__title">Dashboards — Team 1 builds here</p>
-            <p class="state__text">This empty shell proves the shared layout works: sidebar, topbar, content area and the mobile drawer below 1024px.</p>
-          </div>
-        </div>
+        <!-- The current route's view is rendered here by js/pages/app-shell.js -->
+        <div data-route-view></div>
       </main>
 
       <footer class="disclaimer">
