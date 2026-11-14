@@ -1,0 +1,313 @@
+/* css/pages/health.css — #/physical and #/wellbeing (Sprint 6).
+   Built on card, metric, badge, alert-item, sim-tag, banner, segmented,
+   table, field and state. Status = colour + icon + text; orange is never a
+   warning. Bars are decorative (aria-hidden) — tables carry the data. */
+
+.health {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+.health__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.health__welcome {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+.health__subtitle {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+.health__links,
+.health__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.health .badge {
+  white-space: normal;
+}
+.health__text {
+  overflow-wrap: anywhere;
+}
+.health__note,
+.health__meta {
+  color: var(--color-text-3);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+.health__empty {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+.health__list,
+.health__alerts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.health__list li {
+  overflow-wrap: anywhere;
+}
+.health__alerts .alert-item__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* ---- Reading cards: 4 / 2 / 1 ------------------------------------------------ */
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.health-card {
+  min-width: 0;
+}
+.health-card__value {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Trends -------------------------------------------------------------------- */
+.health-toggle {
+  align-self: flex-start;
+}
+.health-trend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle);
+  min-width: 0;
+}
+.health-trend__title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+.health-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 56px;
+  padding: 0 0 2px;
+  border-bottom: 1px solid var(--color-border);
+}
+.health-bars__bar {
+  flex: 1;
+  min-width: 2px;
+  height: var(--h, 0%);
+  border-radius: 2px 2px 0 0;
+  background: color-mix(in srgb, var(--color-info) 65%, transparent);
+}
+.health-bars__bar.is-missing {
+  height: 2px;
+  background: var(--color-border);
+}
+.health-table {
+  width: 100%;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.health-table tr.is-missing td {
+  color: var(--color-text-3);
+}
+
+/* ---- Check-in form ---------------------------------------------------------------- */
+.health-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.health-question {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  min-width: 0;
+}
+.health-question[aria-invalid="true"] {
+  border-color: var(--color-critical);
+}
+.health-question__legend {
+  padding: 0 var(--space-1);
+  font-weight: var(--weight-semibold);
+}
+.health-scale {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.health-scale__option,
+.health-share__option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 36px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.health-share__option {
+  display: flex;
+  margin-top: var(--space-2);
+}
+.health-share__option span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.health-error {
+  margin-top: var(--space-2);
+}
+.health-error-summary {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-critical);
+  border-radius: var(--radius-md);
+  background: var(--color-critical-tint);
+}
+.health-error-summary ul {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-5);
+}
+.health-form__actions,
+.health-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.health-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-info);
+  border-radius: var(--radius-md);
+  background: var(--color-info-tint);
+}
+.health-confirm[hidden] {
+  display: none;
+}
+.health-confirm__title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+.health-status:empty {
+  display: none;
+}
+.health-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.health-status--ok {
+  border-color: var(--color-ok);
+  background: var(--color-ok-tint);
+}
+.health-status--error {
+  border-color: var(--color-critical);
+  background: var(--color-critical-tint);
+}
+
+/* ---- Check-in history -------------------------------------------------------------- */
+.health-checkins {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.health-checkin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+.health-checkin__date {
+  color: var(--color-text-2);
+  font-size: var(--text-xs);
+}
+.health-scores {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.health-scores dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.health-scores--summary {
+  max-width: 360px;
+}
+
+/* ---- Crew picker ----------------------------------------------------------------------- */
+.health-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.health-picker__link {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+/* ---- Responsive ------------------------------------------------------------------------ */
+@media (max-width: 1279px) {
+  .health-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 599px) {
+  .health-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* Tables become one card per day so nothing scrolls sideways. */
+  .health-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .health-table,
+  .health-table tbody,
+  .health-table tr,
+  .health-table th,
+  .health-table td {
+    display: block;
+    width: 100%;
+  }
+  .health-table tr {
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+  .health-table td[data-label]::before {
+    content: attr(data-label) ": ";
+    color: var(--color-text-3);
+  }
+}
