@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0B1018">
+  <meta name="description" content="AstroHealth AI — crew health dashboards.">
+  <title>Overview — AstroHealth AI</title>
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/app-icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/app-icons/apple-touch-icon.png">
+
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/print.css" media="print">
+  <!-- Team 1: add css/pages/*.css here -->
+
+  <script type="module" src="js/app.js"></script>
+  <!-- Team 1: add your router, e.g. <script type="module" src="js/pages/router.js"></script> -->
+  <script>
+    if (location.protocol === "file:") document.addEventListener("DOMContentLoaded", function () {
+      var b = document.createElement("div"); b.className = "env-warning"; b.setAttribute("role", "alert");
+      b.textContent = "Run via a local server (python3 -m http.server 8080) — offline mode and the database need it.";
+      document.body.prepend(b);
+    });
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <!-- PLACEHOLDER SHELL — Team 1 builds the real app here.
+       Structure and classes come from css/layout.css (shared). -->
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <div class="sidebar__header">
+        <a class="logo" href="#/overview">
+          <img class="logo__mark" src="assets/brand/logo-mark.svg" alt="" width="36" height="36">
+          <span class="logo__text"><span class="logo__name">AstroHealth AI</span><span class="logo__tag">Crew Health System</span></span>
+        </a>
+      </div>
+
+      <nav aria-label="Dashboard sections">
+        <p class="sidebar__section-label">Monitoring</p>
+        <ul class="nav" role="list">
+          <li><a class="nav__item is-active" href="#/overview" aria-current="page"><i data-icon="layout-dashboard"></i><span class="nav__label">Overview</span></a></li>
+          <li><a class="nav__item" href="#/physical"><i data-icon="heart"></i><span class="nav__label">Physical Health</span></a></li>
+          <li><a class="nav__item" href="#/wellbeing"><i data-icon="brain"></i><span class="nav__label">Mental Wellbeing</span></a></li>
+          <li><a class="nav__item" href="#/crew"><i data-icon="users"></i><span class="nav__label">Crew Monitor</span><span class="nav__tag" title="Medical Officer only">MO</span></a></li>
+          <li><a class="nav__item" href="#/history"><i data-icon="history"></i><span class="nav__label">Health History</span></a></li>
+        </ul>
+        <p class="sidebar__section-label">Operations</p>
+        <ul class="nav" role="list">
+          <li><a class="nav__item" href="#/simulation"><i data-icon="flask-conical"></i><span class="nav__label">Simulation Center</span><span class="nav__tag" title="Medical Officer only">MO</span></a></li>
+          <li><a class="nav__item" href="#/alerts"><i data-icon="bell"></i><span class="nav__label">Alerts</span><span class="nav__count" aria-label="3 unread alerts">3</span></a></li>
+          <li><a class="nav__item" href="#/reports"><i data-icon="file-text"></i><span class="nav__label">Reports</span></a></li>
+          <li><a class="nav__item" href="#/settings"><i data-icon="settings"></i><span class="nav__label">Settings</span></a></li>
+        </ul>
+      </nav>
+
+      <div class="sidebar__footer">
+        <a class="nav__item" href="about.html"><i data-icon="book-open"></i><span class="nav__label">About &amp; References</span></a>
+        <div class="offline-card" data-offline-status role="status">
+          <span class="offline-card__icon"><i data-icon="wifi"></i></span>
+          <div>
+            <p class="offline-card__title">Checking…</p>
+            <p class="offline-card__text">Offline status</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+    <div class="sidebar-scrim" aria-hidden="true"></div>
+
+    <div class="app-main">
+      <header class="topbar">
+        <button class="icon-btn topbar__menu" type="button" data-drawer-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Open menu"><i data-icon="menu"></i></button>
+        <h1 class="topbar__title">Overview</h1>
+        <div class="topbar__chips">
+          <span class="chip"><i data-icon="rocket"></i> Mission <strong>DEMO-1</strong></span>
+          <span class="chip"><i data-icon="calendar"></i> Mission Day <strong>—</strong></span>
+        </div>
+        <div class="topbar__actions">
+          <button class="icon-btn" type="button" aria-label="Notifications, 3 unread">
+            <i data-icon="bell"></i><span class="topbar__bell-count" aria-hidden="true">3</span>
+          </button>
+          <div class="topbar__user">
+            <span class="avatar avatar--brand" aria-hidden="true">MO</span>
+            <div class="topbar__user-text">
+              <p class="topbar__user-name">Placeholder User</p>
+              <p class="topbar__user-role">Medical Officer</p>
+            </div>
+            <a class="icon-btn" href="login.html" aria-label="Log out"><i data-icon="log-out"></i></a>
+          </div>
+        </div>
+      </header>
+
+      <main class="content" id="main">
+        <div class="card">
+          <div class="state">
+            <span class="state__icon"><i data-icon="layout-dashboard"></i></span>
+            <p class="state__title">Dashboards — Team 1 builds here</p>
+            <p class="state__text">This empty shell proves the shared layout works: sidebar, topbar, content area and the mobile drawer below 1024px.</p>
+          </div>
+        </div>
+      </main>
+
+      <footer class="disclaimer">
+        Research &amp; educational prototype · Not a medical device · Not affiliated with or endorsed by NASA · All health data synthetic
+      </footer>
+    </div>
+  </div>
+</body>
+</html>

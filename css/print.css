@@ -1,0 +1,87 @@
+/* ==========================================================================
+   AstroHealth AI — Print styles (printable reports)
+   SHARED FILE. Link with media="print":
+     <link rel="stylesheet" href="css/print.css" media="print">
+   Paper is white: dark-theme colours are swapped for black on white.
+   ========================================================================== */
+
+@page {
+  size: A4;
+  margin: 16mm 14mm;
+}
+
+html,
+body {
+  background: #FFFFFF !important;
+  color: #000000 !important;
+  color-scheme: light;
+  font-size: 11pt;
+}
+
+/* Hide app chrome and interactive-only things. */
+.sidebar,
+.sidebar-scrim,
+.topbar,
+.skip-link,
+.toast-region,
+.modal-backdrop,
+.env-warning,
+.icon-btn,
+.btn,
+.no-print {
+  display: none !important;
+}
+
+.app-shell {
+  display: block !important;
+}
+
+.content {
+  max-width: none !important;
+  padding: 0 !important;
+}
+
+/* Flatten cards into simple bordered boxes. */
+.card,
+.alert-item,
+.banner,
+.table th,
+.table td {
+  background: #FFFFFF !important;
+  color: #000000 !important;
+  box-shadow: none !important;
+  border-color: #BBBBBB !important;
+}
+
+.card,
+.alert-item,
+.table tr {
+  break-inside: avoid;
+}
+
+/* Status still readable without colour: icons + text are already there. */
+.badge {
+  border: 1px solid #000000 !important;
+  background: #FFFFFF !important;
+  color: #000000 !important;
+}
+
+.metric__label,
+.metric__unit,
+.card__subtitle,
+.alert-item__text,
+.alert-item__meta,
+.field__hint,
+.disclaimer {
+  color: #444444 !important;
+}
+
+a {
+  color: #000000 !important;
+  text-decoration: underline;
+}
+
+/* Only show the report header/footer when printing. */
+.print-only {
+  display: block !important;
+}

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0B1018">
+  <meta name="description" content="About AstroHealth AI — team, method and references.">
+  <title>About &amp; References — AstroHealth AI</title>
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/app-icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/app-icons/apple-touch-icon.png">
+
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <!-- Team 2: add css/pages/about.css here -->
+
+  <script type="module" src="js/app.js"></script>
+  <script>
+    if (location.protocol === "file:") document.addEventListener("DOMContentLoaded", function () {
+      var b = document.createElement("div"); b.className = "env-warning"; b.setAttribute("role", "alert");
+      b.textContent = "Run via a local server (python3 -m http.server 8080) — offline mode and the database need it.";
+      document.body.prepend(b);
+    });
+  </script>
+  <style>
+    /* PLACEHOLDER ONLY — Team 2 replaces this page. */
+    .placeholder { min-height: calc(100vh - 60px); display: grid; place-content: center; justify-items: center; gap: var(--space-5); padding: var(--space-6) var(--space-4); text-align: center; }
+    .placeholder p { color: var(--color-text-2); max-width: 56ch; }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <main id="main" class="placeholder">
+    <a class="logo" href="index.html">
+      <img class="logo__mark" src="assets/brand/logo-mark.svg" alt="" width="36" height="36">
+      <span class="logo__text"><span class="logo__name">AstroHealth AI</span><span class="logo__tag">Crew Health System</span></span>
+    </a>
+    <h1>About &amp; References — Team 2 builds here</h1>
+    <p>Team data lives in <code>data/team.json</code> and sources in <code>data/references.json</code>
+      (only verified citations — see docs/ARCHITECTURE.md).</p>
+    <a class="btn btn--secondary" href="index.html"><i data-icon="arrow-right"></i> Back to home</a>
+  </main>
+
+  <footer class="disclaimer">
+    Research &amp; educational prototype · Not a medical device · Not affiliated with or endorsed by NASA · All health data synthetic
+  </footer>
+</body>
+</html>

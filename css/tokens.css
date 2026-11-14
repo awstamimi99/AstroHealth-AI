@@ -1,0 +1,115 @@
+/* ==========================================================================
+   AstroHealth AI — Design tokens
+   SHARED FILE: changes need one reviewer from each team.
+
+   Every colour, size and timing in the app comes from here. Never hard-code
+   a hex value in another file — use var(--token) instead.
+
+   RULES
+   • Orange (--color-primary*) = brand & interaction ONLY (buttons, active nav,
+     focus rings, links). It NEVER means "warning" — use --color-warning.
+   • A status is ALWAYS shown as colour + icon + text, never colour alone.
+   ========================================================================== */
+
+:root {
+  /* ---- Surfaces (dark mission-control) ---------------------------------- */
+  --color-bg: #0B1018;          /* page background */
+  --color-sidebar: #111722;     /* app sidebar */
+  --color-card: #1C222D;        /* cards / panels */
+  --color-elevated: #252C38;    /* popovers, modals, hover rows */
+  --color-topbar: #0D131C;      /* app top bar */
+
+  /* ---- Brand / interaction (orange) ------------------------------------- */
+  --color-primary: #FF7A2F;
+  --color-primary-2: #FF9A3D;   /* hover / gradient end */
+  --color-primary-dark: #C4501A;/* pressed / gradient start */
+  --color-on-primary: #160A03;  /* text on orange buttons */
+
+  /* ---- Text -------------------------------------------------------------- */
+  --color-text: #F5F7FA;        /* primary text */
+  --color-text-2: #A4ACB9;      /* secondary text */
+  --color-text-3: #6E7786;      /* muted / captions */
+
+  /* ---- Borders ----------------------------------------------------------- */
+  --color-border: #343C49;
+  --color-border-subtle: #2A313D;
+
+  /* ---- Status (health states) ------------------------------------------- */
+  --color-ok: #43C988;
+  --color-warning: #F6A623;
+  --color-critical: #F05252;
+  --color-info: #5B9BF0;
+
+  /* 10% tints — backgrounds for badges, alert rows, banners */
+  --color-primary-tint: rgba(255, 122, 47, 0.10);
+  --color-ok-tint: rgba(67, 201, 136, 0.10);
+  --color-warning-tint: rgba(246, 166, 35, 0.10);
+  --color-critical-tint: rgba(240, 82, 82, 0.10);
+  --color-info-tint: rgba(91, 155, 240, 0.10);
+
+  /* ---- Typography -------------------------------------------------------- */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --text-2xs: 11px;    /* overlines, tags */
+  --text-xs: 12.5px;   /* captions, table headers */
+  --text-sm: 14px;     /* body (default) */
+  --text-md: 15px;     /* emphasised body */
+  --text-lg: 18px;     /* card titles */
+  --text-xl: 22px;     /* page titles */
+  --text-2xl: 28px;    /* metric values */
+  --text-3xl: 38px;    /* section heroes */
+  --text-4xl: 60px;    /* landing hero */
+
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+
+  /* ---- Spacing (4px base) ------------------------------------------------ */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+
+  /* ---- Radii ------------------------------------------------------------- */
+  --radius-sm: 6px;
+  --radius-md: 9px;
+  --radius-lg: 12px;   /* cards */
+  --radius-xl: 16px;   /* modals */
+  --radius-pill: 999px;
+
+  /* ---- Effects ----------------------------------------------------------- */
+  --focus-ring: 0 0 0 3px rgba(255, 122, 47, 0.35);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
+
+  /* ---- Layout ------------------------------------------------------------ */
+  --sidebar-width: 248px;
+  --topbar-height: 68px;
+  --content-max: 1440px;
+
+  /* ---- Motion ------------------------------------------------------------ */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ---- Z-index layers (use these, never magic numbers) ------------------ */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-sidebar: 40;
+  --z-topbar: 50;
+  --z-drawer: 60;
+  --z-modal: 100;
+  --z-toast: 200;
+  --z-env-warning: 300;
+}

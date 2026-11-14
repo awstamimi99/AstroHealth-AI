@@ -1,0 +1,10 @@
+{
+  "team": "RSS AstroMinds",
+  "members": [
+    { "name": "Team Member 1", "role": "Role to be confirmed", "initials": "M1", "photo": null },
+    { "name": "Team Member 2", "role": "Role to be confirmed", "initials": "M2", "photo": null },
+    { "name": "Team Member 3", "role": "Role to be confirmed", "initials": "M3", "photo": null },
+    { "name": "Team Member 4", "role": "Role to be confirmed", "initials": "M4", "photo": null },
+    { "name": "Team Member 5", "role": "Role to be confirmed", "initials": "M5", "photo": null }
+  ]
+}

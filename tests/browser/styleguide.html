@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0B1018">
+  <title>Style Guide — AstroHealth AI</title>
+
+  <link rel="manifest" href="../../manifest.webmanifest">
+  <link rel="icon" href="../../assets/app-icons/favicon.svg" type="image/svg+xml">
+
+  <link rel="stylesheet" href="../../css/tokens.css">
+  <link rel="stylesheet" href="../../css/base.css">
+  <link rel="stylesheet" href="../../css/layout.css">
+  <link rel="stylesheet" href="../../css/components.css">
+
+  <!-- Chart.js UMD build from vendor/ (defines window.Chart). Proves it loads locally. -->
+  <script src="../../vendor/chart.js/chart.umd.min.js" defer></script>
+  <script type="module" src="./styleguide.js"></script>
+
+  <style>
+    /* Style-guide page layout only (not part of the design system). */
+    .sg { max-width: 1180px; margin: 0 auto; padding: var(--space-7) var(--space-5) var(--space-10); }
+    .sg header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-7); }
+    .sg h1 { font-size: var(--text-3xl); }
+    .sg section { margin-top: var(--space-9); }
+    .sg h2 { font-size: var(--text-xl); margin-bottom: var(--space-2); }
+    .sg h2 + p { color: var(--color-text-2); margin-bottom: var(--space-5); max-width: 75ch; }
+    .sg h3 { font-size: var(--text-xs); color: var(--color-text-3); text-transform: uppercase; letter-spacing: 0.1em; margin: var(--space-5) 0 var(--space-3); }
+    .sg-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+    .sg-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-3); }
+    .sg-swatch { border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); overflow: hidden; background: var(--color-card); }
+    .sg-swatch__color { height: 56px; border-bottom: 1px solid var(--color-border-subtle); }
+    .sg-swatch__meta { padding: var(--space-2) var(--space-3); font-size: var(--text-2xs); }
+    .sg-swatch__meta code { display: block; color: var(--color-text-2); }
+    .sg-type { display: grid; gap: var(--space-3); }
+    .sg-type__row { display: flex; align-items: baseline; gap: var(--space-5); border-bottom: 1px solid var(--color-border-subtle); padding-bottom: var(--space-2); }
+    .sg-type__row code { width: 150px; flex-shrink: 0; color: var(--color-text-3); font-size: var(--text-2xs); }
+    .sg-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: var(--space-2); }
+    .sg-icon { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-4) var(--space-2); background: var(--color-card); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); }
+    .sg-icon .icon { width: 22px; height: 22px; }
+    .sg-icon code { font-size: 10.5px; color: var(--color-text-2); }
+    .sg-check { display: inline-flex; align-items: center; gap: var(--space-2); }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <main id="main" class="sg">
+    <header>
+      <div>
+        <h1>Style Guide</h1>
+        <p style="color: var(--color-text-2)">Every shared component and state. Copy the markup from this file.</p>
+      </div>
+      <div class="sg-row" id="self-check" aria-live="polite"></div>
+    </header>
+
+    <!-- ===================================================== Logo -->
+    <section aria-labelledby="h-logo">
+      <h2 id="h-logo">Logo</h2>
+      <p>Use <code>.logo</code> in HTML (sidebar, headers) or <code>assets/brand/logo-full.svg</code> as an image. Never use a NASA logo or insignia.</p>
+      <div class="sg-row">
+        <a class="logo" href="#">
+          <img class="logo__mark" src="../../assets/brand/logo-mark.svg" alt="" width="36" height="36">
+          <span class="logo__text"><span class="logo__name">AstroHealth AI</span><span class="logo__tag">Crew Health System</span></span>
+        </a>
+        <img src="../../assets/brand/logo-full.svg" alt="AstroHealth AI — Crew Health System" width="320" height="64">
+        <img src="../../assets/brand/logo-mark.svg" alt="AstroHealth AI mark" width="72" height="72">
+      </div>
+    </section>
+
+    <!-- ===================================================== Colours -->
+    <section aria-labelledby="h-colors">
+      <h2 id="h-colors">Colour tokens</h2>
+      <p>Orange is brand &amp; interaction only — it never means "warning". A status is always colour + icon + text.</p>
+      <div class="sg-swatches" id="swatches"></div>
+    </section>
+
+    <!-- ===================================================== Type -->
+    <section aria-labelledby="h-type">
+      <h2 id="h-type">Typography</h2>
+      <p>Inter for UI, JetBrains Mono for codes, IDs and timestamps. Numbers are tabular (<span class="mono">0123456789</span>).</p>
+      <div class="sg-type" id="type-scale"></div>
+      <h3>Mono</h3>
+      <p class="mono">CREW-03 · 2026-11-14T14:05:09Z · HR 72 bpm · SpO₂ 98%</p>
+    </section>
+
+    <!-- ===================================================== Buttons -->
+    <section aria-labelledby="h-buttons">
+      <h2 id="h-buttons">Buttons</h2>
+      <p><code>.btn</code> + one variant + optional size. Icon-only buttons use <code>.icon-btn</code> with an <code>aria-label</code>.</p>
+      <h3>Variants</h3>
+      <div class="sg-row">
+        <button class="btn btn--primary" type="button"><i data-icon="play"></i> Primary</button>
+        <button class="btn btn--secondary" type="button"><i data-icon="download"></i> Secondary</button>
+        <button class="btn btn--ghost" type="button"><i data-icon="filter"></i> Ghost</button>
+        <button class="btn btn--danger" type="button"><i data-icon="trash-2"></i> Danger</button>
+        <button class="btn btn--primary" type="button" disabled>Disabled</button>
+        <button class="btn btn--secondary" type="button" disabled>Disabled</button>
+      </div>
+      <h3>Sizes</h3>
+      <div class="sg-row">
+        <button class="btn btn--primary btn--sm" type="button">Small</button>
+        <button class="btn btn--primary" type="button">Default</button>
+        <button class="btn btn--primary btn--lg" type="button"><i data-icon="rocket"></i> Large</button>
+      </div>
+      <h3>Block</h3>
+      <div style="max-width: 360px"><button class="btn btn--primary btn--block" type="button"><i data-icon="lock"></i> Sign in</button></div>
+      <h3>Icon buttons</h3>
+      <div class="sg-row">
+        <button class="icon-btn" type="button" aria-label="Notifications"><i data-icon="bell"></i></button>
+        <button class="icon-btn icon-btn--bordered" type="button" aria-label="Settings"><i data-icon="settings"></i></button>
+        <button class="icon-btn" type="button" aria-label="Log out"><i data-icon="log-out"></i></button>
+        <button class="icon-btn" type="button" aria-label="Menu"><i data-icon="menu"></i></button>
+      </div>
+    </section>
+
+    <!-- ===================================================== Badges -->
+    <section aria-labelledby="h-badges">
+      <h2 id="h-badges">Badges, sim-tag, status dots, chips</h2>
+      <p>Badges show status (always with icon + text). Chips show context (mission, filters). <code>.sim-tag</code> marks simulated data.</p>
+      <h3>Badges</h3>
+      <div class="sg-row">
+        <span class="badge badge--ok"><i data-icon="circle-check"></i> Nominal</span>
+        <span class="badge badge--warning"><i data-icon="triangle-alert"></i> Watch</span>
+        <span class="badge badge--critical"><i data-icon="circle-alert"></i> Critical</span>
+        <span class="badge badge--info"><i data-icon="info"></i> Info</span>
+        <span class="badge badge--neutral"><i data-icon="clock"></i> Pending</span>
+        <span class="badge badge--brand"><i data-icon="shield"></i> Medical Officer</span>
+      </div>
+      <h3>Sim-tag</h3>
+      <div class="sg-row"><span class="sim-tag"><i data-icon="flask-conical" data-size="12"></i> Simulated</span></div>
+      <h3>Status dots</h3>
+      <div class="sg-row">
+        <span class="sg-check"><span class="status-dot status-dot--ok"></span> Online</span>
+        <span class="sg-check"><span class="status-dot status-dot--warning"></span> Degraded</span>
+        <span class="sg-check"><span class="status-dot status-dot--critical status-dot--pulse" style="color: var(--color-critical)"></span> Critical (pulse)</span>
+        <span class="sg-check"><span class="status-dot status-dot--info"></span> Syncing</span>
+        <span class="sg-check"><span class="status-dot"></span> Unknown</span>
+      </div>
+      <h3>Chips</h3>
+      <div class="sg-row">
+        <span class="chip"><i data-icon="rocket"></i> Mission <strong>DEMO-1</strong></span>
+        <span class="chip"><i data-icon="calendar"></i> Mission Day <strong>42</strong></span>
+        <button class="chip" type="button" aria-pressed="false">Last 24 h</button>
+        <button class="chip" type="button" aria-pressed="true">Last 7 days</button>
+      </div>
+    </section>
+
+    <!-- ===================================================== Cards -->
+    <section aria-labelledby="h-cards">
+      <h2 id="h-cards">Cards &amp; metric card</h2>
+      <p>The metric card's sparkline is drawn by Chart.js from <code>vendor/chart.js/</code>.</p>
+      <div class="grid grid--3">
+        <article class="card">
+          <div class="card__header">
+            <div><p class="card__title">Card title</p><p class="card__subtitle">Subtitle / timestamp</p></div>
+            <div class="card__actions"><button class="icon-btn" type="button" aria-label="More options"><i data-icon="sliders-horizontal"></i></button></div>
+          </div>
+          <p style="color: var(--color-text-2)">Default card: <code>.card</code>.</p>
+        </article>
+        <article class="card card--elevated">
+          <div class="card__header"><div><p class="card__title">Elevated card</p><p class="card__subtitle">.card--elevated</p></div></div>
+          <p style="color: var(--color-text-2)">For popovers or highlighted panels.</p>
+        </article>
+        <article class="card card--critical">
+          <div class="card__header">
+            <div><p class="card__title">Critical card</p><p class="card__subtitle">.card--critical</p></div>
+            <span class="badge badge--critical"><i data-icon="circle-alert"></i> Critical</span>
+          </div>
+          <p style="color: var(--color-text-2)">Use only for an active critical condition.</p>
+        </article>
+
+        <article class="card metric" aria-label="Heart rate metric">
+          <div class="metric__top">
+            <span class="metric__icon"><i data-icon="heart"></i></span>
+            <span class="sim-tag">Simulated</span>
+          </div>
+          <p class="metric__label">Heart rate</p>
+          <p class="metric__value"><span id="metric-hr">72</span><span class="metric__unit">bpm</span></p>
+          <div class="metric__chart"><canvas id="sparkline" aria-label="Heart rate, last 30 minutes" role="img"></canvas></div>
+          <div class="metric__footer">
+            <span class="badge badge--ok"><i data-icon="circle-check"></i> Nominal</span>
+            <span>Updated 14:05</span>
+          </div>
+        </article>
+        <article class="card metric">
+          <div class="metric__top"><span class="metric__icon"><i data-icon="droplet"></i></span></div>
+          <p class="metric__label">SpO₂</p>
+          <p class="metric__value">93<span class="metric__unit">%</span></p>
+          <div class="metric__footer">
+            <span class="badge badge--warning"><i data-icon="triangle-alert"></i> Watch</span>
+            <span>Updated 14:05</span>
+          </div>
+        </article>
+        <article class="card metric">
+          <div class="metric__top"><span class="metric__icon"><i data-icon="moon"></i></span></div>
+          <p class="metric__label">Sleep</p>
+          <p class="metric__value">4.2<span class="metric__unit">h</span></p>
+          <div class="metric__footer">
+            <span class="badge badge--critical"><i data-icon="circle-alert"></i> Low</span>
+            <span>Last night</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ===================================================== Forms -->
+    <section aria-labelledby="h-forms">
+      <h2 id="h-forms">Segmented control &amp; form fields</h2>
+      <p>The orange ring appears on <code>.field__control</code> when its input has focus (click into the fields).</p>
+      <h3>Segmented control</h3>
+      <div class="segmented" role="radiogroup" aria-label="Time range" id="segmented">
+        <button class="segmented__option" type="button" role="radio" aria-checked="false">1 h</button>
+        <button class="segmented__option" type="button" role="radio" aria-checked="true">24 h</button>
+        <button class="segmented__option" type="button" role="radio" aria-checked="false">7 d</button>
+        <button class="segmented__option" type="button" role="radio" aria-checked="false">30 d</button>
+      </div>
+      <h3>Fields</h3>
+      <div class="grid grid--3">
+        <div class="field">
+          <label class="field__label" for="f-normal">Crew ID</label>
+          <div class="field__control"><i data-icon="user"></i><input id="f-normal" placeholder="e.g. CREW-03"></div>
+          <p class="field__hint">Normal state with a hint.</p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="f-focus">Search (autofocused)</label>
+          <div class="field__control"><i data-icon="search"></i><input id="f-focus" value="Focus state" data-autofocus></div>
+          <p class="field__hint">Focus ring = --focus-ring.</p>
+        </div>
+        <div class="field field--error">
+          <label class="field__label" for="f-error">Password</label>
+          <div class="field__control"><i data-icon="lock"></i><input id="f-error" type="password" value="123" aria-invalid="true" aria-describedby="f-error-msg"></div>
+          <p class="field__error" id="f-error-msg"><i data-icon="circle-alert"></i> Must be at least 8 characters.</p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="f-select">Role</label>
+          <div class="field__control"><select id="f-select"><option>Astronaut</option><option>Medical Officer</option></select></div>
+        </div>
+        <div class="field" style="grid-column: span 2">
+          <label class="field__label" for="f-text">Notes</label>
+          <div class="field__control"><textarea id="f-text" placeholder="Private journal entry…"></textarea></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================== Table -->
+    <section aria-labelledby="h-table">
+      <h2 id="h-table">Table</h2>
+      <p>Wrap in <code>.table-wrap</code> for horizontal scrolling on small screens. Use <code>.num</code> for numeric columns.</p>
+      <div class="card table-wrap">
+        <table class="table">
+          <caption class="sr-only">Crew vitals (synthetic)</caption>
+          <thead><tr><th scope="col">Crew member</th><th scope="col">Status</th><th scope="col" class="num">HR (bpm)</th><th scope="col" class="num">SpO₂ (%)</th><th scope="col">Updated</th></tr></thead>
+          <tbody>
+            <tr><td>CREW-01</td><td><span class="badge badge--ok"><i data-icon="circle-check"></i> Nominal</span></td><td class="num">68</td><td class="num">98</td><td class="mono">14:05</td></tr>
+            <tr><td>CREW-02</td><td><span class="badge badge--warning"><i data-icon="triangle-alert"></i> Watch</span></td><td class="num">104</td><td class="num">95</td><td class="mono">14:04</td></tr>
+            <tr><td>CREW-03</td><td><span class="badge badge--critical"><i data-icon="circle-alert"></i> Critical</span></td><td class="num">132</td><td class="num">89</td><td class="mono">14:05</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================================================== Alerts -->
+    <section aria-labelledby="h-alerts">
+      <h2 id="h-alerts">Alert items &amp; banners</h2>
+      <p>The left stripe shows severity; default (no modifier) is info.</p>
+      <div class="stack">
+        <div class="alert-item alert-item--critical">
+          <span class="alert-item__icon"><i data-icon="circle-alert"></i></span>
+          <div class="alert-item__body"><p class="alert-item__title">Critical — SpO₂ below 90%</p><p class="alert-item__text">CREW-03 · sustained for 4 minutes</p></div>
+          <span class="alert-item__meta">14:05</span>
+        </div>
+        <div class="alert-item alert-item--warning">
+          <span class="alert-item__icon"><i data-icon="triangle-alert"></i></span>
+          <div class="alert-item__body"><p class="alert-item__title">Warning — Elevated resting heart rate</p><p class="alert-item__text">CREW-02 · 104 bpm</p></div>
+          <span class="alert-item__meta">13:52</span>
+        </div>
+        <div class="alert-item">
+          <span class="alert-item__icon"><i data-icon="info"></i></span>
+          <div class="alert-item__body"><p class="alert-item__title">Info — Daily check-in reminder</p><p class="alert-item__text">Wellbeing assessment due</p></div>
+          <span class="alert-item__meta">09:00</span>
+        </div>
+        <div class="alert-item alert-item--ok">
+          <span class="alert-item__icon"><i data-icon="circle-check"></i></span>
+          <div class="alert-item__body"><p class="alert-item__title">Resolved — Heart rate back to normal</p><p class="alert-item__text">CREW-02</p></div>
+          <span class="alert-item__meta">08:31</span>
+        </div>
+      </div>
+      <h3>Banners</h3>
+      <div class="stack">
+        <div class="banner banner--critical" role="alert"><i data-icon="circle-alert"></i><p class="banner__text"><strong>Critical:</strong> 1 crew member needs attention.</p><button class="btn btn--secondary btn--sm" type="button">View</button></div>
+        <div class="banner banner--warning"><i data-icon="wifi-off"></i><p class="banner__text"><strong>Communication blackout:</strong> working autonomously on-device.</p></div>
+        <div class="banner"><i data-icon="info"></i><p class="banner__text">All data shown is synthetic.</p></div>
+      </div>
+    </section>
+
+    <!-- ===================================================== Overlays -->
+    <section aria-labelledby="h-overlays">
+      <h2 id="h-overlays">Modal &amp; toast</h2>
+      <p>One <code>.toast-region</code> per page with <code>aria-live="polite"</code>.</p>
+      <div class="sg-row">
+        <button class="btn btn--secondary" type="button" id="open-modal"><i data-icon="eye"></i> Open modal</button>
+        <button class="btn btn--secondary" type="button" data-toast="ok"><i data-icon="circle-check"></i> Show OK toast</button>
+        <button class="btn btn--secondary" type="button" data-toast="warning"><i data-icon="triangle-alert"></i> Show warning toast</button>
+        <button class="btn btn--secondary" type="button" data-toast="critical"><i data-icon="circle-alert"></i> Show critical toast</button>
+        <button class="btn btn--secondary" type="button" data-toast="info"><i data-icon="info"></i> Show info toast</button>
+      </div>
+    </section>
+
+    <!-- ===================================================== States -->
+    <section aria-labelledby="h-states">
+      <h2 id="h-states">Empty, loading &amp; error states, skeleton</h2>
+      <p>Every data view needs all three states.</p>
+      <div class="grid grid--3">
+        <div class="card state">
+          <span class="state__icon"><i data-icon="database"></i></span>
+          <p class="state__title">No measurements yet</p>
+          <p class="state__text">Start a simulation run to generate synthetic data.</p>
+          <button class="btn btn--primary btn--sm" type="button"><i data-icon="play"></i> Start</button>
+        </div>
+        <div class="card state state--loading" role="status">
+          <span class="state__icon"><i data-icon="rotate-ccw"></i></span>
+          <p class="state__title">Loading…</p>
+          <p class="state__text">Reading from the on-device database.</p>
+        </div>
+        <div class="card state state--error" role="alert">
+          <span class="state__icon"><i data-icon="circle-alert"></i></span>
+          <p class="state__title">Couldn't load data</p>
+          <p class="state__text">The database could not be opened.</p>
+          <button class="btn btn--secondary btn--sm" type="button"><i data-icon="rotate-ccw"></i> Retry</button>
+        </div>
+      </div>
+      <h3>Skeleton</h3>
+      <div class="card stack" style="gap: var(--space-3)" aria-hidden="true">
+        <span class="skeleton skeleton--title"></span>
+        <span class="skeleton"></span>
+        <span class="skeleton" style="width: 70%"></span>
+        <span class="skeleton skeleton--block"></span>
+      </div>
+    </section>
+
+    <!-- ===================================================== Progress & avatars -->
+    <section aria-labelledby="h-progress">
+      <h2 id="h-progress">Progress &amp; avatars</h2>
+      <p>Set width with the <code>--value</code> custom property.</p>
+      <div class="stack" style="max-width: 480px">
+        <div class="progress" role="progressbar" aria-label="Simulation progress" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100"><span class="progress__bar" style="--value: 62%"></span></div>
+        <div class="progress progress--ok" role="progressbar" aria-label="Hydration" aria-valuenow="85" aria-valuemin="0" aria-valuemax="100"><span class="progress__bar" style="--value: 85%"></span></div>
+        <div class="progress progress--warning" role="progressbar" aria-label="Sleep goal" aria-valuenow="48" aria-valuemin="0" aria-valuemax="100"><span class="progress__bar" style="--value: 48%"></span></div>
+        <div class="progress progress--critical" role="progressbar" aria-label="Battery" aria-valuenow="12" aria-valuemin="0" aria-valuemax="100"><span class="progress__bar" style="--value: 12%"></span></div>
+      </div>
+      <h3>Avatars</h3>
+      <div class="sg-row">
+        <span class="avatar avatar--sm">AK</span>
+        <span class="avatar">JM</span>
+        <span class="avatar avatar--brand">MO</span>
+        <span class="avatar avatar--lg">RS</span>
+      </div>
+    </section>
+
+    <!-- ===================================================== Icons -->
+    <section aria-labelledby="h-icons">
+      <h2 id="h-icons">Icons</h2>
+      <p>Usage: <code>icon("name")</code> from <code>js/components/icon.js</code>, or <code>&lt;i data-icon="name"&gt;&lt;/i&gt;</code> in static HTML. Need another? Add it to <code>scripts/build-icons.mjs</code>.</p>
+      <div class="sg-icons" id="icon-grid"></div>
+    </section>
+  </main>
+
+  <!-- Modal (hidden until opened) -->
+  <div class="modal-backdrop" id="modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal__header">
+        <h2 class="modal__title" id="modal-title">Acknowledge alert</h2>
+        <button class="icon-btn" type="button" data-close-modal aria-label="Close"><i data-icon="x"></i></button>
+      </div>
+      <div class="modal__body">
+        <p>Confirm that you have reviewed the critical SpO₂ alert for CREW-03.</p>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" type="button" data-close-modal>Cancel</button>
+        <button class="btn btn--primary" type="button" data-close-modal><i data-icon="check"></i> Acknowledge</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-region" aria-live="polite" aria-atomic="false" id="toasts"></div>
+
+  <footer class="disclaimer">
+    Research &amp; educational prototype · Not a medical device · Not affiliated with or endorsed by NASA · All health data synthetic
+  </footer>
+</body>
+</html>

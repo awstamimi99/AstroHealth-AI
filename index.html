@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0B1018">
+  <meta name="description" content="AstroHealth AI — offline-first crew health monitoring prototype for communication-limited space missions.">
+  <title>AstroHealth AI — Crew Health System</title>
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/app-icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/app-icons/apple-touch-icon.png">
+
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <!-- Team 2: add css/pages/landing.css here -->
+
+  <!-- Shared bootstrap: icons, service worker, file:// warning -->
+  <script type="module" src="js/app.js"></script>
+  <!-- Team 2: add <script type="module" src="js/pages/landing.js"></script> here -->
+
+  <!-- Modules don't run on file:// — this tiny fallback explains why. -->
+  <script>
+    if (location.protocol === "file:") document.addEventListener("DOMContentLoaded", function () {
+      var b = document.createElement("div"); b.className = "env-warning"; b.setAttribute("role", "alert");
+      b.textContent = "Run via a local server (python3 -m http.server 8080) — offline mode and the database need it.";
+      document.body.prepend(b);
+    });
+  </script>
+  <style>
+    /* PLACEHOLDER ONLY — Team 2 replaces this page. */
+    .placeholder { min-height: calc(100vh - 60px); display: grid; place-content: center; justify-items: center; gap: var(--space-5); padding: var(--space-6) var(--space-4); text-align: center; }
+    .placeholder h1 { font-size: var(--text-3xl); }
+    .placeholder p { color: var(--color-text-2); max-width: 52ch; }
+    .placeholder__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: center; }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <main id="main" class="placeholder">
+    <img src="assets/brand/logo-full.svg" alt="AstroHealth AI — Crew Health System" width="320" height="64">
+    <span class="badge badge--brand"><i data-icon="rocket"></i> Placeholder</span>
+    <h1>Landing page — Team 2 builds here</h1>
+    <p>Offline-first astronaut health monitoring for communication-limited missions.</p>
+    <div class="placeholder__actions">
+      <a class="btn btn--primary btn--lg" href="login.html"><i data-icon="rocket"></i> Launch Dashboard</a>
+      <a class="btn btn--secondary btn--lg" href="about.html"><i data-icon="book-open"></i> About &amp; References</a>
+    </div>
+  </main>
+
+  <footer class="disclaimer">
+    Research &amp; educational prototype · Not a medical device · Not affiliated with or endorsed by NASA · All health data synthetic
+  </footer>
+</body>
+</html>
