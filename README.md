@@ -2,9 +2,12 @@
 
 **Autonomous health risk detection and response during communication-limited space missions.**
 
-AstroHealth AI is an offline-first web app for monitoring astronaut health when
-the crew can't count on a live link to Earth. It runs entirely in the browser,
-stores everything on the device, and keeps working with no network at all.
+AstroHealth AI is a web app for monitoring astronaut health when the crew
+can't count on a live link to Earth. The frontend runs in the browser and
+keeps its data on the device in IndexedDB. It is **online-capable**, so
+specific features may call an approved API, and it has **optional offline
+support** through a service worker. Today every feature runs locally; a small
+Python (FastAPI) API may be added later for specific jobs.
 
 A student project for the NASA Space Apps Challenge, by team **RSS AstroMinds**.
 
@@ -12,13 +15,21 @@ A student project for the NASA Space Apps Challenge, by team **RSS AstroMinds**.
 > with or endorsed by NASA · All health data synthetic.**
 > Do not use it to make real medical decisions.
 
+All astronaut health, medical, mission and simulation records in the app are
+synthetic. Real astronaut health or medical records are never used. Verified
+public NASA resources and research references may be real and are always
+clearly attributed. Citations are never invented.
+
 ## Requirements
 
 | Tool | Needed for |
 | --- | --- |
 | git | getting the code |
 | python3 | running the local web server (any static server works) |
-| Node.js 18+ and npm | **only** for setup scripts — never at runtime |
+| Node.js 18+ and npm | **only** for setup scripts and tests — never at runtime |
+
+No Python packages are needed yet. If a Python API is added, its setup will
+be documented here together with that feature.
 
 ## Run it
 
@@ -54,7 +65,8 @@ For a release, bump `CACHE_VERSION` in `sw.js` and `APP_VERSION` in
 | `npm run setup` | Copies Chart.js + fonts into the repo, builds the icon set, brand files and the service-worker file list |
 | `npm run serve` | Starts `python3 -m http.server 8080` |
 | `npm run build:sw` | Regenerates `js/core/precache-manifest.js` — run after adding/removing files |
-| `npm run check:offline` | Fails if any runtime file references a remote `http(s)://` URL — run before every PR |
+| `npm run check:offline` | Fails if the static frontend contains a remote `http(s)://` URL (only `data/references.json` is exempt). Run before every PR (see below) |
+| `npm run test:unit` | Runs the Node unit tests in `tests/unit/` |
 | `npm run build:brand` | Regenerates the logo SVGs and PNG app icons |
 
 ## Folder map
@@ -89,17 +101,29 @@ tests/manual/checklists.md  Manual QA checklists
 docs/                       ARCHITECTURE.md, LICENSES.md
 ```
 
-## Offline rules
+## Online, offline and API rules
 
-1. **No CDNs, no Google Fonts, no remote images/scripts/styles.** Everything lives in this repo.
-2. npm is used **only** at development time to download packages; files are copied into `vendor/` and `assets/fonts/` and committed. `node_modules/` is git-ignored and never needed to run the app.
-3. Run `npm run check:offline` before every PR — CI-style guard against remote URLs.
-4. Added, renamed or deleted a file? Run `npm run build:sw` so the service worker caches it.
+Full policy: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (sections *API
+policy*, *Python policy*, *Offline policy*, *check:offline scope*).
+
+1. **No CDNs, no Google Fonts, no remote images/scripts/styles, no analytics.** Frontend assets live in this repo.
+2. **APIs only when approved.**
+   - Called from services through `js/core/api.js`.
+   - HTTPS in production, `localhost` in development.
+   - Pages never call APIs or database repositories directly.
+   - Every online feature shows loading, handles timeouts and being offline, gives a clear error, and never shows invented data when a call fails.
+   - No secrets in frontend code; passwords, hashes, salts, session objects and private journals are never sent.
+3. **IndexedDB stays the primary data store.** An API computes things; it does not replace the database.
+4. **Python only when a feature needs it**, as a small FastAPI service. There is no Python backend or Python dependency yet.
+5. **Offline is optional but kept.** The service worker still caches the frontend. Online-only features must say so when offline.
+6. npm is used **only** at development time; vendor files and fonts are copied into `vendor/` and `assets/fonts/` and committed. `node_modules/` is never needed to run the app.
+7. Run `npm run check:offline` before every PR. It guards the static frontend against remote assets and unapproved URLs, and exempts only `data/references.json` (reference links shown to readers). It has **no API allowlist yet**: any remote URL in runtime code fails today. A narrow allowlist is added with the first approved endpoint.
+8. Added, renamed or deleted a file? Run `npm run build:sw` so the service worker caches it.
 
 ## For contributors
 
 - 👉 **[CONTRIBUTING.md](CONTRIBUTING.md)** — team ownership, branches, PR rules.
-- 👉 **[AGENTS.md](AGENTS.md)** — strict rules for future AI-assisted sessions.
+- 👉 **[AGENTS.md](AGENTS.md)** — strict rules for future AI-assisted sessions (safety rules, API and Python policy).
 - 👉 **[Style guide](tests/browser/styleguide.html)** — open <http://localhost:8080/tests/browser/styleguide.html> and copy markup from there.
 - 👉 **[Architecture](docs/ARCHITECTURE.md)** and **[Licences](docs/LICENSES.md)**.
 
