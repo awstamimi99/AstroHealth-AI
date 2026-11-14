@@ -61,22 +61,43 @@ function initOfflineStatus() {
 
 // ---- Mobile drawer --------------------------------------------------------
 // Below 1024px the sidebar slides in when [data-drawer-toggle] is clicked.
+// It closes on: the toggle again, the scrim, Escape, choosing a link in the
+// sidebar, any route change, or the window growing to desktop width.
+// (css/layout.css hides the closed drawer from keyboard and screen readers.)
+const DRAWER_QUERY = "(max-width: 1023px)";
+
 function initDrawer() {
   const shell = $(".app-shell");
   if (!shell) return;
   const toggles = $$("[data-drawer-toggle]");
+  const sidebar = $(".sidebar", shell);
+  const isOpen = () => shell.classList.contains("is-open");
 
-  const setOpen = (open) => {
+  const setOpen = (open, { returnFocus = false } = {}) => {
+    const wasOpen = isOpen();
     shell.classList.toggle("is-open", open);
-    for (const t of toggles) t.setAttribute("aria-expanded", String(open));
+    for (const t of toggles) {
+      t.setAttribute("aria-expanded", String(open));
+      t.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+    }
+    if (open && !wasOpen) $("a[href], button", sidebar)?.focus();
+    if (!open && wasOpen && returnFocus) toggles[0]?.focus();
   };
 
   for (const t of toggles) {
-    t.addEventListener("click", () => setOpen(!shell.classList.contains("is-open")));
+    t.addEventListener("click", () => setOpen(!isOpen(), { returnFocus: true }));
   }
-  $(".sidebar-scrim", shell)?.addEventListener("click", () => setOpen(false));
+  $(".sidebar-scrim", shell)?.addEventListener("click", () => setOpen(false, { returnFocus: true }));
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") setOpen(false);
+    if (e.key === "Escape" && isOpen()) setOpen(false, { returnFocus: true });
+  });
+  // Choosing a link closes the drawer, even the link to the page already shown.
+  sidebar?.addEventListener("click", (e) => {
+    if (e.target.closest("a[href]")) setOpen(false);
+  });
+  window.addEventListener("hashchange", () => setOpen(false));
+  window.matchMedia?.(DRAWER_QUERY).addEventListener?.("change", (e) => {
+    if (!e.matches) setOpen(false);
   });
 }
 

@@ -12,7 +12,7 @@
 // This is a classic (non-module) worker for maximum browser support, so it
 // uses importScripts() instead of import.
 
-const CACHE_VERSION = "0.1.2";
+const CACHE_VERSION = "0.2.0";
 const CACHE_NAME = `astrohealth-v${CACHE_VERSION}`;
 
 // Defines self.PRECACHE_URLS (relative to this file).

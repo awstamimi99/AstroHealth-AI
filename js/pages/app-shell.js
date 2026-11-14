@@ -6,17 +6,22 @@
 // 3. Guard every hash route: typing app.html#/crew as an astronaut shows an
 //    accessible "Access denied" view — hiding the link is not enough.
 // 4. Logout (here or in another tab) clears the session and returns to login.
+//    The session is re-checked on every navigation and when the tab regains
+//    focus, so an expired session also returns to login.
+// 5. Mission name + Mission Day come from the seeded settings record via
+//    js/services/mission-service.js ("Not available" if it can't be read).
 //
 // Dashboards are NOT built here — each allowed route shows a placeholder
-// until its page is implemented.
+// until its page is implemented. The mobile drawer is handled by js/app.js.
 
 import { requireSession, redirectToLogin, checkRoute } from "../auth/guard.js";
-import { clearSession, onSessionChange, roleLabel, initialsOf } from "../auth/session.js";
-import { routesForRole, homeRouteFor } from "../auth/routes.js";
+import { getSession, clearSession, onSessionChange, roleLabel, initialsOf } from "../auth/session.js";
+import { routesForRole, homeRouteFor, findRoute } from "../auth/routes.js";
+import { getMissionContext } from "../services/mission-service.js";
+import { APP_NAME } from "../core/config.js";
 import { icon } from "../components/icon.js";
 import { el, $, $$, clear } from "../core/utils/dom.js";
 
-const APP_NAME = "AstroHealth AI";
 const session = requireSession(); // redirects to login.html when null
 if (session) startShell(session);
 
@@ -57,26 +62,40 @@ function startShell(current) {
     }
   }
 
+  // ---- Mission context (synthetic seed data, never invented here) ----------------
+  async function showMission() {
+    const mission = await getMissionContext(current);
+    $("[data-mission-name]").textContent = mission.name;
+    $("[data-mission-day]").textContent = mission.missionDay ? String(mission.missionDay) : "Not available";
+  }
+
   // ---- Route views ------------------------------------------------------------------
+  // Placeholders only: no metrics, forms or alerts until each dashboard sprint.
   function placeholderView(route) {
-    return el("div", { class: "card" }, [
+    return el("section", { class: "card", "aria-labelledby": "route-placeholder-title" }, [
       el("div", { class: "state" }, [
         el("span", { class: "state__icon" }, icon(route.icon)),
-        el("p", { class: "state__title" }, route.title),
-        el("p", { class: "state__text" }, "This dashboard will be built in a later sprint."),
+        el("h2", { class: "state__title", id: "route-placeholder-title" }, route.title),
+        el("p", { class: "state__text" }, `The ${route.title} section will be completed in a later sprint. No health data is shown here yet.`),
       ]),
     ]);
   }
 
+  /** "Medical Officer", or "Astronaut and Medical Officer", from the route's own roles. */
+  function allowedRolesText(route) {
+    return route.roles.map(roleLabel).join(" and ");
+  }
+
   function accessDeniedView(route) {
     const home = homeRouteFor(current.role);
+    const homeLabel = findRoute(home)?.label || "home";
     const heading = el("h2", { class: "state__title", id: "access-denied-title", tabindex: "-1" }, "Access denied");
     const view = el("div", { class: "card", role: "alert", "aria-labelledby": "access-denied-title" }, [
       el("div", { class: "state state--error" }, [
         el("span", { class: "state__icon" }, icon("lock")),
         heading,
-        el("p", { class: "state__text" }, `${route.title} is available to the Medical Officer only. You are signed in as ${roleLabel(current.role)}.`),
-        el("a", { class: "btn btn--secondary btn--sm", href: home }, [icon("arrow-right"), "Go to Overview"]),
+        el("p", { class: "state__text" }, `${route.title} is available to the ${allowedRolesText(route)} role only. You are signed in as ${roleLabel(current.role)}.`),
+        el("a", { class: "btn btn--secondary btn--sm", href: home }, [icon("arrow-right"), `Go to ${homeLabel}`]),
       ]),
     ]);
     return { view, heading };
@@ -84,6 +103,7 @@ function startShell(current) {
 
   /** Render the view for location.hash. `focus` moves focus for keyboard/screen-reader users. */
   function renderRoute({ focus = false } = {}) {
+    if (!stillSignedIn()) return;
     const { route, allowed } = checkRoute(current, location.hash);
 
     // Unknown or missing route → the role's home route (replace, no history entry).
@@ -92,7 +112,6 @@ function startShell(current) {
       return renderRoute({ focus });
     }
 
-    shell.classList.remove("is-open"); // close the mobile drawer after navigating
     if (!allowed) {
       const { view: denied, heading } = accessDeniedView(route);
       title.textContent = "Access denied";
@@ -111,11 +130,22 @@ function startShell(current) {
   }
 
   // ---- Logout -----------------------------------------------------------------------------
-  function leave() {
+  /** Hide everything personal, then go to login (optionally back to `returnTo` afterwards). */
+  function leave({ returnTo } = {}) {
+    shell.style.visibility = "hidden";
     showUser(null); // remove user info from the screen immediately
     clear(nav);
     clear(view);
-    redirectToLogin();
+    redirectToLogin({ returnTo });
+  }
+
+  /** Expired, removed or replaced session → leave and return false. */
+  function stillSignedIn() {
+    const latest = getSession();
+    if (latest && latest.userId === current.userId) return true;
+    if (latest) location.reload(); // another user signed in meanwhile
+    else leave({ returnTo: location.hash });
+    return false;
   }
 
   $("[data-logout]").addEventListener("click", () => {
@@ -133,6 +163,10 @@ function startShell(current) {
   showUser(current);
   renderNav();
   renderRoute();
+  showMission();
   window.addEventListener("hashchange", () => renderRoute({ focus: true }));
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") stillSignedIn();
+  });
   shell.style.visibility = ""; // session confirmed — show the app
 }

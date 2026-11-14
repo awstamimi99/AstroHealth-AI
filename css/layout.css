@@ -254,6 +254,15 @@
   font-size: var(--text-2xs);
 }
 
+/* Headings focused by script after navigation (tabindex="-1") so screen
+   readers announce them. They are not controls, so they get no focus ring;
+   buttons and links keep the ring from base.css. */
+.topbar__title[tabindex="-1"]:focus-visible,
+.content [tabindex="-1"]:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 /* ------------------------------------------------------------- Content --- */
 .content {
   flex: 1;
@@ -298,11 +307,16 @@
     z-index: var(--z-drawer);
     width: var(--sidebar-width);
     transform: translateX(-100%);
-    transition: transform var(--motion-base) var(--ease);
+    /* Closed = also hidden from keyboard and screen readers (visibility flips
+       after the slide-out finishes, and immediately on open). */
+    visibility: hidden;
+    transition: transform var(--motion-base) var(--ease), visibility 0s linear var(--motion-base);
     box-shadow: var(--shadow-lg);
   }
   .app-shell.is-open .sidebar {
     transform: translateX(0);
+    visibility: visible;
+    transition: transform var(--motion-base) var(--ease), visibility 0s;
   }
 
   .sidebar-scrim {
@@ -321,9 +335,23 @@
   .topbar > .topbar__menu {
     display: inline-grid;
   }
-  .topbar__chips,
-  .topbar__user-text {
+  .topbar__chips {
     display: none;
+  }
+  /* Name and role stay available to screen readers (same as .sr-only). */
+  .topbar__user-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+  .topbar__title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .content {

@@ -68,14 +68,15 @@
       <header class="topbar">
         <button class="icon-btn topbar__menu" type="button" data-drawer-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Open menu"><i data-icon="menu"></i></button>
         <h1 class="topbar__title" id="page-title" tabindex="-1">Overview</h1>
-        <div class="topbar__chips">
-          <span class="chip"><i data-icon="rocket"></i> Mission <strong>DEMO-1</strong></span>
-          <span class="chip"><i data-icon="calendar"></i> Mission Day <strong>—</strong></span>
+        <!-- Filled by js/services/mission-service.js from the seeded (synthetic)
+             settings record "mission"; "Not available" if it can't be read. -->
+        <div class="topbar__chips" data-mission-context>
+          <span class="chip"><i data-icon="rocket"></i> Mission <strong data-mission-name>—</strong></span>
+          <span class="chip"><i data-icon="calendar"></i> Mission Day <strong data-mission-day>—</strong></span>
         </div>
         <div class="topbar__actions">
-          <button class="icon-btn" type="button" aria-label="Notifications, 3 unread">
-            <i data-icon="bell"></i><span class="topbar__bell-count" aria-hidden="true">3</span>
-          </button>
+          <!-- Plain link to the Alerts page. No unread count until alerts are built. -->
+          <a class="icon-btn" href="#/alerts" aria-label="Alerts" title="Alerts"><i data-icon="bell"></i></a>
           <div class="topbar__user">
             <span class="avatar avatar--brand" aria-hidden="true" data-user-initials></span>
             <div class="topbar__user-text">

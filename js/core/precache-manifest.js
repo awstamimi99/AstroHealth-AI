@@ -80,6 +80,7 @@ self.PRECACHE_URLS = [
   "./js/pages/app-shell.js",
   "./js/pages/home.js",
   "./js/pages/login.js",
+  "./js/services/mission-service.js",
   "./js/sw-register.js",
   "./login.html",
   "./manifest.webmanifest",
