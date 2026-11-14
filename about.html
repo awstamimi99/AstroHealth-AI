@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0B1018">
-  <meta name="description" content="About AstroHealth AI — team, method and references.">
+  <meta name="description" content="About AstroHealth AI — what the research prototype implements, how it handles synthetic data and privacy, its limitations, and the reference policy.">
   <title>About &amp; References — AstroHealth AI</title>
 
   <link rel="manifest" href="manifest.webmanifest">
@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/components.css">
-  <!-- Team 2: add css/pages/about.css here -->
+  <link rel="stylesheet" href="css/pages/about.css">
 
   <script type="module" src="js/app.js"></script>
   <script>
@@ -24,24 +24,122 @@
       document.body.prepend(b);
     });
   </script>
-  <style>
-    /* PLACEHOLDER ONLY — Team 2 replaces this page. */
-    .placeholder { min-height: calc(100vh - 60px); display: grid; place-content: center; justify-items: center; gap: var(--space-5); padding: var(--space-6) var(--space-4); text-align: center; }
-    .placeholder p { color: var(--color-text-2); max-width: 56ch; }
-  </style>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to main content</a>
 
-  <main id="main" class="placeholder">
-    <a class="logo" href="index.html">
+  <header class="about-top">
+    <a class="logo" href="index.html" aria-label="AstroHealth AI home">
       <img class="logo__mark" src="assets/brand/logo-mark.svg" alt="" width="36" height="36">
       <span class="logo__text"><span class="logo__name">AstroHealth AI</span><span class="logo__tag">Crew Health System</span></span>
     </a>
-    <h1>About &amp; References — Team 2 builds here</h1>
-    <p>Team data lives in <code>data/team.json</code> and sources in <code>data/references.json</code>
-      (only verified citations — see docs/ARCHITECTURE.md).</p>
-    <a class="btn btn--secondary" href="index.html"><i data-icon="arrow-right"></i> Back to home</a>
+    <nav class="about-nav" aria-label="About page">
+      <a href="index.html">Home</a>
+      <a href="login.html">Sign in</a>
+    </nav>
+  </header>
+
+  <main id="main" class="about">
+    <header class="about__intro">
+      <h1 class="about__title">About AstroHealth AI</h1>
+      <p class="about__lead">
+        AstroHealth AI is a research and educational prototype. It explores how a crew on a
+        communication-limited space mission and a Medical Officer could review health records
+        together, using simple rules that can always be explained.
+      </p>
+      <p class="banner about__banner"><i data-icon="info"></i>
+        <span>All health, crew, mission and simulation data is <strong>synthetic</strong>. This is not a medical
+        device, it is not clinically validated, and it is not affiliated with or endorsed by NASA.</span></p>
+    </header>
+
+    <section class="card about__section" aria-labelledby="about-implements">
+      <h2 id="about-implements">What the prototype implements</h2>
+      <ul class="about__list">
+        <li><strong>Two roles:</strong> astronaut and Medical Officer, each with its own dashboard.</li>
+        <li><strong>Physical health:</strong> synthetic heart rate, SpO₂, blood pressure and sleep readings with trends and data-quality labels.</li>
+        <li><strong>Mental wellbeing:</strong> daily check-ins that are private unless the astronaut chooses to share them.</li>
+        <li><strong>Simulation Center:</strong> deterministic, labelled synthetic scenarios (for example a low-oxygen demonstration) for the Medical Officer.</li>
+        <li><strong>Alerts:</strong> created by four deterministic demonstration rules, acknowledged and resolved by the Medical Officer, with a full audit trail.</li>
+        <li><strong>Health history, printable reports and settings</strong> built from the stored synthetic records.</li>
+      </ul>
+    </section>
+
+    <section class="card about__section" aria-labelledby="about-rules">
+      <h2 id="about-rules">How alerts work</h2>
+      <p>
+        Alerts come from deterministic, rule-based logic — no machine learning. Four demonstration rules
+        compare stored readings (heart rate, SpO₂, systolic blood pressure, sleep duration) with stored
+        <strong>demonstration thresholds that are not clinically validated</strong>. Rules run only after a
+        simulation step or when the Medical Officer chooses to evaluate; nothing runs in the background.
+        Every alert shows which rule fired, the readings used, when they were recorded, whether they were
+        simulated, and why its severity was chosen. Suspect, invalid and stale readings are never used as evidence.
+      </p>
+    </section>
+
+    <section class="card about__section" aria-labelledby="about-privacy">
+      <h2 id="about-privacy">Privacy model</h2>
+      <ul class="about__list">
+        <li>Astronauts see only their own records.</li>
+        <li>The Medical Officer never sees the private journal or the scores of check-ins an astronaut keeps private.</li>
+        <li>Medical Officer notes on alerts are internal and are not shown to astronauts.</li>
+        <li>Pages never show internal record identifiers, passwords or session details.</li>
+        <li>Sign-in is a local demonstration only. Demo accounts use the password <code>demo</code>; this is not real security.</li>
+      </ul>
+    </section>
+
+    <section class="card about__section" aria-labelledby="about-offline">
+      <h2 id="about-offline">Online and offline</h2>
+      <p>
+        All records are stored in this browser (IndexedDB) on this device. After the first successful visit,
+        a service worker caches the app's own files so it keeps working without a network. The app loads no
+        external fonts, scripts or analytics. Data is not synchronised between devices.
+      </p>
+    </section>
+
+    <section class="card about__section" aria-labelledby="about-limits">
+      <h2 id="about-limits">Medical limitations</h2>
+      <p>
+        AstroHealth AI does not diagnose, does not recommend treatment, and does not determine fitness for duty.
+        Alerts and reports describe synthetic readings against demonstration rules only. Any real health decision
+        belongs to qualified people following approved protocols.
+      </p>
+    </section>
+
+    <section class="card about__section" aria-labelledby="about-references">
+      <h2 id="about-references">References</h2>
+      <p>
+        Only verified public sources may be listed as references, each clearly attributed. Unverified sources are
+        never presented as citations. <strong>No verified references have been added yet</strong>, so this page lists
+        none. The background statements on the home page are general project summaries, not citations.
+      </p>
+      <p>
+        Third-party components (fonts, icons, chart library) and their licences are listed in
+        <code>docs/LICENSES.md</code> in the project repository. No NASA logo, insignia or mission patch is used.
+      </p>
+    </section>
+
+    <section class="card about__section" aria-labelledby="about-team">
+      <h2 id="about-team">Team</h2>
+      <p>
+        The project was created for the NASA Space Apps Challenge by the student team <strong>RSS AstroMinds</strong>.
+        Participation in the challenge does not mean NASA affiliation or endorsement.
+      </p>
+      <ul class="about-team" aria-label="Competition team">
+        <li class="about-team__item"><span class="about-team__role">Team lead</span><span class="about-team__name">Aws Tamimi</span></li>
+        <li class="about-team__item"><span class="about-team__role">Programmers</span><span class="about-team__name">Asaad Almoushorji, Osama Abu Doush</span></li>
+        <li class="about-team__item"><span class="about-team__role">Graphic Designer</span><span class="about-team__name">Idriss Bouida</span></li>
+        <li class="about-team__item"><span class="about-team__role">Business Analyst</span><span class="about-team__name">Fadhel Alawadh</span></li>
+      </ul>
+      <p class="about__note">
+        The code repository is owned and maintained by <strong>awstamimi99</strong>, who develops the current
+        version as a solo project. The team above is the original competition team.
+      </p>
+    </section>
+
+    <p class="about__actions">
+      <a class="btn btn--secondary" href="index.html"><i data-icon="arrow-right"></i> Back to home</a>
+      <a class="btn btn--primary" href="login.html"><i data-icon="user"></i> Sign in to the demo</a>
+    </p>
   </main>
 
   <footer class="disclaimer">

@@ -1,0 +1,23 @@
+name: Quality
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  static-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:unit
+      - run: npm run check:offline
+      - name: Verify generated service-worker manifest
+        run: |
+          npm run build:sw
+          git diff --exit-code -- js/core/precache-manifest.js
+      - run: git diff --check

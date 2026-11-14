@@ -1,4 +1,4 @@
-// js/services/mission-service.js — mission context for the app shell (Team 1)
+// js/services/mission-service.js — mission context for the app shell
 //
 // Reads ONLY the documented settings record "mission" (docs/DATA-MODEL.md
 // §3.14): { name, startDate, missionDayOverride }. All of it is SYNTHETIC

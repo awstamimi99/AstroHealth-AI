@@ -26,7 +26,7 @@ clearly attributed. Citations are never invented.
 | --- | --- |
 | git | getting the code |
 | python3 | running the local web server (any static server works) |
-| Node.js 18+ and npm | **only** for setup scripts and tests — never at runtime |
+| Node.js 24 and npm | **only** for setup scripts and tests — never at runtime |
 
 No Python packages are needed yet. If a Python API is added, its setup will
 be documented here together with that feature.
@@ -67,6 +67,8 @@ For a release, bump `CACHE_VERSION` in `sw.js` and `APP_VERSION` in
 | `npm run build:sw` | Regenerates `js/core/precache-manifest.js` — run after adding/removing files |
 | `npm run check:offline` | Fails if the static frontend contains a remote `http(s)://` URL (only `data/references.json` is exempt). Run before every PR (see below) |
 | `npm run test:unit` | Runs the Node unit tests in `tests/unit/` |
+| `npm run test:e2e` | Runs the local headless-Chrome release smoke test (set `CHROME_BIN` outside macOS) |
+| `npm run test:release` | Rebuilds the cache manifest, then runs unit, offline and browser-smoke checks |
 | `npm run build:brand` | Regenerates the logo SVGs and PNG app icons |
 
 ## Folder map
@@ -126,6 +128,7 @@ policy*, *Python policy*, *Offline policy*, *check:offline scope*).
 - 👉 **[AGENTS.md](AGENTS.md)** — strict rules for future AI-assisted sessions (safety rules, API and Python policy).
 - 👉 **[Style guide](tests/browser/styleguide.html)** — open <http://localhost:8080/tests/browser/styleguide.html> and copy markup from there.
 - 👉 **[Architecture](docs/ARCHITECTURE.md)** and **[Licences](docs/LICENSES.md)**.
+- 👉 **[Demo guide](docs/DEMO.md)** — demo accounts, reset procedure and presentation flow.
 
 ## Reference data
 

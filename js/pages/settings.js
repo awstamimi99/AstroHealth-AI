@@ -4,11 +4,17 @@
 // only, per signed-in user (js/core/preferences.js), and applied immediately.
 // Everything else is READ-ONLY from settings-service.js: mission and units for
 // everyone; demonstration thresholds and the simulation default speed for the
-// Medical Officer only. Nothing here writes to the database.
+// Medical Officer only. The only database write is the Medical-Officer-only
+// "Reset synthetic demo data" action (typed confirmation RESET DEMO), done by
+// js/services/demo-reset-service.js. After a successful reset this page
+// emits a no-payload "demo:reset" event; the app shell then signs the user
+// out and opens login.html (other tabs follow through the same event).
 //
-// Test seam: createSettingsRenderer({ service, prefs }).
+// Test seam: createSettingsRenderer({ service, prefs, notifyReset }).
 
 import { getSettingsView } from "../services/settings-service.js";
+import { resetDemoData, RESET_PHRASE } from "../services/demo-reset-service.js";
+import { bus } from "../core/event-bus.js";
 import { preferences, TEXT_SIZES, MOTIONS } from "../core/preferences.js";
 import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
@@ -20,13 +26,13 @@ const TEXT_LABELS = { standard: "Standard", large: "Large", larger: "Larger" };
 const MOTION_LABELS = { system: "Follow system setting", reduce: "Reduce motion" };
 
 /** TEST SEAM. Production uses renderSettings. */
-export function createSettingsRenderer({ service, prefs = preferences }) {
+export function createSettingsRenderer({ service, prefs = preferences, notifyReset = () => bus.emit("demo:reset", {}) }) {
   return function render(container, session, { signal, focus = false } = {}) {
     const live = el("p", { class: "sr-only", role: "status", "aria-live": "polite" });
     const content = el("div", { class: "settings__content" });
     const root = el("div", { class: "settings", "aria-busy": "false" }, [live, content]);
     container.replaceChildren(root);
-    const st = { generation: 0, data: null, notice: "", focusHeading: focus };
+    const st = { generation: 0, data: null, notice: "", focusHeading: focus, reset: { open: false, typed: "", busy: false, error: "" } };
     const aborted = () => Boolean(signal && signal.aborted);
     const userKey = session && typeof session.userId === "string" ? session.userId : "";
     let unsubscribe = null;
@@ -130,12 +136,89 @@ export function createSettingsRenderer({ service, prefs = preferences }) {
           el("p", {}, d.simulation.status === "ok" ? `Default speed: ${d.simulation.speed}×` : "Default speed is not available."),
         ]));
       }
+      if (d.viewer === "officer" && d.canResetDemo === true) parts.push(resetSection());
       parts.push(section("settings-privacy-title", "Data and privacy", [el("ul", { class: "settings-list" }, d.privacy.map((x) => el("li", {}, x)))]));
+      const activeId = globalThis.document && document.activeElement && typeof document.activeElement.getAttribute === "function" ? document.activeElement.getAttribute("id") : null;
       content.replaceChildren(...parts);
+      if (activeId) for (const n of content.querySelectorAll("[id]")) if (n.getAttribute("id") === activeId && typeof n.focus === "function") n.focus();
+    }
+
+    const focusId = (id) => { for (const n of content.querySelectorAll("[id]")) if (n.getAttribute("id") === id) n.focus(); };
+
+    function resetSection() {
+      const r = st.reset;
+      const children = [
+        el("p", {}, "Restore this browser's local data to the original synthetic demo state, for example before a demonstration."),
+      ];
+      if (!r.open) {
+        children.push(el("p", {}, el("button", { class: "btn btn--secondary btn--sm", type: "button", id: "reset-open", onClick: () => { st.reset = { open: true, typed: "", busy: false, error: "" }; draw(); focusId("reset-title"); } }, [icon("rotate-ccw"), "Reset synthetic demo data"])));
+        return section("settings-reset-title", "Demo data", children);
+      }
+      const matches = r.typed === RESET_PHRASE;
+      children.push(el("div", { class: "settings-reset", role: "group", "aria-labelledby": "reset-title" }, [
+        el("h3", { class: "settings-reset__title", id: "reset-title", tabindex: "-1" }, "Reset synthetic demo data?"),
+        el("ul", { class: "settings-list" }, [
+          el("li", {}, "All locally stored synthetic demo activity on this browser will be deleted and replaced with the original demo data."),
+          el("li", {}, "Simulation runs, generated alerts, check-ins and the local history are reset."),
+          el("li", {}, "Personal display preferences are separate and are not deleted."),
+          el("li", {}, "This affects only this browser on this device. Everyone signed in here is signed out."),
+          el("li", {}, "This cannot be undone."),
+        ]),
+        el("div", { class: "field" }, [
+          el("label", { class: "field__label", for: "reset-phrase" }, `Type ${RESET_PHRASE} to confirm`),
+          el("div", { class: "field__control" }, el("input", { id: "reset-phrase", type: "text", autocomplete: "off", spellcheck: "false", value: r.typed, "aria-describedby": "reset-help", disabled: r.busy, onInput: (e) => { st.reset = { ...st.reset, typed: String(e.target.value || ""), error: "" }; syncReset(); } })),
+          el("p", { class: "field__hint", id: "reset-help" }, `The button is enabled only when the text is exactly ${RESET_PHRASE} (capital letters).`),
+        ]),
+        r.error ? el("p", { class: "settings__notice settings__notice--error", role: "alert" }, [icon("circle-alert"), " ", r.error]) : null,
+        el("p", { class: "settings-reset__actions" }, [
+          el("button", { class: "btn btn--danger btn--sm", type: "button", id: "reset-confirm", "data-reset-confirm": "", disabled: !matches || r.busy, onClick: () => confirmReset() }, [icon("rotate-ccw"), r.busy ? "Resetting…" : "Reset synthetic demo data"]),
+          el("button", { class: "btn btn--secondary btn--sm", type: "button", id: "reset-cancel", disabled: r.busy, onClick: () => { st.reset = { open: false, typed: "", busy: false, error: "" }; draw(); focusId("reset-open"); live.textContent = "Reset cancelled. Nothing was changed."; } }, [icon("x"), "Cancel"]),
+        ]),
+      ]));
+      return section("settings-reset-title", "Demo data", children);
+    }
+
+    function syncReset() {
+      const ok = st.reset.typed === RESET_PHRASE && !st.reset.busy;
+      for (const b of content.querySelectorAll("[data-reset-confirm]")) {
+        b.disabled = !ok;
+        if (ok) b.removeAttribute("disabled");
+        else b.setAttribute("disabled", "");
+      }
+    }
+
+    async function confirmReset() {
+      if (st.reset.busy || st.reset.typed !== RESET_PHRASE) return;
+      st.reset = { ...st.reset, busy: true, error: "" };
+      draw();
+      live.textContent = "Resetting synthetic demo data…";
+      let res;
+      try {
+        res = await service.resetDemoData(session, { confirmation: st.reset.typed });
+      } catch {
+        res = { status: "unavailable", reason: "unexpected_error" };
+      }
+      if (aborted()) return;
+      if (res && res.status === "reset") {
+        content.replaceChildren(el("p", { class: "settings__notice", role: "status" }, [icon("circle-check"), " Synthetic demo data was reset. Signing you out…"]));
+        live.textContent = "Synthetic demo data was reset. Signing you out.";
+        notifyReset(); // the app shell signs out and opens the login page (all tabs)
+        return;
+      }
+      const msg = res && res.reason === "confirmation_required" ? `Type ${RESET_PHRASE} exactly to confirm.`
+        : res && res.status === "forbidden" ? "Only a verified Medical Officer can reset demo data."
+        : res && res.status === "busy" ? "A reset is already running. Please wait."
+        : "The demo data could not be reset. The reset is all-or-nothing, so nothing was changed. Try again.";
+      st.reset = { ...st.reset, busy: false, error: msg };
+      draw();
+      live.textContent = msg;
+      focusId("reset-phrase");
     }
 
     return load();
   };
 }
 
-export const renderSettings = createSettingsRenderer({ service: Object.freeze({ getSettingsView: (s) => getSettingsView(s) }) });
+export const renderSettings = createSettingsRenderer({
+  service: Object.freeze({ getSettingsView: (s) => getSettingsView(s), resetDemoData: (s, i) => resetDemoData(s, i) }),
+});

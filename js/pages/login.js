@@ -1,4 +1,4 @@
-// js/pages/login.js — behaviour of login.html (Team 1)
+// js/pages/login.js — behaviour of login.html
 //
 // Flow: validate → usersRepo.verifyPassword() → createSession() → app.html
 // The database is used ONLY through js/db/index.js (no IndexedDB code here).
@@ -48,6 +48,16 @@ function initLoginPage() {
   const formErrorText = $("#form-error-text");
   const demoButtons = $$("[data-demo-username]");
   let busy = false;
+
+  // One-time notice after a demo-data reset (login.html?reset=1): show it, then
+  // drop the parameter so a reload doesn't show it again.
+  const params = new URLSearchParams(location.search);
+  if (params.get("reset") === "1") {
+    $("#reset-notice")?.removeAttribute("hidden");
+    params.delete("reset");
+    const rest = params.toString();
+    history.replaceState(null, "", `${location.pathname}${rest ? `?${rest}` : ""}${location.hash}`);
+  }
 
   // ---- Error display --------------------------------------------------------
 

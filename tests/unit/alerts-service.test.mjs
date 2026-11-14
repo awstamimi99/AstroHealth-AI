@@ -224,7 +224,7 @@ test("note privacy: astronaut list/detail/evidence/timeline omit every lifecycle
   await s.acknowledgeAlert(MO, "ALT-0189", { note: "MO-ONLY ack 2" }, { now: NOW + 5000 });
   await s.resolveAlert(MO, "ALT-0189", { note: SEED_RES, confirmConditionPresent: true }, { now: NOW + 6000 });
 
-  const secrets = [ACK, RES, SEED_RES, "MO-ONLY", "Readings back in normal range", "exercise session"];
+  const secrets = [ACK, RES, SEED_RES, "MO-ONLY", "Readings returned toward the stored baseline", "exercise session"];
   const astronautOutputs = [
     await s.listAlerts(CHEN, {}, { now: NOW + 7000 }),
     await s.listAlerts(CHEN, { status: "all" }, { now: NOW + 7000 }),
@@ -252,7 +252,7 @@ test("note privacy: astronaut list/detail/evidence/timeline omit every lifecycle
   const mo = await s.getAlertDetail(MO, gen, { now: NOW + 7000 });
   assert.equal(mo.alert.resolutionNote, RES);
   assert.deepEqual(mo.timeline.items.filter((x) => x.note).map((x) => [x.label, x.note]), [["Acknowledged", ACK], ["Resolved", RES]]);
-  assert.equal((await s.getAlertDetail(MO, "ALT-0181", { now: NOW })).alert.resolutionNote, "Readings back in normal range after rest. No further action.");
+  assert.equal((await s.getAlertDetail(MO, "ALT-0181", { now: NOW })).alert.resolutionNote, "Readings returned toward the stored baseline after rest. Demo alert closed.");
   assert.ok(!IDS.test(JSON.stringify(mo)));
 
   // Stored records are unchanged by the presentation policy.

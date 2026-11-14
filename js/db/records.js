@@ -8,7 +8,7 @@
 // documented enum values of fields that are indexed or queried, the
 // role ↔ astronautId link of a user, and immutable identifiers. Business
 // validation (allowed ranges, who may do what, alert lifecycle) belongs in
-// Team 1's services.
+// the services in js/services/.
 
 import { DatabaseError } from "./errors.js";
 import { newId } from "./ids.js";

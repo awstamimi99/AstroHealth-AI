@@ -33,7 +33,7 @@ Always test through a local server: `npm run serve` → <http://localhost:8080>.
 
 - [ ] Double-click `index.html` in Finder/Explorer (file://) → amber warning bar asks you to run a local server
 
-## 5. Print (Team 1 reports)
+## 5. Print reports
 
 - [ ] <kbd>Ctrl/Cmd</kbd>+<kbd>P</kbd> on app.html → white page, black text, no sidebar or topbar
 
@@ -429,3 +429,17 @@ All data is synthetic. Sprint 9 writes nothing to the database.
 - Keyboard only: arrow key changed the text-size radio, Tab + Enter changed the history range; accessibility tree: "Date range" and "Show" groups, 5 category checkboxes, "Text size" and "Motion" radio groups (5 radios), 4 report tables and headings; 375 / 768 / 1440 px without page-level horizontal overflow.
 - No console errors. No external requests.
 - Not yet checked: a real screen reader, Firefox, Safari, or printing to paper (print media was emulated).
+
+## 14. Release candidate — integration and competition readiness
+
+- [ ] Run `npm ci`, `npm run build:sw`, `npm run test:unit`, `npm run check:offline`, `npm run test:e2e` and `git diff --check` from a clean checkout.
+- [ ] Run `npm run build:sw` a second time and confirm the generated manifest is unchanged.
+- [ ] Confirm APP_VERSION, CACHE_VERSION and package version are `0.9.0`; DB_VERSION remains `1`.
+- [ ] Confirm home, About, sign-in and authenticated routes have no broken local links, console errors or external runtime requests.
+- [ ] Confirm disclaimers consistently say synthetic data, research/education, not a medical device, not clinically validated, and no NASA affiliation or endorsement.
+- [ ] Sign in as Medical Officer; type `RESET DEMO`; confirm the reset is atomic, all app tabs sign out, the one-time notice appears, and seed data is restored.
+- [ ] Confirm an astronaut cannot see or trigger reset, and wrong confirmation text performs no write.
+- [ ] Execute the complete demo in `docs/DEMO.md`, including simulation → explainable alert → acknowledge → resolve → astronaut privacy.
+- [ ] Check keyboard-only operation, visible focus, 375 / 768 / 1440 px layouts, offline reload after one online visit, and print preview.
+- [ ] Capture current screenshots from the running app; verify `docs/screenshots/` is not in the precache manifest.
+- [ ] Record Firefox, Safari, a real screen reader and physical printing as passed only when actually tested.

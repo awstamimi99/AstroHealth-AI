@@ -1,5 +1,5 @@
 // js/db/repositories/alerts.js — store "alerts"
-// Storage only: Team 1's risk engine/services decide WHEN to create,
+// Storage only: the risk engine and services decide WHEN to create,
 // escalate or resolve an alert, and log alertActions + missionEvents.
 //
 // add() assigns the human-readable number ("ALT-0191") from meta.alertCounter
