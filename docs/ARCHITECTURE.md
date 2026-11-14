@@ -52,7 +52,7 @@ test suite.
 | Pages / UI | `*.html`, `js/pages/`, `css/pages/` | | Build DOM with `el()` — never `innerHTML` with data |
 | Shared components | `js/components/`, `css/components.css` | core | Showcased in `tests/browser/styleguide.html` |
 | Core | `js/core/` | core | config, event bus, environment check, utils |
-| Services | `js/services/` | | The only layer pages call for data |
+| Services | `js/services/` | | The only layer pages call for data. Current: `mission-service.js` (mission name/day), `astronaut-overview-service.js` (read-only astronaut Overview: own data only, status from open alerts only, never a health assessment) |
 | Risk engine | `js/engine/`, `js/engine/rules/` | | Deterministic, explainable rules; unit-testable |
 | Simulation | `js/simulation/` | | Generates **synthetic** data; tag UI with `.sim-tag` |
 | Database | `js/db/`, `js/db/repositories/` | contract | IndexedDB wrapper + storage-only repositories; contract in `docs/DATA-MODEL.md` |

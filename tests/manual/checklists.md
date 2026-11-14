@@ -107,3 +107,59 @@ existed: run `resetDatabase()` or clear site data.
 - [ ] Load once online, then DevTools → Network → Offline → reload `app.html`
 - [ ] Every route still opens; mission chips still filled; sidebar card reads "Offline mode"
 - [ ] Console has no errors; Network shows no request to any other host
+
+## 8. Astronaut Overview (Sprint 4, `#/overview`)
+
+Run `python3 -m http.server 8080` and open <http://localhost:8080/login.html>.
+Returning browsers: reload once so the service worker cache `astrohealth-v0.3.0`
+takes over. All data is synthetic seed data; values are relative to the moment
+the database was seeded, so "today" items depend on the UTC time of seeding.
+
+**Expected per account** (seeded today after 08:00 UTC)
+
+| Account | Alert status | Open alerts | Message from the Medical Officer |
+| --- | --- | --- | --- |
+| `haddad` | No open alerts (green, check icon) | none (ALT-0181 is resolved) | "Routine request: please take a full vital-signs reading…" |
+| `karim` | No open alerts | none | "No unacknowledged messages from the Medical Officer." |
+| `chen` | Info (blue, info icon) | ALT-0189 Supportive check-in recommended · New | "No unacknowledged messages from the Medical Officer." |
+| `reyes` | Watch (amber, triangle icon) | ALT-0190 Reduced sleep duration · Acknowledged | "No unacknowledged messages from the Medical Officer." (theirs is already acknowledged) |
+
+**Each astronaut**
+
+- [ ] Header: "Welcome, <name>", crew ID, mission role, mission, and the synthetic-data notice
+- [ ] Status shows "Based on your open alerts only. This is not a health assessment." — never "healthy", "safe" or "normal"
+- [ ] Open alerts: at most 3; number · title, explanation, severity badge, status badge, SYNTHETIC tag, "Detected … UTC"; "View all alerts" → `#/alerts`; no action buttons, no unread count
+- [ ] Vital signs: exactly Heart rate, SpO₂, Blood pressure (systolic/diastolic), Sleep duration — no temperature, respiration or radiation
+- [ ] Each card: value + unit, "… UTC · N min ago", SIMULATED tag, "Your baseline: …"
+- [ ] Only your own crew ID, name and alert numbers appear (no other astronaut's data)
+- [ ] Today's routine: check-in "Completed today" + "Shared with the Medical Officer" or "Private — not shared" (no mood/stress scores); vital signs "Recorded today"; cognitive check "Last completed …" (never "due"/"overdue")
+- [ ] Sleep: 7 UTC dates with bars and values, summary sentence (nights recorded, average, baseline, nights below baseline); missing nights say "No data"
+- [ ] A message shows "From the Medical Officer" only when its sender is a stored `medical_officer` account (verified in the service); no sender id appears anywhere on the page
+- [ ] Quick links go to `#/physical`, `#/wellbeing`, `#/history`, `#/alerts` and those pages show their placeholders
+
+**Medical Officer** (`medofficer`)
+
+- [ ] `#/overview` shows "Medical Officer overview" with links to Crew Monitor and Alerts only — no astronaut names, crew IDs, alerts or readings
+
+**States**
+
+- [ ] Stale: view a database seeded on an earlier day → cards show "No newer reading" and the real age (e.g. "3 d ago"); values are not hidden or zeroed
+- [ ] Section failure (DevTools console, then go to `#/history` and back to `#/overview`):
+      `const o = IDBObjectStore.prototype.index; IDBObjectStore.prototype.index = function (n) { if (n === "by_astronaut_status") throw new DOMException("x", "UnknownError"); return o.call(this, n); }`
+      → Alert status "Status unavailable", Open alerts "Couldn't load your alerts." + Retry; other sections still show. Then run `IDBObjectStore.prototype.index = o` and press Retry → normal status returns
+- [ ] Navigate to `#/overview` and immediately to `#/history` → the Health History placeholder stays (no late Overview content)
+
+**Responsive, keyboard, accessibility**
+
+- [ ] 1440 px: 4 vital cards in a row · 768 px: 2 columns · 375 px: 1 column; no horizontal scrolling; long alert/message text wraps
+- [ ] Tab from the top reaches "View all alerts" and the four quick links, each with a visible focus ring; at 375 px Tab never enters the closed drawer
+- [ ] Screen reader / Accessibility pane: one h1 "Overview"; h2s in order Welcome, Alert status, Open alerts, Latest vital signs, Message from the Medical Officer, Today's routine, Sleep — last 7 nights, Go to; vital cards are named articles; values read with spoken units ("73 beats per minute")
+
+**Offline**
+
+- [ ] After one online visit, DevTools → Network → Offline → reload `app.html#/overview` → the Overview renders from local data
+- [ ] Console: no errors · Network: no request to another host
+
+**Results — 2026-11-14 (headless Chrome via DevTools Protocol, fresh profile, seeded 14:15 UTC):**
+15/15 checks passed — the four astronauts above (status, alerts, messages, no leakage, labels, UTC times, banned wording), refresh + other routes still placeholders + quick links, late-result guard, Retry after an induced alerts failure, keyboard (fresh tab; 5/5 Overview targets with focus ring; drawer skipped at 375 px), accessibility tree (one h1, 8 ordered h2, 4 named vital cards), 1440/768/375 px (4/2/1 columns, no overflow), Medical Officer placeholder, signed-out `#/overview` → login → back, offline reload (cache `astrohealth-v0.3.0`). No console errors, no external requests.
+Not yet checked: a real screen reader (VoiceOver/NVDA), Firefox, Safari.
