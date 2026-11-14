@@ -11,16 +11,26 @@
 // 5. Mission name + Mission Day come from the seeded settings record via
 //    js/services/mission-service.js ("Not available" if it can't be read).
 //
-// Dashboards are NOT built here — each allowed route shows a placeholder
-// until its page is implemented. The mobile drawer is handled by js/app.js.
+// 6. Route views: #/overview is rendered by js/pages/astronaut-overview.js
+//    (ROUTE_VIEWS below). Every other route still shows a placeholder until
+//    its sprint. Each navigation aborts the previous view's async work, so a
+//    late result can never overwrite the route that is now on screen.
+//
+// Dashboards are NOT built here. The mobile drawer is handled by js/app.js.
 
 import { requireSession, redirectToLogin, checkRoute } from "../auth/guard.js";
 import { getSession, clearSession, onSessionChange, roleLabel, initialsOf } from "../auth/session.js";
 import { routesForRole, homeRouteFor, findRoute } from "../auth/routes.js";
 import { getMissionContext } from "../services/mission-service.js";
+import { renderAstronautOverview } from "./astronaut-overview.js";
 import { APP_NAME } from "../core/config.js";
 import { icon } from "../components/icon.js";
 import { el, $, $$, clear } from "../core/utils/dom.js";
+
+/** Routes with a real view. Anything not listed shows the placeholder. */
+const ROUTE_VIEWS = Object.freeze({
+  "#/overview": renderAstronautOverview,
+});
 
 const session = requireSession(); // redirects to login.html when null
 if (session) startShell(session);
@@ -30,6 +40,8 @@ function startShell(current) {
   const nav = $("[data-nav]");
   const view = $("[data-route-view]");
   const title = $("#page-title");
+  /** Aborts the current route view's async work on the next navigation. */
+  let viewController = null;
 
   // ---- Signed-in user -------------------------------------------------------
   function showUser(user) {
@@ -104,6 +116,8 @@ function startShell(current) {
   /** Render the view for location.hash. `focus` moves focus for keyboard/screen-reader users. */
   function renderRoute({ focus = false } = {}) {
     if (!stillSignedIn()) return;
+    viewController?.abort(); // a late result from the previous view is ignored
+    viewController = null;
     const { route, allowed } = checkRoute(current, location.hash);
 
     // Unknown or missing route → the role's home route (replace, no history entry).
@@ -125,13 +139,20 @@ function startShell(current) {
     title.textContent = route.title;
     document.title = `${route.title} — ${APP_NAME}`;
     markActive(route.path);
-    clear(view).append(placeholderView(route));
+    const renderView = ROUTE_VIEWS[route.path];
+    if (renderView) {
+      viewController = new AbortController();
+      renderView(clear(view), current, { signal: viewController.signal });
+    } else {
+      clear(view).append(placeholderView(route));
+    }
     if (focus) title.focus();
   }
 
   // ---- Logout -----------------------------------------------------------------------------
   /** Hide everything personal, then go to login (optionally back to `returnTo` afterwards). */
   function leave({ returnTo } = {}) {
+    viewController?.abort();
     shell.style.visibility = "hidden";
     showUser(null); // remove user info from the screen immediately
     clear(nav);

@@ -1,6 +1,8 @@
 // js/core/utils/format.js
 // SHARED. Small formatting helpers for times, dates and numbers.
 // All functions accept a Date, a timestamp (ms) or an ISO string.
+// Times and dates use the browser's time zone unless you pass
+// { timeZone: "UTC" } (the mission clock — e.g. on the astronaut Overview).
 
 const LOCALE = undefined; // undefined = use the browser's language
 
@@ -11,42 +13,49 @@ export function toDate(value) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** "14:05" (24-hour clock — mission standard). */
-export function formatTime(value, { seconds = false } = {}) {
+/**
+ * "14:05" (24-hour clock — mission standard; midnight is "00:05", never "24:05").
+ * @param {{ seconds?: boolean, timeZone?: string }} [options] timeZone e.g. "UTC"
+ */
+export function formatTime(value, { seconds = false, timeZone } = {}) {
   const d = toDate(value);
   if (!d) return "—";
   return d.toLocaleTimeString(LOCALE, {
     hour: "2-digit",
     minute: "2-digit",
     second: seconds ? "2-digit" : undefined,
-    hour12: false,
+    hourCycle: "h23",
+    timeZone,
   });
 }
 
-/** "14 Nov 2026". */
-export function formatDate(value) {
+/** "14 Nov 2026". @param {{ timeZone?: string }} [options] */
+export function formatDate(value, { timeZone } = {}) {
   const d = toDate(value);
   if (!d) return "—";
-  return d.toLocaleDateString(LOCALE, { day: "numeric", month: "short", year: "numeric" });
+  return d.toLocaleDateString(LOCALE, { day: "numeric", month: "short", year: "numeric", timeZone });
 }
 
-/** "14 Nov 2026, 14:05". */
-export function formatDateTime(value) {
+/** "14 Nov 2026, 14:05". @param {{ timeZone?: string }} [options] */
+export function formatDateTime(value, { timeZone } = {}) {
   const d = toDate(value);
-  return d ? `${formatDate(d)}, ${formatTime(d)}` : "—";
+  return d ? `${formatDate(d, { timeZone })}, ${formatTime(d, { timeZone })}` : "—";
 }
 
-/** "just now", "5 min ago", "3 h ago", "2 d ago". */
+/**
+ * "just now", "5 min ago", "3 h ago", "2 d ago" — and, for a time that is
+ * still ahead (e.g. a clock mismatch), "in 5 min", "in 3 h", "in 2 d".
+ */
 export function formatRelative(value, now = Date.now()) {
   const d = toDate(value);
-  if (!d) return "—";
-  const sec = Math.round((now - d.getTime()) / 1000);
+  if (!d || !Number.isFinite(Number(now))) return "—";
+  const diff = Math.round((Number(now) - d.getTime()) / 1000);
+  const sec = Math.abs(diff);
   if (sec < 45) return "just now";
   const min = Math.round(sec / 60);
-  if (min < 60) return `${min} min ago`;
   const h = Math.round(min / 60);
-  if (h < 24) return `${h} h ago`;
-  return `${Math.round(h / 24)} d ago`;
+  const text = min < 60 ? `${min} min` : h < 24 ? `${h} h` : `${Math.round(h / 24)} d`;
+  return diff < 0 ? `in ${text}` : `${text} ago`;
 }
 
 /** "02:07:09" from a duration in milliseconds. */

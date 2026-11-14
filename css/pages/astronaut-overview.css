@@ -1,0 +1,274 @@
+/* css/pages/astronaut-overview.css — #/overview (Sprint 4)
+   Built on the shared components (card, metric, badge, alert-item, sim-tag,
+   banner, state, skeleton) and the grid helpers in layout.css.
+   Status colours always come with an icon and text. Orange is never a warning. */
+
+.overview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+/* ---- Header -------------------------------------------------------------- */
+.overview__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.overview__welcome {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+.overview__subtitle {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+.overview__notice {
+  margin-top: var(--space-2);
+  align-items: flex-start;
+}
+
+/* ---- Sections -------------------------------------------------------------- */
+.overview__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.overview__title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+.overview__text {
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+.overview__note,
+.overview__meta,
+.overview__empty {
+  color: var(--color-text-3);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+.overview__empty {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+.overview__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* Badges are nowrap in components.css; let long ones wrap on narrow screens. */
+.overview .badge {
+  white-space: normal;
+}
+
+.overview__status-badge {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+}
+.overview__status-badge .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.overview__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+.overview__error p {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* ---- Alerts ------------------------------------------------------------------ */
+.overview__alerts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.overview__alerts .alert-item__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.overview__alerts .alert-item__title,
+.overview__alerts .alert-item__text {
+  overflow-wrap: anywhere;
+}
+
+/* ---- Vital cards --------------------------------------------------------------- */
+.overview__vital {
+  min-width: 0;
+}
+.overview__vital .metric__label {
+  font-size: var(--text-xs);
+}
+.overview__vital .metric__footer {
+  margin-top: auto;
+}
+.overview__no-value {
+  color: var(--color-text-3);
+}
+
+/* ---- Message --------------------------------------------------------------------- */
+.overview__message {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-elevated);
+}
+.overview__message-body {
+  overflow-wrap: anywhere;
+}
+
+/* ---- Routine -------------------------------------------------------------------- */
+.overview__routine {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.overview__routine-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.overview__routine-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--color-elevated);
+  color: var(--color-text-2);
+}
+.overview__routine-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.overview__routine-title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+/* ---- Sleep bars (D9: CSS only, no Chart.js) ---------------------------------------- */
+/* --baseline and each bar's --h are percentages of a fixed 0–10 h scale. */
+.overview-sleep {
+  position: relative;
+  padding-top: var(--space-5);
+}
+.overview-sleep__nights {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.overview-sleep__night {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  text-align: center;
+}
+.overview-sleep__track {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: 96px;
+  border-bottom: 1px solid var(--color-border);
+}
+.overview-sleep__bar {
+  display: block;
+  width: min(100%, 28px);
+  height: var(--h, 0%);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: color-mix(in srgb, var(--color-info) 70%, transparent);
+}
+.overview-sleep__night.is-missing .overview-sleep__track {
+  border-bottom-style: dashed;
+}
+.overview-sleep__value {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.overview-sleep__night.is-missing .overview-sleep__value {
+  color: var(--color-text-3);
+  font-weight: var(--weight-regular);
+}
+.overview-sleep__date {
+  color: var(--color-text-3);
+  font-size: var(--text-2xs);
+  white-space: nowrap;
+}
+/* Dashed baseline line across the bar area (decorative; the text says it too).
+   The 96px track sits below the top padding; the element's BOTTOM border is
+   the line, and its "baseline" label sits just above it. */
+.overview-sleep__baseline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--space-5) + 96px * (1 - var(--baseline-ratio, 0)));
+  transform: translateY(-100%);
+  padding-bottom: 2px;
+  border-bottom: 1px dashed var(--color-text-3);
+  color: var(--color-text-3);
+  font-size: var(--text-2xs);
+  line-height: 1;
+  text-align: right;
+  pointer-events: none;
+}
+
+/* ---- Quick links --------------------------------------------------------------------- */
+.overview__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* ---- Loading --------------------------------------------------------------------------- */
+.overview__loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+@media (max-width: 599px) {
+  .overview-sleep__nights {
+    gap: var(--space-1);
+  }
+  .overview-sleep__date {
+    white-space: normal;
+  }
+}

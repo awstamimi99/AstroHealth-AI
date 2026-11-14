@@ -4,7 +4,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -195,5 +195,41 @@ test("mission: getMissionContext never throws when the database is unavailable",
     assert.equal(await getMissionContext(officer), MISSION_UNAVAILABLE);
   } finally {
     console.warn = warn;
+  }
+});
+
+// ---- Sprint 4: route views ------------------------------------------------------
+
+test("app-shell delegates only #/overview to a real view; every other route keeps its placeholder", () => {
+  const shell = read("js/pages/app-shell.js");
+  assert.match(shell, /import \{ renderAstronautOverview \} from "\.\/astronaut-overview\.js";/);
+  const map = /const ROUTE_VIEWS = Object\.freeze\(\{([\s\S]*?)\}\);/.exec(shell);
+  assert.ok(map, "ROUTE_VIEWS map exists");
+  const entries = [...map[1].matchAll(/"(#\/[a-z-]+)":\s*(\w+)/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(entries, [["#/overview", "renderAstronautOverview"]]);
+  // Unmapped routes still render placeholderView, and restricted routes still show Access denied first.
+  assert.match(shell, /const renderView = ROUTE_VIEWS\[route\.path\];[\s\S]*?else \{\s*clear\(view\)\.append\(placeholderView\(route\)\);/);
+  assert.ok(shell.indexOf("if (!allowed)") < shell.indexOf("const renderView = ROUTE_VIEWS"), "guard runs before any view");
+  for (const r of ROUTES.filter((x) => x.path !== "#/overview")) assert.ok(!entries.some(([p]) => p === r.path), r.path);
+});
+
+test("app-shell aborts the previous view on every navigation and on logout (no stale overwrite)", () => {
+  const shell = read("js/pages/app-shell.js");
+  const render = /function renderRoute\([\s\S]*?\n  \}\n/.exec(shell)[0];
+  const abortAt = render.indexOf("viewController?.abort()");
+  assert.ok(abortAt > 0, "renderRoute aborts the previous view");
+  assert.ok(abortAt < render.indexOf("checkRoute("), "…before deciding what to render");
+  assert.match(render, /viewController = new AbortController\(\);\s*renderView\(clear\(view\), current, \{ signal: viewController\.signal \}\);/);
+  assert.match(/function leave\([\s\S]*?\n  \}\n/.exec(shell)[0], /viewController\?\.abort\(\)/);
+});
+
+test("pages never import the database (login.js is the one documented Sprint 2 exception)", () => {
+  const dir = join(ROOT, "js/pages");
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".js"))) {
+    const source = read(`js/pages/${file}`);
+    const imports = [...source.matchAll(/^import\s[^;]*?from\s+["']([^"']+)["']/gm)].map((m) => m[1]);
+    const dbImports = imports.filter((p) => p.includes("/db/"));
+    if (file === "login.js") assert.deepEqual(dbImports, ["../db/index.js"], "login.js: only the public index");
+    else assert.deepEqual(dbImports, [], file);
   }
 });
