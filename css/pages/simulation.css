@@ -1,0 +1,252 @@
+/* css/pages/simulation.css — #/simulation, the Simulation Center (Sprint 7).
+   Built on card, badge, banner, sim-tag, field, btn and table. Status =
+   colour + icon + text; orange is brand/interaction only, never a warning.
+   Bars are decorative (aria-hidden) — the tables carry the data. */
+
+.sim,
+.sim__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+.sim__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sim__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.sim__title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+}
+.sim__subtitle,
+.sim__empty {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+.sim__text {
+  overflow-wrap: anywhere;
+}
+.sim__note {
+  color: var(--color-text-3);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+.sim__note:empty {
+  display: none;
+}
+.sim__links,
+.sim-controls__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.sim__iconline {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.sim__iconline > .icon {
+  flex: none;
+  margin-top: 2px;
+}
+.sim .badge {
+  white-space: normal;
+}
+
+/* ---- Active run -------------------------------------------------------------------- */
+.sim-run__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.sim-run__step {
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+.sim-progress {
+  width: 100%;
+  height: 10px;
+  appearance: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-border-subtle);
+  overflow: hidden;
+}
+.sim-progress::-webkit-progress-bar {
+  background: var(--color-border-subtle);
+  border-radius: var(--radius-pill);
+}
+.sim-progress::-webkit-progress-value {
+  background: var(--color-info);
+  border-radius: var(--radius-pill);
+  transition: width var(--motion-base) var(--ease);
+}
+.sim-progress::-moz-progress-bar {
+  background: var(--color-info);
+  border-radius: var(--radius-pill);
+}
+.sim-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.sim-facts dt {
+  color: var(--color-text-2);
+}
+.sim-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.sim-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sim-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-critical);
+  border-radius: var(--radius-md);
+  background: var(--color-critical-tint);
+}
+.sim-confirm__title,
+.sim-preview__title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+/* ---- New run form -------------------------------------------------------------------- */
+.sim-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.sim-scenarios {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  min-width: 0;
+}
+.sim-scenarios__legend {
+  padding: 0 var(--space-1);
+  font-weight: var(--weight-semibold);
+}
+.sim-scenario,
+.sim-check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.sim-scenario input,
+.sim-check input {
+  margin-top: 3px;
+  flex: none;
+}
+.sim-scenario:focus-within,
+.sim-check:focus-within {
+  box-shadow: var(--focus-ring);
+}
+.sim-scenario__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.sim-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-info);
+  border-radius: var(--radius-md);
+  background: var(--color-info-tint);
+  min-width: 0;
+}
+
+/* ---- Readings, timeline, recent ------------------------------------------------------- */
+.sim-table-wrap {
+  max-width: 100%;
+}
+.sim-table-wrap:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+.sim-table {
+  font-variant-numeric: tabular-nums;
+}
+.sim-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 64px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--color-border);
+}
+.sim-bars__bar {
+  flex: 1;
+  max-width: 32px;
+  height: var(--h, 0%);
+  border-radius: 2px 2px 0 0;
+  background: color-mix(in srgb, var(--color-info) 65%, transparent);
+  transition: height var(--motion-base) var(--ease);
+}
+.sim-timeline,
+.sim-recent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sim-timeline__item,
+.sim-recent__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  min-width: 0;
+}
+
+/* ---- Responsive -------------------------------------------------------------------------- */
+@media (max-width: 599px) {
+  .sim-form__grid,
+  .sim-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sim-facts dd {
+    margin-bottom: var(--space-2);
+  }
+  .sim-controls__row .btn {
+    flex: 1 1 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim-bars__bar,
+  .sim-progress::-webkit-progress-value {
+    transition: none;
+  }
+}

@@ -62,7 +62,7 @@ Demo accounts (password `demo`): `haddad` (astronaut, a-01), `medofficer` and
 
 Run `python3 -m http.server 8080`, then open <http://localhost:8080/login.html>.
 If you visited before, reload once so the current service worker
-(cache `astrohealth-v0.5.0`) takes over. If the mission chips show
+(cache `astrohealth-v0.6.0`) takes over. If the mission chips show
 "Not available", the browser holds data seeded before the `mission` setting
 existed: run `resetDatabase()` or clear site data.
 
@@ -85,7 +85,7 @@ existed: run `resetDatabase()` or clear site data.
 - [ ] Lands on `#/overview`; "Dr. Lena Ortiz", "Medical Officer", "LO"
 - [ ] 9 sidebar items; Crew Monitor and Simulation Center visible with the "MO" tag
 - [ ] `#/overview` and `#/crew` (Crew Monitor) open the functional Sprint 5 views — verify them with section 9
-- [ ] `#/simulation` (Simulation Center) still opens its placeholder (no Access denied)
+- [ ] `#/simulation` opens the Sprint 7 Simulation Center (no Access denied) — verify it with section 11
 - [ ] Astronauts still get Access denied on both `#/crew` and `#/simulation` (see the Astronaut list above)
 - [ ] Log out → `login.html`
 
@@ -119,7 +119,7 @@ existed: run `resetDatabase()` or clear site data.
 
 Run `python3 -m http.server 8080` and open <http://localhost:8080/login.html>.
 Returning browsers: reload once so the current service worker cache
-`astrohealth-v0.5.0` takes over. All data is synthetic seed data; values are relative to the moment
+`astrohealth-v0.6.0` takes over. All data is synthetic seed data; values are relative to the moment
 the database was seeded, so "today" items depend on the UTC time of seeding.
 
 **Expected per account** (seeded today after 08:00 UTC)
@@ -179,7 +179,7 @@ Not yet checked: a real screen reader (VoiceOver/NVDA), Firefox, Safari.
 ## 9. Medical Officer dashboard & Crew Monitor (Sprint 5)
 
 Run `python3 -m http.server 8080`, open <http://localhost:8080/login.html>, and
-reload once so the current service worker cache `astrohealth-v0.5.0` takes over.
+reload once so the current service worker cache `astrohealth-v0.6.0` takes over.
 All data is synthetic seed data.
 
 **`medofficer` and `medbackup` — `#/overview`**
@@ -225,7 +225,7 @@ Not yet checked: a real screen reader, Firefox, Safari.
 ## 10. Physical Health & Mental Wellbeing (Sprint 6)
 
 Run `python3 -m http.server 8080`, open <http://localhost:8080/login.html>, and
-reload once so the current service worker cache `astrohealth-v0.5.0` takes over.
+reload once so the current service worker cache `astrohealth-v0.6.0` takes over.
 All data is synthetic. No private journal in this sprint.
 
 **Astronaut — `#/physical`** (e.g. `reyes`)
@@ -266,3 +266,65 @@ All data is synthetic. No private journal in this sprint.
 **Results — 2026-11-14 (headless Chrome via DevTools Protocol, fresh profile):**
 12/12 Sprint 6 checks passed — Reyes physical (own data, baseline wording, 7→30 toggle, ALT-0190, 3 nested URLs → not found); Haddad validation (6 errors, summary focused, answers kept); private check-in with same-day confirmation (one record + one score-free event `{shared:0}`); shared check-in with share + same-day confirmation (triple click → exactly one record, event `{shared:1}`, no scores); Medical Officer pickers, `#/physical/AH-04` (focus on name), `#/wellbeing/AH-01` (28 shared shown incl. the new one, 4 private hidden, count matches IndexedDB); 4 bad IDs → not found, nested refresh; 1440/768/375 px (4/2/1 columns, no overflow); keyboard-only check-in (fresh tab); accessibility tree (7 named groups, 50 radios); offline save. No console errors, no external requests.
 Not yet checked: a real screen reader, Firefox, Safari.
+
+## 11. Simulation Center (Sprint 7, `#/simulation`)
+
+Run `python3 -m http.server 8080`, open <http://localhost:8080/login.html>, and
+reload once so the current service worker cache `astrohealth-v0.6.0` takes over.
+All data is synthetic. Sprint 7 evaluates **no** risk rules and creates **no**
+alerts.
+
+**Astronaut** (`haddad`)
+
+- [ ] No Simulation Center in the sidebar; typing `#/simulation` → **Access denied** (no simulation request made)
+
+**Medical Officer** (`medofficer`, `medbackup`)
+
+- [ ] Header "Simulation Center", SIMULATED tag, synthetic-data notice, disclaimer (not a medical device, not clinically validated, not affiliated with or endorsed by NASA)
+- [ ] Notes: "No risk rules are evaluated and no alerts are created. Risk evaluation will be implemented in the Risk Engine sprint." and "The simulation advances only while this page is open. Background tabs may be delayed."
+- [ ] New run: crew select, Scenario fieldset with two radios (Low oxygen saturation demonstration, Elevated heart rate demonstration), speed select (1×, 2×, 4×, 8× with total duration); Start stays disabled and says why
+- [ ] Choosing AH-03 + low oxygen previews 95 93 92 90 88 88 88 90 92 93 95 97 % (from the stored baseline 97 %); changing the selection clears the confirmation
+- [ ] Tick the confirmation → Start → "Active run", Running, `<progress>` "Step 0 of 12"; the screen reader hears "Simulation started for Mei Chen." once, not every step
+- [ ] Steps arrive every 8 / 4 / 2 / 1 s (1× / 2× / 4× / 8×); readings table and bars grow; each value is labelled Simulated; timeline lists Started, Reading generated…
+- [ ] Pause → Paused, no more readings; "Advance one step" disabled with a reason; Resume continues from the next step
+- [ ] Stop → confirmation panel ("Stop this simulation?"); "Keep the run" returns focus to Stop; "Stop simulation" ends it at the current step
+- [ ] After 12 steps: Completed (Last run), the final value equals the start value; the new-run form returns; Recent runs lists it
+- [ ] While a run is active, starting another (other tab / `medbackup`) → "Another simulation is already active…" and no second run
+- [ ] Refresh mid-run (wait > 3 intervals + 5 s) → "Not advancing — the page may have been closed"; no missed steps filled in; Continue / Pause / Stop work
+- [ ] Two tabs on the same run: never two readings for the same step (they may advance faster together — known limitation)
+- [ ] Links: `#/physical/AH-03` and `#/crew/AH-03` show the new readings with "Simulated · Simulation Center"; the astronaut's own Overview too; the open alert count is unchanged
+- [ ] Leaving the page during a run writes nothing (run stays Running, no auto-pause)
+- [ ] 1440 / 768 / 375 px, no horizontal scrolling; keyboard only (Tab, Space/Enter, arrow keys in the radio group) with a visible focus ring; reduced motion stops bar transitions
+- [ ] Offline (after one online visit): the page loads and runs locally; no console errors; no request to another host
+
+**Results — 2026-11-14 (headless Chrome via DevTools Protocol, fresh isolated profiles):**
+
+- Sprint 7: 11/11 passed.
+- Full deterministic 12-step low-oxygen run.
+- Exact sequence: `95 93 92 90 88 88 88 90 92 93 95 97`.
+- Latest reading and daily summary updated.
+- 14 simulation events.
+- Alerts unchanged.
+- Alert-action records unchanged.
+- Pause, refresh, resume, and confirmed stop persisted.
+- No reading written while paused.
+- No backfill while away from the page.
+- Two-tab duplicate-step prevention passed.
+- Concurrent start created only one active run.
+- Cross-dashboard “Simulated · Simulation Center” provenance passed.
+- Astronaut Access Denied passed with no simulation write.
+- 375px and 768px had no page-level horizontal overflow.
+- Keyboard and accessibility checks passed.
+- Offline reload and manual step passed.
+- No console errors.
+- No external requests.
+
+Completed regression suites, each using an isolated fresh browser profile and database:
+
+- Login: 15/15.
+- Database: 32/32.
+- Sprint 4: 15/15.
+- Sprint 5: 14/14.
+- Sprint 6: 12/12.
+
+- Not yet checked with a real screen reader, Firefox, or Safari.
