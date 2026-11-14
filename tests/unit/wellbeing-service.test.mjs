@@ -265,6 +265,7 @@ test("54 + regression guards: DB_VERSION is 1; services import only the public D
   assert.equal(DB_VERSION, 1);
   for (const f of readdirSync(join(ROOT, "js/services"))) {
     const imports = [...read(`js/services/${f}`).matchAll(/^import\s[^;]*?from\s+["']([^"']+)["']/gm)].map((m) => m[1]);
-    for (const p of imports) assert.ok(p === "../db/index.js" || /^\.\/[a-z-]+\.js$/.test(p), `${f}: ${p}`);
+    // Sprint 7: a service may also import the pure scenario catalog in js/simulation/.
+    for (const p of imports) assert.ok(p === "../db/index.js" || /^\.\/[a-z-]+\.js$/.test(p) || p === "../simulation/scenarios.js", `${f}: ${p}`);
   }
 });
