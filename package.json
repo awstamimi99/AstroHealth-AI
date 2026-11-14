@@ -1,8 +1,8 @@
 {
   "name": "astrohealth-ai",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
-  "description": "AstroHealth AI — offline-first astronaut health monitoring prototype (NASA Space Apps student project). Dev-time tooling only; the app itself runs without Node.",
+  "description": "AstroHealth AI — online-capable astronaut health monitoring prototype with optional offline support (NASA Space Apps student project). Dev-time tooling only; the app itself runs without Node.",
   "type": "module",
   "scripts": {
     "setup": "node scripts/copy-vendor.mjs && node scripts/build-icons.mjs && node scripts/build-brand.mjs && node scripts/build-sw-manifest.mjs",

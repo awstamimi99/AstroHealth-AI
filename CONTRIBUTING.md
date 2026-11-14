@@ -42,7 +42,8 @@ Need a new shared component? Add it to `css/components.css` **and** to
    require a Team 1 reviewer).
 5. Before every PR:
    ```bash
-   npm run check:offline     # must pass
+   npm run test:unit         # must pass
+   npm run check:offline     # must pass (static frontend: no remote assets)
    npm run build:sw          # if you added/removed/renamed files
    ```
    and go through `tests/manual/checklists.md` for the pages you touched.
@@ -64,12 +65,22 @@ fix(sidebar): close drawer on Escape
   Same for spacing, radii, font sizes and z-index.
 - **Orange = brand/interaction only.** Never use orange to mean "warning".
   Every status shows **colour + icon + text**.
-- **No remote URLs** in HTML/CSS/JS — no CDNs, Google Fonts, remote images or APIs.
+- **No remote assets** in HTML/CSS/JS: no CDNs, Google Fonts, remote images, scripts, styles or analytics.
+- **APIs only under the API policy** in `docs/ARCHITECTURE.md`:
+  - approved endpoints only, called by `js/services/` through `js/core/api.js` (pages never call APIs or repositories directly);
+  - HTTPS in production, `localhost` in development;
+  - loading, timeout, offline and clear error states;
+  - no fabricated data on failure;
+  - never send passwords, hashes, salts, the session or private journal text.
+- **IndexedDB stays the primary data store.** Don't move data to a server or break the `js/db/index.js` API.
+- **Python** only when a feature needs it, as a small FastAPI service (see the Python policy). There is no Python backend or dependency yet.
+- **Offline support is optional but kept.** Don't remove the service worker; online-only features must say so when offline.
 - **No untrusted strings in `innerHTML`.** Build DOM with `el()` from `js/core/utils/dom.js`.
-- Vanilla JS ES modules (`<script type="module">`), no frameworks, no bundler.
+- Vanilla JS ES modules (`<script type="module">`), no frameworks, no bundler. The UI is never rewritten in Python.
 - Keep code simple and commented — other students need to read it.
 - Icons: `icon("name")` from `js/components/icon.js`. Missing icon? Add the name
   to `scripts/build-icons.mjs`, run `npm run setup`, commit `vendor/lucide/icons.js`.
-- Synthetic data must be visibly labelled with `.sim-tag`.
+- All astronaut health, medical, mission and simulation records are synthetic; real astronaut health or medical records are never permitted. Synthetic data must be visibly labelled with `.sim-tag`.
+- Verified public NASA resources and research references may be real, and must be clearly attributed.
 - Citations in `data/references.json`: never invented; new entries start `"verified": false`
   (see `docs/ARCHITECTURE.md`).

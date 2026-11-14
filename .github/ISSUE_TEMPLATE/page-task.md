@@ -18,7 +18,7 @@ labels: task
 
 - [ ] …
 - [ ] …
-- [ ] Works offline and passes `npm run check:offline`
+- [ ] Passes `npm run check:offline`; works offline if it uses only local data, or shows a clear "needs internet" state if it needs an approved API
 - [ ] Uses only shared components/tokens (see tests/browser/styleguide.html)
 - [ ] No console errors
 
