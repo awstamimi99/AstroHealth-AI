@@ -1,9 +1,14 @@
 // js/services/simulation-service.js — #/simulation, the Simulation Center (Sprint 7).
 //
 // Medical Officer only. Generates deterministic SYNTHETIC readings from the
-// reviewed catalog in js/simulation/scenarios.js. Sprint 7 is "simulation
-// only": no risk rule is evaluated, no threshold is read, and alerts /
-// alertActions are never read or written.
+// reviewed catalog in js/simulation/scenarios.js. This service never reads
+// thresholds and never reads or writes alerts / alertActions itself.
+// Sprint 8: after a step's transaction has COMMITTED, it asks the risk
+// service (js/services/risk-service.js) to evaluate the demonstration rules
+// for that crew member. That evaluation is a separate transaction: if it
+// fails, the reading stays stored and the result says "risk evaluation
+// unavailable"; the next step or an explicit evaluation looks at the
+// current stored data again.
 //
 //   listSimulationScenarios()                                    static catalog
 //   getSimulationCenter(session, options)                        page state
@@ -62,6 +67,7 @@ import {
   SIMULATION_STATUSES,
 } from "../db/index.js";
 import { verifyMedicalOfficer, resolveCrewMember, CREW_ID_PATTERN } from "./access-control.js";
+import { evaluateAstronaut } from "./risk-service.js";
 import {
   SCENARIOS,
   CATALOG_VERSION,
@@ -78,8 +84,9 @@ import {
 
 export { SIMULATION_SPEEDS, DEFAULT_SPEED, BASE_STEP_MS, SCENARIO_DISCLAIMER };
 
-export const NO_RISK_NOTE =
-  "No risk rules are evaluated and no alerts are created. Risk evaluation will be implemented in the Risk Engine sprint.";
+export const RISK_NOTE =
+  "After each generated reading, the demonstration risk rules (PHY-01 heart rate, PHY-02 SpO₂, PHY-03 systolic blood pressure, PHY-05 sleep) " +
+  "are evaluated for that crew member. Demonstration threshold — not clinically validated. Alerts are reviewed on the Alerts page.";
 export const OPEN_PAGE_NOTE = "The simulation advances only while this page is open. Background tabs may be delayed.";
 export const RECENT_RUNS_LIMIT = 5;
 export const TIMELINE_LIMIT = 40;
@@ -141,7 +148,19 @@ const EVENT_LABEL = {
 const EVENT_RANK = { simulation_stopped: 3, simulation_paused: 2, measurement_recorded: 1, simulation_started: 0 };
 
 /** TEST SEAM. Pages use the exported functions below. */
-export function createSimulationService({ repos, withTransaction: runTransaction, scenarios = SCENARIOS }) {
+/** Presentation-safe summary of a risk-service result (public numbers only). */
+export function presentRiskResult(r) {
+  if (!r || r.status !== "evaluated") return { status: "unavailable", reason: (r && r.reason) || "unexpected_error", changes: [] };
+  return {
+    status: "evaluated",
+    reason: "",
+    changes: (Array.isArray(r.rules) ? r.rules : [])
+      .filter((x) => x && x.change && x.change !== "none")
+      .map((x) => ({ ruleId: x.ruleId, title: x.title, change: x.change, alertNumber: x.alertNumber, severity: x.alertSeverity })),
+  };
+}
+
+export function createSimulationService({ repos, withTransaction: runTransaction, scenarios = SCENARIOS, evaluateRisk = null }) {
   const locks = new Set();
   const nowOf = (options) => (options && options.now !== undefined ? options.now : Date.now());
   const scenarioOf = (id) => getScenario(id, scenarios);
@@ -325,7 +344,7 @@ export function createSimulationService({ repos, withTransaction: runTransaction
         active: activeList === ERROR ? { status: "error" } : { status: "ok", running: Boolean(activeRun), otherActive },
         run,
         recent,
-        notes: { noRisk: NO_RISK_NOTE, openPage: OPEN_PAGE_NOTE, disclaimer: SCENARIO_DISCLAIMER },
+        notes: { risk: RISK_NOTE, openPage: OPEN_PAGE_NOTE, disclaimer: SCENARIO_DISCLAIMER },
       });
     },
 
@@ -535,10 +554,23 @@ export function createSimulationService({ repos, withTransaction: runTransaction
           if (outcome.status === "not_found") return result("not_found", "unknown_run", now);
           return result("conflict", outcome.conflict, now, { runStatus: outcome.runStatus, currentStep: outcome.currentStep });
         }
+        // The step is committed. Risk evaluation is a separate transaction (Sprint 8).
+        let risk = { status: "not_configured", reason: "", changes: [] };
+        if (typeof evaluateRisk === "function") {
+          try {
+            const a = await repos.astronautsRepo.getById(run.astronautId);
+            risk = a && a.id === run.astronautId && CREW_ID_PATTERN.test(a.crewId)
+              ? presentRiskResult(await evaluateRisk(session, a.crewId, { now, trigger: "simulation" }))
+              : { status: "unavailable", reason: "astronaut_missing", changes: [] };
+          } catch {
+            risk = { status: "unavailable", reason: "unexpected_error", changes: [] };
+          }
+        }
         return result(final ? "completed" : "advanced", "", now, {
           step,
           totalSteps: run.totalSteps,
           reading: { step, metric: scenario.metric, value, unit, timestamp: now, source: "simulation" },
+          risk,
         });
       });
     },
@@ -614,6 +646,7 @@ export function createSimulationService({ repos, withTransaction: runTransaction
 const production = createSimulationService({
   repos: Object.freeze({ usersRepo, astronautsRepo, measurementsRepo, simulationRunsRepo, eventsRepo }),
   withTransaction,
+  evaluateRisk: (session, crewId, options) => evaluateAstronaut(session, crewId, options),
 });
 export const listSimulationScenarios = () => production.listSimulationScenarios();
 export const getSimulationCenter = (session, options) => production.getSimulationCenter(session, options);

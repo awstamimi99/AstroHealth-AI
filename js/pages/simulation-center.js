@@ -1,4 +1,5 @@
-// js/pages/simulation-center.js — #/simulation, the Simulation Center (Sprint 7).
+// js/pages/simulation-center.js — #/simulation, the Simulation Center (Sprint 7;
+// Sprint 8 shows each step's risk-evaluation result from the service).
 //
 // Medical Officer only (the route guard denies astronauts before this module
 // runs; the service refuses them again). Presentation and the step timer
@@ -71,6 +72,7 @@ const defaultTimers = Object.freeze({ set: (fn, ms) => setTimeout(fn, ms), clear
 const defaultChannel = Object.freeze({
   subscribe: (fn) => bus.on("simulation:changed", (_data, meta) => { if (meta && meta.remote) fn(); }),
   notify: () => bus.emit("simulation:changed", {}),
+  notifyAlerts: () => bus.emit("alert:changed", {}),
 });
 
 /** "1 min 36 s", "12 s" */
@@ -109,6 +111,7 @@ export function createSimulationCenterRenderer({ service, timers = defaultTimers
       busy: false,
       confirmStop: false,
       message: null, // { tone: "error" | "info", text }
+      risk: null, // the last step's risk-evaluation result (public alert numbers only)
       form: { crewId: "", scenarioId: "", speed: DEFAULT_SPEED, confirm: false },
       preview: null,
       previewGen: 0,
@@ -163,6 +166,13 @@ export function createSimulationCenterRenderer({ service, timers = defaultTimers
       clearTimer();
       const res = await act(() => service.advanceSimulation(session, run.runRef, { expectedStep: run.step }));
       if (!res) return;
+      if (res.status === "advanced" || res.status === "completed") {
+        st.risk = res.risk ? { ...res.risk, step: res.step } : null;
+        const major = st.risk && st.risk.status === "evaluated" ? st.risk.changes.filter((c) => c.change === "opened" || c.change === "escalated") : [];
+        if (st.risk && st.risk.status !== "evaluated" && st.risk.status !== "not_configured") announce("Risk evaluation unavailable for this step. The reading was saved.");
+        else if (major.length) announce(major.map((c) => `${c.alertNumber} ${c.title} ${c.change} (${c.severity}).`).join(" "));
+        if (st.risk && st.risk.changes && st.risk.changes.length && typeof channel.notifyAlerts === "function") channel.notifyAlerts();
+      }
       if (res.status === "advanced") {
         st.message = null;
         channel.notify();
@@ -379,6 +389,7 @@ export function createSimulationCenterRenderer({ service, timers = defaultTimers
         el("progress", { class: "sim-progress", max: String(run.totalSteps || 1), value: String(run.step), "aria-labelledby": "sim-run-title", "aria-describedby": "sim-progress-text" }, `${pct}%`),
         el("dl", { class: "sim-facts" }, facts.flatMap(([k, v]) => [el("dt", {}, k), el("dd", {}, v)])),
         explain ? el("p", { class: "sim__text" }, explain) : null,
+        riskBox(),
         run.active ? controls(run, key, driving) : null,
         run.active ? stopConfirm(run) : null,
       ]);
@@ -563,10 +574,27 @@ export function createSimulationCenterRenderer({ service, timers = defaultTimers
       ]);
     }
 
+    /** The last step's risk evaluation, shown honestly (never a success when it failed). */
+    function riskBox() {
+      const r = st.risk;
+      if (!r || r.status === "not_configured") return null;
+      if (r.status !== "evaluated") {
+        return el("p", { class: "sim__text sim__iconline sim-risk sim-risk--error", role: "note" }, [icon("circle-alert"), el("span", {}, `Risk evaluation unavailable after step ${r.step}. The reading was saved; the next step or “Evaluate crew now” on the Alerts page checks the stored data again.`)]);
+      }
+      const CHANGE = { opened: "opened", escalated: "escalated", updated: "updated with new evidence", condition_cleared: "condition cleared" };
+      return el("div", { class: "sim-risk" }, [
+        el("p", { class: "sim__text sim__iconline" }, [icon("bell"), el("span", {}, r.changes.length ? `Risk evaluation after step ${r.step}:` : `Risk evaluation after step ${r.step}: no alert changed.`)]),
+        r.changes.length
+          ? el("ul", { class: "sim-risk__list", role: "list" }, r.changes.map((c) => el("li", {}, [el("a", { href: `#/alerts/${c.alertNumber}` }, `${c.alertNumber} ${c.title}`), ` · ${c.severity} · ${CHANGE[c.change] || c.change}`])))
+          : null,
+        el("p", { class: "sim__note" }, "Demonstration threshold — not clinically validated."),
+      ]);
+    }
+
     function notesSection(d) {
-      return section("sim-notes-title", "What this sprint does and doesn't do", [
-        el("p", { class: "sim__text sim__iconline" }, [icon("info"), el("span", {}, d.notes.noRisk)]),
-        el("p", { class: "sim__text" }, "Alerts and risk evaluation are not available in the Simulation Center yet."),
+      return section("sim-notes-title", "Risk evaluation and limits", [
+        el("p", { class: "sim__text sim__iconline" }, [icon("info"), el("span", {}, d.notes.risk)]),
+        el("p", { class: "sim__text" }, ["Review, acknowledge and resolve alerts on the ", el("a", { href: "#/alerts" }, "Alerts page"), ". The Simulation Center never acknowledges or resolves alerts."]),
         el("p", { class: "sim__text sim__iconline" }, [icon("clock"), el("span", {}, d.notes.openPage)]),
       ]);
     }

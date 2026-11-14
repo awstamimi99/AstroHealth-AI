@@ -208,6 +208,7 @@ test("app-shell route views are chosen by route AND role; every other route keep
   assert.match(shell, /import \{ renderPhysicalHealth \} from "\.\/physical-health\.js";/);
   assert.match(shell, /import \{ renderWellbeing \} from "\.\/wellbeing\.js";/);
   assert.match(shell, /import \{ renderSimulationCenter \} from "\.\/simulation-center\.js";/);
+  assert.match(shell, /import \{ renderAlerts \} from "\.\/alerts\.js";/);
   const map = /const ROUTE_VIEWS = Object\.freeze\(\{([\s\S]*?)\n\}\);/.exec(shell);
   assert.ok(map, "ROUTE_VIEWS map exists");
   const entries = [...map[1].matchAll(/"(#\/[a-z-]+)":\s*Object\.freeze\(\{([^}]*)\}\)/g)].map((m) => [
@@ -220,6 +221,7 @@ test("app-shell route views are chosen by route AND role; every other route keep
     ["#/physical", { astronaut: "renderPhysicalHealth", medical_officer: "renderPhysicalHealth" }],
     ["#/wellbeing", { astronaut: "renderWellbeing", medical_officer: "renderWellbeing" }],
     ["#/simulation", { medical_officer: "renderSimulationCenter" }],
+    ["#/alerts", { astronaut: "renderAlerts", medical_officer: "renderAlerts" }],
   ]);
   // Sprint 4 astronaut Overview unchanged; no astronaut view for #/crew.
   assert.equal(entries[0][1].astronaut, "renderAstronautOverview");
@@ -228,7 +230,7 @@ test("app-shell route views are chosen by route AND role; every other route keep
   // Unmapped routes still render placeholderView, and route guards run before any view.
   assert.match(shell, /const renderView = ROUTE_VIEWS\[route\.path\]\?\.\[current\.role\];[\s\S]*?else \{\s*clear\(view\)\.append\(placeholderView\(route\)\);/);
   assert.ok(shell.indexOf("if (!allowed)") < shell.indexOf("const renderView = ROUTE_VIEWS"), "guard runs before any view");
-  for (const r of ROUTES.filter((x) => !["#/overview", "#/crew", "#/physical", "#/wellbeing", "#/simulation"].includes(x.path))) assert.ok(!entries.some(([p]) => p === r.path), r.path);
+  for (const r of ROUTES.filter((x) => !["#/overview", "#/crew", "#/physical", "#/wellbeing", "#/simulation", "#/alerts"].includes(x.path))) assert.ok(!entries.some(([p]) => p === r.path), r.path);
 });
 
 test("30. astronauts can't reach #/crew or any nested crew-detail route (Access denied before any view)", () => {

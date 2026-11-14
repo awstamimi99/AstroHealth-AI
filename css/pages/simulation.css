@@ -230,6 +230,24 @@
   min-width: 0;
 }
 
+/* ---- Risk-evaluation result after a step (Sprint 8) ------------------------------------- */
+.sim-risk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.sim-risk--error {
+  border-color: var(--color-critical);
+  background: var(--color-critical-tint);
+}
+.sim-risk__list {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
 /* ---- Responsive -------------------------------------------------------------------------- */
 @media (max-width: 599px) {
   .sim-form__grid,
