@@ -62,7 +62,7 @@ Demo accounts (password `demo`): `haddad` (astronaut, a-01), `medofficer` and
 
 Run `python3 -m http.server 8080`, then open <http://localhost:8080/login.html>.
 If you visited before, reload once so the current service worker
-(cache `astrohealth-v0.6.0`) takes over. If the mission chips show
+(cache `astrohealth-v0.7.0`) takes over. If the mission chips show
 "Not available", the browser holds data seeded before the `mission` setting
 existed: run `resetDatabase()` or clear site data.
 
@@ -72,7 +72,7 @@ existed: run `resetDatabase()` or clear site data.
 - [ ] Top bar shows **Mission ODYSSEY-7** and **Mission Day 147** on the seed day (from the synthetic seed, not hardcoded)
 - [ ] Bell is a plain link to Alerts with **no** number on it
 - [ ] Sidebar has 7 items; **Crew Monitor** and **Simulation Center** are not shown
-- [ ] Each item except Overview, Physical Health and Mental Wellbeing opens its placeholder: icon, title, "will be completed in a later sprint" (no numbers, charts, forms or alerts). Overview is the Sprint 4 Astronaut Overview (section 8); Physical Health and Mental Wellbeing are Sprint 6 pages (section 10)
+- [ ] Each item except Overview, Physical Health, Mental Wellbeing and Alerts opens its placeholder: icon, title, "will be completed in a later sprint" (no numbers, charts, forms or alerts). Overview is the Sprint 4 Astronaut Overview (section 8); Physical Health and Mental Wellbeing are Sprint 6 pages (section 10); Alerts is the Sprint 8 page (section 12)
 - [ ] The active item has `aria-current="page"`; the page heading and browser tab title change; the page does not reload
 - [ ] After choosing a route, focus is on the page heading (screen reader announces it)
 - [ ] Type `#/crew` (and `#/simulation`, `#/crew/AH-01`) → **Access denied**: lock icon, "available to the Medical Officer role only. You are signed in as Astronaut.", "Go to Overview" link, focus on the heading
@@ -86,6 +86,7 @@ existed: run `resetDatabase()` or clear site data.
 - [ ] 9 sidebar items; Crew Monitor and Simulation Center visible with the "MO" tag
 - [ ] `#/overview` and `#/crew` (Crew Monitor) open the functional Sprint 5 views — verify them with section 9
 - [ ] `#/simulation` opens the Sprint 7 Simulation Center (no Access denied) — verify it with section 11
+- [ ] `#/alerts` opens the Sprint 8 Alerts page — verify it with section 12
 - [ ] Astronauts still get Access denied on both `#/crew` and `#/simulation` (see the Astronaut list above)
 - [ ] Log out → `login.html`
 
@@ -119,7 +120,7 @@ existed: run `resetDatabase()` or clear site data.
 
 Run `python3 -m http.server 8080` and open <http://localhost:8080/login.html>.
 Returning browsers: reload once so the current service worker cache
-`astrohealth-v0.6.0` takes over. All data is synthetic seed data; values are relative to the moment
+`astrohealth-v0.7.0` takes over. All data is synthetic seed data; values are relative to the moment
 the database was seeded, so "today" items depend on the UTC time of seeding.
 
 **Expected per account** (seeded today after 08:00 UTC)
@@ -142,7 +143,7 @@ the database was seeded, so "today" items depend on the UTC time of seeding.
 - [ ] Today's routine: check-in "Completed today" + "Shared with the Medical Officer" or "Private — not shared" (no mood/stress scores); vital signs "Recorded today"; cognitive check "Last completed …" (never "due"/"overdue")
 - [ ] Sleep: 7 UTC dates with bars and values, summary sentence (nights recorded, average, baseline, nights below baseline); missing nights say "No data"
 - [ ] A message shows "From the Medical Officer" only when its sender is a stored `medical_officer` account (verified in the service); no sender id appears anywhere on the page
-- [ ] Quick links go to `#/physical`, `#/wellbeing`, `#/history`, `#/alerts` (Physical Health and Mental Wellbeing are the Sprint 6 pages; History and Alerts are still placeholders)
+- [ ] Quick links go to `#/physical`, `#/wellbeing`, `#/history`, `#/alerts` (Physical Health and Mental Wellbeing are the Sprint 6 pages; Alerts is the Sprint 8 page; History is still a placeholder)
 
 **Routing by role (current, since Sprint 5)**
 
@@ -179,7 +180,7 @@ Not yet checked: a real screen reader (VoiceOver/NVDA), Firefox, Safari.
 ## 9. Medical Officer dashboard & Crew Monitor (Sprint 5)
 
 Run `python3 -m http.server 8080`, open <http://localhost:8080/login.html>, and
-reload once so the current service worker cache `astrohealth-v0.6.0` takes over.
+reload once so the current service worker cache `astrohealth-v0.7.0` takes over.
 All data is synthetic seed data.
 
 **`medofficer` and `medbackup` — `#/overview`**
@@ -225,7 +226,7 @@ Not yet checked: a real screen reader, Firefox, Safari.
 ## 10. Physical Health & Mental Wellbeing (Sprint 6)
 
 Run `python3 -m http.server 8080`, open <http://localhost:8080/login.html>, and
-reload once so the current service worker cache `astrohealth-v0.6.0` takes over.
+reload once so the current service worker cache `astrohealth-v0.7.0` takes over.
 All data is synthetic. No private journal in this sprint.
 
 **Astronaut — `#/physical`** (e.g. `reyes`)
@@ -270,9 +271,11 @@ Not yet checked: a real screen reader, Firefox, Safari.
 ## 11. Simulation Center (Sprint 7, `#/simulation`)
 
 Run `python3 -m http.server 8080`, open <http://localhost:8080/login.html>, and
-reload once so the current service worker cache `astrohealth-v0.6.0` takes over.
-All data is synthetic. Sprint 7 evaluates **no** risk rules and creates **no**
-alerts.
+reload once so the current service worker cache `astrohealth-v0.7.0` takes over.
+All data is synthetic. Sprint 7 shipped without risk evaluation; **since
+Sprint 8**, after each generated reading the demonstration risk rules are
+evaluated for that crew member and may open, escalate or clear an alert
+(section 12).
 
 **Astronaut** (`haddad`)
 
@@ -281,7 +284,8 @@ alerts.
 **Medical Officer** (`medofficer`, `medbackup`)
 
 - [ ] Header "Simulation Center", SIMULATED tag, synthetic-data notice, disclaimer (not a medical device, not clinically validated, not affiliated with or endorsed by NASA)
-- [ ] Notes: "No risk rules are evaluated and no alerts are created. Risk evaluation will be implemented in the Risk Engine sprint." and "The simulation advances only while this page is open. Background tabs may be delayed."
+- [ ] Notes: "After each generated reading, the demonstration risk rules (PHY-01 heart rate, PHY-02 SpO₂, PHY-03 systolic blood pressure, PHY-05 sleep) are evaluated for that crew member. Demonstration threshold — not clinically validated. Alerts are reviewed on the Alerts page." and "The simulation advances only while this page is open. Background tabs may be delayed."
+- [ ] After each step: "Risk evaluation after step N: …" (no alert changed / ALT-nnnn opened, escalated, updated, condition cleared, with a link); a failed evaluation says "Risk evaluation unavailable after step N. The reading was saved…"
 - [ ] New run: crew select, Scenario fieldset with two radios (Low oxygen saturation demonstration, Elevated heart rate demonstration), speed select (1×, 2×, 4×, 8× with total duration); Start stays disabled and says why
 - [ ] Choosing AH-03 + low oxygen previews 95 93 92 90 88 88 88 90 92 93 95 97 % (from the stored baseline 97 %); changing the selection clears the confirmation
 - [ ] Tick the confirmation → Start → "Active run", Running, `<progress>` "Step 0 of 12"; the screen reader hears "Simulation started for Mei Chen." once, not every step
@@ -292,12 +296,16 @@ alerts.
 - [ ] While a run is active, starting another (other tab / `medbackup`) → "Another simulation is already active…" and no second run
 - [ ] Refresh mid-run (wait > 3 intervals + 5 s) → "Not advancing — the page may have been closed"; no missed steps filled in; Continue / Pause / Stop work
 - [ ] Two tabs on the same run: never two readings for the same step (they may advance faster together — known limitation)
-- [ ] Links: `#/physical/AH-03` and `#/crew/AH-03` show the new readings with "Simulated · Simulation Center"; the astronaut's own Overview too; the open alert count is unchanged
+- [ ] Links: `#/physical/AH-03` and `#/crew/AH-03` show the new readings with "Simulated · Simulation Center"; the astronaut's own Overview too; alerts change only through the Sprint 8 risk rules (AH-03 low oxygen → one PHY-02 alert, see section 12)
 - [ ] Leaving the page during a run writes nothing (run stays Running, no auto-pause)
 - [ ] 1440 / 768 / 375 px, no horizontal scrolling; keyboard only (Tab, Space/Enter, arrow keys in the radio group) with a visible focus ring; reduced motion stops bar transitions
 - [ ] Offline (after one online visit): the page loads and runs locally; no console errors; no request to another host
 
 **Results — 2026-11-14 (headless Chrome via DevTools Protocol, fresh isolated profiles):**
+
+> Historical — Sprint 7 release (app version 0.6.0), before the Sprint 8 risk
+> engine. "Alerts unchanged" was the expected Sprint 7 behaviour; since
+> Sprint 8 the low-oxygen run opens a PHY-02 alert.
 
 - Sprint 7: 11/11 passed.
 - Full deterministic 12-step low-oxygen run.
@@ -328,3 +336,52 @@ Completed regression suites, each using an isolated fresh browser profile and da
 - Sprint 6: 12/12.
 
 - Not yet checked with a real screen reader, Firefox, or Safari.
+
+## 12. Risk Engine and Alerts (Sprint 8, `#/alerts`)
+
+Run `python3 -m http.server 8080`, open <http://localhost:8080/login.html>, and
+reload once so the current service worker cache `astrohealth-v0.7.0` takes over.
+All data is synthetic. The rules use the stored demonstration thresholds —
+**not clinically validated**, not evidence-backed, not NASA thresholds — and
+every alert screen says "Demonstration threshold — not clinically validated."
+
+**Medical Officer — Simulation Center → alert** (`medofficer`)
+
+- [ ] `#/simulation`: start AH-03 + low oxygen. Step 3 (93, 92 %) → "ALT-0191 Low SpO₂ · warning · opened"; step 5 (90, 88 %) → "escalated" to critical; steps 6–10 "updated"; step 11 no change; step 12 (95, 97 %) → "condition cleared". The values are still 95 93 92 90 88 88 88 90 92 93 95 97
+- [ ] The same ALT-0191 (critical) appears in Chen's Overview, the Medical Officer Overview queue, the Crew Monitor list and `#/crew/AH-03`, `#/physical/AH-03` (open physical alerts) and `#/alerts` (first, critical)
+
+**Medical Officer — `#/alerts`**
+
+- [ ] List: Filters (Status: Open / New / Acknowledged / Resolved / All; Severity; Crew member) and "Evaluate crew now"; nothing is evaluated just by opening the page
+- [ ] "Evaluate crew now" on fresh seed data → "Evaluated 4 crew members. No alert changed." (ALT-0190 is recognised, not duplicated)
+- [ ] Detail `#/alerts/ALT-0191`: severity + status + "Condition cleared" badges (icon + text), Summary, "Why this alert" (explanation, rule PHY-02 version 1, threshold used, demonstration label, limitation), Evidence table (SpO₂ values, UTC times, Simulated, Quality OK — no internal ids), Last evaluation (examined / not used), Suggested review, Audit trail (Created, Escalated, Condition cleared by System)
+- [ ] Acknowledge → "Alert acknowledged."; status Acknowledged; audit trail adds "Acknowledged · Dr. Lena Ortiz"
+- [ ] Resolve stays disabled until a note is written (and, if the condition is still present, the confirmation is ticked); notes over 500 characters are refused; Resolve → "Alert resolved."; the alert is kept as history with no further actions
+- [ ] Seeded alerts stay readable: ALT-0190 evidence shows "Not recorded (older alert)" for source/quality; ALT-0189 (WB-01) evidence shows "Not shown (wellbeing score)"; both can be acknowledged/resolved
+
+**Astronaut** (`chen`, then `haddad`)
+
+- [ ] `chen` `#/alerts`: own alerts only (ALT-0191 resolved, ALT-0189); no filters, no "Evaluate crew now", no Acknowledge/Resolve; "This view is read-only"
+- [ ] `chen` `#/alerts/ALT-0191`: status Resolved, audit-trail labels and UTC times, but **no** resolution note and no acknowledgement/action notes (Medical Officer notes are internal; the Medical Officer still sees them)
+- [ ] `haddad` `#/alerts/ALT-0191` → "Alert not found" (same as an unknown number); `#/alerts/garbage` → "Alert not found"
+
+**General**
+
+- [ ] Two tabs pressing "Evaluate crew now" / acknowledging at once never create a duplicate alert or audit record
+- [ ] Offline (after one online visit): reload `#/alerts/ALT-0191` → the lifecycle (acknowledged / resolved) is still shown; no request to another host
+- [ ] 1440 / 768 / 375 px, no horizontal page scrolling (evidence table becomes one block per reading at 375 px); keyboard only with a visible focus ring; screen reader hears "Alert acknowledged." / "Alert resolved." / opened and escalated alerts once
+
+**Results — 2026-11-14 (headless Chrome via DevTools Protocol; every suite in its own new browser profile and IndexedDB database, run on the final Sprint 8 working tree):**
+
+- Sprint 8: 11/11 passed.
+- Regression suites: Login 15/15 · Database 32/32 · Sprint 4 15/15 · Sprint 5 14/14 · Sprint 6 12/12 · Sprint 7 11/11 (harness expectations updated only for intended Sprint 8 changes: cache `astrohealth-v0.7.0`, `#/alerts` is the Alerts page, the Sprint 7 low-oxygen run now opens one PHY-02 alert while seeded alerts and their audit records stay unchanged).
+- AH-03 low-oxygen simulation at 8×: `95 93 92 90 88 88 88 90 92 93 95 97`; ALT-0191 (PHY-02) opened as warning at step 3, escalated to critical at step 5, condition cleared at step 12; the critical explanation (88 %, 90 %) was kept through the lower-tier re-triggers; the alert stayed open until acknowledged.
+- Acknowledge, then resolve with a note: 5 audit records (created, escalated, condition cleared, acknowledged, resolved); the Medical Officer sees the resolution note. ALT-0190 (condition still present) resolved only with a note plus confirmation.
+- Cross-dashboard: the same ALT-0191 in the Medical Officer queue, Crew Monitor list and AH-03 detail, Physical Health (critical) and first on `#/alerts`.
+- Astronaut privacy: Chen sees ALT-0191 resolved and read-only, with no resolution note on the page or in her own service output; Haddad gets "Alert not found" for ALT-0191.
+- Two tabs: concurrent "Evaluate crew now" opened one alert (ALT-0192); concurrent acknowledge wrote one audit record (one "acknowledged", one "unchanged"). The later evaluation also opened ALT-0193 (PHY-05) as a new occurrence after ALT-0190 had been resolved with its condition still present; ALT-0190 was untouched.
+- Opening `#/alerts` wrote nothing; "Evaluate crew now" ran only when pressed.
+- Offline reload (cache `astrohealth-v0.7.0`) kept the resolved lifecycle on `#/alerts/ALT-0191`.
+- 375 / 768 / 1440 px: no page-level horizontal overflow on the list and detail; keyboard only: Tab + Enter acknowledge, typed note, Space confirmation, Enter resolve; accessibility tree: 3 named filters, "Evaluate crew now" button, alert links, headings, evidence table, status region.
+- No console errors. No external requests.
+- Not yet checked: a real screen reader, Firefox, Safari.

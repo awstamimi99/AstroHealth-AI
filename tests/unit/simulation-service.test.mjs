@@ -459,7 +459,9 @@ test("31. getSimulationCenter reconstructs the active run (readings, timeline, s
   assert.deepEqual(empty.crew.items.map((c) => c.crewId), ["AH-01", "AH-02", "AH-03", "AH-04"]);
   assert.deepEqual(empty.scenarios.map((x) => x.id), ["low_oxygen", "elevated_heart_rate"]);
   assert.deepEqual(empty.speeds, [1, 2, 4, 8]);
-  assert.equal(empty.notes.noRisk, "No risk rules are evaluated and no alerts are created. Risk evaluation will be implemented in the Risk Engine sprint.");
+  assert.equal(empty.notes.risk, svc.RISK_NOTE); // Sprint 8 replaced the Sprint 7 "no risk rules" note
+  assert.match(empty.notes.risk, /Demonstration threshold — not clinically validated\./);
+  assert.equal(empty.notes.noRisk, undefined);
   assert.equal(empty.notes.openPage, "The simulation advances only while this page is open. Background tabs may be delayed.");
 
   const ref = await started(s);
@@ -537,7 +539,7 @@ test("preview returns the exact sequence for the selected astronaut and writes n
   assert.ok(!JSON.stringify(p).includes("a-03"));
 });
 
-test("36–39. no journal/wellbeing/alert/threshold access; no risk evaluation; alert count unchanged", async () => {
+test("36–39. the simulation service never touches alerts, thresholds, journal or wellbeing itself; without a risk evaluator no alert is written", async () => {
   const src = code("js/services/simulation-service.js");
   for (const bad of ["journalRepo", "wellbeingRepo", "alertsRepo", "alertActionsRepo", "settingsRepo", "thresholds", "risk_detected", "alert_generated", "metaRepo", "cognitiveRepo"]) {
     assert.ok(!src.includes(bad), bad);
@@ -545,7 +547,7 @@ test("36–39. no journal/wellbeing/alert/threshold access; no risk evaluation; 
   for (const p of ["js/services/simulation-service.js", "js/simulation/scenarios.js", "js/pages/simulation-center.js"]) {
     const imports = [...read(p).matchAll(/^import\s[^;]*?from\s+["']([^"']+)["']/gm)].map((m) => m[1]);
     if (p.includes("/pages/")) assert.ok(imports.every((i) => /^\.\.\/(services|components|core)\//.test(i)), `${p}: ${imports}`);
-    if (p.includes("/services/")) assert.deepEqual(imports, ["../db/index.js", "./access-control.js", "../simulation/scenarios.js"]);
+    if (p.includes("/services/")) assert.deepEqual(imports, ["../db/index.js", "./access-control.js", "./risk-service.js", "../simulation/scenarios.js"]); // Sprint 8: risk-service
   }
   await reset();
   const alertsBefore = await alertCount();
@@ -594,8 +596,8 @@ test("41–44 regressions: astronaut route denied; DB_VERSION 1; no banned wordi
   assert.equal(checkRoute({ role: "medical_officer", userId: "u-medofficer" }, "#/simulation").allowed, true);
   const { DB_VERSION, APP_VERSION } = await import("../../js/core/config.js");
   assert.equal(DB_VERSION, 1);
-  assert.equal(APP_VERSION, "0.6.0");
-  assert.match(read("sw.js"), /const CACHE_VERSION = "0\.6\.0";/);
+  assert.equal(APP_VERSION, "0.7.0");
+  assert.match(read("sw.js"), /const CACHE_VERSION = "0\.7\.0";/);
   const banned = [/\bhealthy\b/i, /\bunhealthy\b/i, /normal health/i, /\bdiagnos(is|ed|e)\b/i, /medically cleared/i, /fit for duty/i, /\btreatment\b/i, /AI health score/i, /clinical risk score/i, /hypoxi/i];
   for (const p of ["js/services/simulation-service.js", "js/pages/simulation-center.js", "js/simulation/scenarios.js", "css/pages/simulation.css"]) {
     const text = read(p).replace(/^\/\/.*$/gm, "");

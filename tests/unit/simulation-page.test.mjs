@@ -24,11 +24,12 @@ const MO = Object.freeze({ role: "medical_officer", userId: "u-medofficer", astr
 const BANNED = /\b(healthy|unhealthy|normal health|diagnos\w*|medically cleared|fit for duty|treatment|risk score|health score|hypoxi\w*|detected)\b/i;
 const flush = async () => { for (let i = 0; i < 20; i += 1) await new Promise((r) => setTimeout(r, 0)); };
 
-function harness() {
+function harness({ evaluateRisk = null } = {}) {
   const clock = { now: NOW };
   const real = svc.createSimulationService({
     repos: { usersRepo: mock.usersRepo, astronautsRepo: mock.astronautsRepo, measurementsRepo: mock.measurementsRepo, simulationRunsRepo: mock.simulationRunsRepo, eventsRepo: mock.eventsRepo },
     withTransaction: mock.withTransaction,
+    evaluateRisk,
   });
   const calls = [];
   const opts = () => ({ now: clock.now });
@@ -96,7 +97,10 @@ test("renders the header, disclaimers, notes and the start form; nothing is fabr
   assert.match(t, /SIMULATED/);
   assert.match(t, /not a medical device/i);
   assert.match(t, /not affiliated with or endorsed by NASA/);
-  assert.match(t, /No risk rules are evaluated and no alerts are created\. Risk evaluation will be implemented in the Risk Engine sprint\./);
+  // Sprint 8: the Sprint 7 "no risk rules" note is replaced by the risk-evaluation note.
+  assert.match(t, /After each generated reading, the demonstration risk rules \(PHY-01 heart rate, PHY-02 SpO₂, PHY-03 systolic blood pressure, PHY-05 sleep\) are evaluated for that crew member\./);
+  assert.match(t, /Demonstration threshold — not clinically validated\./);
+  assert.ok(!/No risk rules are evaluated/.test(t), "outdated Sprint 7 statement removed");
   assert.match(t, /The simulation advances only while this page is open\. Background tabs may be delayed\./);
   assert.match(t, /No simulation runs yet\./);
   assert.ok(!BANNED.test(t), t.match(BANNED)?.[0]);
@@ -193,7 +197,9 @@ test("timer chain: one step per timeout, the next timer only after success, comp
   // Links to the selected astronaut's dashboards.
   const hrefs = byTag(root, "a").map((a) => a.getAttribute("href"));
   assert.ok(hrefs.includes("#/physical/AH-03") && hrefs.includes("#/crew/AH-03"));
-  assert.ok(!hrefs.some((x) => /alerts/.test(x)), "no link to an Alerts/Risk page that doesn't exist yet");
+  // Sprint 8: the notes link to the Alerts page; this harness has no risk evaluator, so no alert links appear.
+  assert.ok(hrefs.includes("#/alerts"), "link to the Alerts page");
+  assert.ok(!hrefs.some((x) => /^#\/alerts\/ALT-/.test(x)), "no alert link without a risk evaluation result");
 });
 
 test("pause clears the timer; resume restarts it; stop needs a confirmation panel", async () => {
@@ -375,4 +381,39 @@ test("38 + structure: the page imports no database module and uses no innerHTML 
   assert.equal(page.durationText(96000), "1 min 36 s");
   assert.equal(page.durationText(12000), "12 s");
   assert.equal(page.durationText(60000), "1 min");
+});
+
+test("Sprint 8: each step shows its risk-evaluation result honestly, with links to the alert", async () => {
+  await mock.resetMock({ now: NOW });
+  const riskSvc = await import("../../js/services/risk-service.js");
+  const risk = riskSvc.createRiskService({
+    repos: { usersRepo: mock.usersRepo, astronautsRepo: mock.astronautsRepo, measurementsRepo: mock.measurementsRepo, settingsRepo: mock.settingsRepo, alertsRepo: mock.alertsRepo, alertActionsRepo: mock.alertActionsRepo, eventsRepo: mock.eventsRepo },
+    withTransaction: mock.withTransaction,
+  });
+  const h = harness({ evaluateRisk: risk.evaluateAstronaut });
+  await h.render(h.container, MO, { signal: new AbortController().signal });
+  await flush();
+  await startRun(h, h.container);
+  await h.fire();
+  assert.match(text(h.container), /Risk evaluation after step 1: no alert changed\./);
+  await h.fire();
+  await h.fire();
+  assert.match(text(h.container), /Risk evaluation after step 3:/);
+  assert.match(text(h.container), /ALT-0191 Low SpO₂ · warning · opened/);
+  assert.ok(byTag(h.container, "a").some((a) => a.getAttribute("href") === "#/alerts/ALT-0191"));
+  assert.equal(liveOf(h.container).textContent, "ALT-0191 Low SpO₂ opened (warning).", "a newly opened alert is announced once");
+  await h.fire();
+  await h.fire();
+  assert.match(text(h.container), /ALT-0191 Low SpO₂ · critical · escalated/);
+
+  // A failing evaluation is reported as unavailable; the reading is still saved.
+  await mock.resetMock({ now: NOW });
+  const h2 = harness({ evaluateRisk: async () => { throw new Error("boom"); } });
+  await h2.render(h2.container, MO, { signal: new AbortController().signal });
+  await flush();
+  await startRun(h2, h2.container);
+  await h2.fire();
+  assert.match(text(h2.container), /Risk evaluation unavailable after step 1\. The reading was saved/);
+  assert.match(text(h2.container), /Step 1 of 12/);
+  assert.equal(liveOf(h2.container).textContent, "Risk evaluation unavailable for this step. The reading was saved.");
 });

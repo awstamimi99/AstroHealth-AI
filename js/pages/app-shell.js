@@ -15,7 +15,8 @@
 //    #/overview → astronaut Overview (astronaut) or crew summary (Medical
 //    Officer); #/crew (incl. #/crew/AH-0n) → Crew Monitor (Medical Officer);
 //    #/physical and #/wellbeing (incl. /AH-0n) → both roles (Sprint 6);
-//    #/simulation → Simulation Center (Medical Officer only, Sprint 7).
+//    #/simulation → Simulation Center (Medical Officer only, Sprint 7);
+//    #/alerts (incl. /ALT-0nnn) → Alerts, both roles (Sprint 8).
 //    Every other route still shows a placeholder until its sprint. Each
 //    navigation aborts the previous view's async work, so a late result can
 //    never overwrite the route that is now on screen.
@@ -32,6 +33,7 @@ import { renderCrewMonitor } from "./crew-monitor.js";
 import { renderPhysicalHealth } from "./physical-health.js";
 import { renderWellbeing } from "./wellbeing.js";
 import { renderSimulationCenter } from "./simulation-center.js";
+import { renderAlerts } from "./alerts.js";
 import { APP_NAME } from "../core/config.js";
 import { icon } from "../components/icon.js";
 import { el, $, $$, clear } from "../core/utils/dom.js";
@@ -47,6 +49,7 @@ const ROUTE_VIEWS = Object.freeze({
   "#/physical": Object.freeze({ astronaut: renderPhysicalHealth, medical_officer: renderPhysicalHealth }),
   "#/wellbeing": Object.freeze({ astronaut: renderWellbeing, medical_officer: renderWellbeing }),
   "#/simulation": Object.freeze({ medical_officer: renderSimulationCenter }),
+  "#/alerts": Object.freeze({ astronaut: renderAlerts, medical_officer: renderAlerts }),
 });
 
 const session = requireSession(); // redirects to login.html when null

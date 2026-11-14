@@ -1,0 +1,183 @@
+/* css/pages/alerts.css — #/alerts (Sprint 8). Built on card, alert-item,
+   badge, banner, sim-tag, field, btn and table. Severity and status always
+   use colour + icon + text; orange is never a warning colour. */
+
+.alerts,
+.alerts__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+.alerts__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.alerts__title {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  overflow-wrap: anywhere;
+}
+.alerts__subtitle,
+.alerts__empty {
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+.alerts__text {
+  overflow-wrap: anywhere;
+}
+.alerts__note,
+.alerts__meta {
+  color: var(--color-text-3);
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+}
+.alerts__demo {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  color: var(--color-text-2);
+  font-size: var(--text-sm);
+}
+.alerts__demo > .icon {
+  flex: none;
+  margin-top: 2px;
+}
+.alerts__tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.alerts .badge {
+  white-space: normal;
+}
+
+/* ---- Filters + evaluation -------------------------------------------------------- */
+.alerts-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.alerts-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.alerts-evaluation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-info);
+  border-radius: var(--radius-md);
+  background: var(--color-info-tint);
+}
+.alerts-evaluation__list {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+/* ---- List -------------------------------------------------------------------------- */
+.alerts-list,
+.alerts-audit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.alerts-row .alert-item__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.alerts-row__link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+
+/* ---- Detail ------------------------------------------------------------------------ */
+.alerts-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.alerts-facts dt {
+  color: var(--color-text-2);
+}
+.alerts-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.alerts-table {
+  font-variant-numeric: tabular-nums;
+}
+.alerts-table-wrap:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+.alerts-audit__item {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  overflow-wrap: anywhere;
+}
+.alerts-check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.alerts-check input {
+  margin-top: 3px;
+  flex: none;
+}
+.alerts-check:focus-within {
+  box-shadow: var(--focus-ring);
+}
+
+/* ---- Responsive -------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  .alerts-filters,
+  .alerts-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .alerts-facts dd {
+    margin-bottom: var(--space-2);
+  }
+}
+@media (max-width: 599px) {
+  .alerts-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .alerts-table,
+  .alerts-table tbody,
+  .alerts-table tr,
+  .alerts-table th,
+  .alerts-table td {
+    display: block;
+    width: 100%;
+  }
+  .alerts-table tr {
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+  .alerts-table td::before {
+    content: attr(data-label) ": ";
+    color: var(--color-text-3);
+  }
+}

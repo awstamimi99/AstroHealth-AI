@@ -411,6 +411,23 @@ Indexes: `by_number` (unique), `by_astronaut_status` `[astronautId, status]`,
 `by_status`, `by_severity`, `by_detected` `detectedAt`,
 `by_dedupe_status` `[dedupeKey, status]`.
 
+**Optional, non-indexed metadata written by the Sprint 8 risk service.** These
+fields are not required, add no store or index, change no enum or required
+field, need no migration and leave `DB_VERSION` at 1. Alerts created earlier
+(including the seeded history) simply don't have them.
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `rule.version` | number | version of the rule that created the alert, e.g. `2` for PHY-01 v2 |
+| `rule.thresholdSource` | string | where the threshold values came from, e.g. `"settings.thresholds (demonstration values, not clinically validated)"` |
+| `triggeringMeasurements[].source` | `"seed"` \| `"simulation"` \| `"manual"` | copied from the measurement when the evidence snapshot was taken |
+| `triggeringMeasurements[].quality` | `"ok"` \| `"suspect"` \| `"invalid"` | copied from the measurement (only `"ok"` readings are used as evidence) |
+| `evaluation` | object | the latest evaluation that changed the alert: `{ ruleVersion, evaluatedAt, considered, excluded: { suspect, invalid, stale }, limitation }` — `considered` and the `excluded` counts are numbers, `limitation` is text |
+
+Evidence items are immutable snapshots: `{ metric, value, unit, timestamp,
+measurementId, source, quality }`. Pages never receive `measurementId` or
+any other internal id.
+
 ```json
 { "id": "alr_seed_00004", "number": "ALT-0190", "astronautId": "a-04", "ruleId": "PHY-05",
   "dedupeKey": "a-04:PHY-05", "type": "reduced_sleep", "category": "physical",
