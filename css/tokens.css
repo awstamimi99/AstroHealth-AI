@@ -7,8 +7,11 @@
    a hex value in another file — use var(--token) instead.
 
    RULES
-   • Blue (--color-primary*) = brand & interaction ONLY (buttons, active nav,
-     focus rings, links). It NEVER means a health state.
+   • Red (--color-primary*) = brand & interaction ONLY (buttons, active nav,
+     focus rings, links, the top-bar line). It NEVER means a health state.
+   • Critical is a separate raspberry-magenta (--color-critical) and is ALWAYS
+     shown with its icon and the word "Critical" (on the scan stage: a
+     numbered pin), so it can't be confused with the red brand.
    • A status is ALWAYS shown as colour + icon + text, never colour alone.
    • Text colours meet WCAG AA (4.5:1) on --color-card, --color-bg,
      --color-elevated and their own 10% tints.
@@ -23,9 +26,9 @@
   --color-topbar: rgba(255, 255, 255, 0.92);
 
   /* ---- Brand / interaction --------------------------------------------- */
-  --color-primary: #4B5EE1;
-  --color-primary-2: #4055E8;
-  --color-primary-dark: #3044C8;
+  --color-primary: #C8102E;
+  --color-primary-2: #B00E28;   /* hover */
+  --color-primary-dark: #9F0F25;/* pressed, active nav text */
   --color-on-primary: #FFFFFF;
 
   /* ---- Text -------------------------------------------------------------- */
@@ -40,15 +43,33 @@
   /* ---- Status (health states) ------------------------------------------- */
   --color-ok: #157D5F;
   --color-warning: #9F5F00;
-  --color-critical: #C23A43;
+  --color-critical: #A3195B;
   --color-info: #3268C9;
 
   /* 10% tints — backgrounds for badges, alert rows, banners */
-  --color-primary-tint: #EEF0FF;
+  --color-primary-tint: #FDECEE;
   --color-ok-tint: #E8F7F1;
   --color-warning-tint: #FFF4DD;
-  --color-critical-tint: #FDECEF;
+  --color-critical-tint: #FCE8F1;
   --color-info-tint: #EAF1FD;
+
+  /* ---- Scan stage (dark card holding the wireframe body) ---------------- */
+  /* Contrast on --color-scan-bg: text 15.2, text-2 7.3, outline 10.4,
+     baseline 7.4, watch 11.2, critical pin 7.1 (WCAG AA ≥ 4.5).          */
+  --color-scan-bg: #0B1220;
+  --color-scan-bg-2: #111B2E;            /* inner gradient / panels */
+  --color-scan-border: #1E2A40;
+  --color-scan-outline: #22D3EE;         /* body outline (cyan) */
+  --color-scan-mesh: rgba(34, 211, 238, 0.30);
+  --color-scan-grid: rgba(148, 163, 184, 0.10);
+  --color-scan-glow: rgba(34, 211, 238, 0.55);
+  --color-scan-line: rgba(34, 211, 238, 0.85);
+  --color-scan-baseline: #60A5FA;        /* rings / connectors (no health meaning) */
+  --color-scan-watch: #FBBF24;           /* warning pins */
+  --color-scan-critical: #F472B6;        /* critical pins */
+  --color-scan-info: #93C5FD;            /* info pins */
+  --color-scan-text: #E2E8F0;
+  --color-scan-text-2: #94A3B8;
 
   /* ---- Typography -------------------------------------------------------- */
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -92,7 +113,7 @@
   --radius-pill: 999px;
 
   /* ---- Effects ----------------------------------------------------------- */
-  --focus-ring: 0 0 0 3px rgba(75, 94, 225, 0.24);
+  --focus-ring: 0 0 0 3px rgba(200, 16, 46, 0.25);
   --shadow-sm: 0 1px 2px rgba(21, 32, 51, 0.05), 0 4px 14px rgba(21, 32, 51, 0.04);
   --shadow-lg: 0 18px 48px rgba(21, 32, 51, 0.14);
   --shadow-xs: 0 1px 1px rgba(21, 32, 51, 0.03);

@@ -454,3 +454,11 @@ Reload once so the service worker cache `astrohealth-v0.10.0` takes over.
 - [ ] Medical Officer Overview: each crew-count card links to Alerts or Crew Monitor; astronaut Overview vital cards link to Physical Health
 - [ ] 1440 / 768 / 375 px: no horizontal page scrolling
 - [ ] Browser address-bar / installed-app colour is light (theme-color and manifest)
+
+## 16. Red brand (body-scan redesign, PR 0b)
+
+- [ ] Buttons, links, active navigation, focus rings and the 3 px line under the app top bar are brand red (`#C8102E`)
+- [ ] Critical alerts use raspberry-magenta (`#A3195B`) with the circle-alert icon and the word "Critical" — never brand red alone
+- [ ] The SIMULATED tag is neutral grey (it is a label, not an action)
+- [ ] Logo, favicon and app icons are red; the full logo's text is dark and readable on the light pages
+- [ ] Style guide (`tests/browser/styleguide.html`) shows the red palette and the `scan-*` tokens

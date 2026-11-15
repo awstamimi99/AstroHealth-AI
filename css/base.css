@@ -169,7 +169,7 @@ hr {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent);
   color: var(--color-text);
 }
 

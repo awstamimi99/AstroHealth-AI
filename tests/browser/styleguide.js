@@ -16,6 +16,7 @@ const COLOR_TOKENS = [
   "primary", "primary-2", "primary-dark", "on-primary", "primary-tint",
   "text", "text-2", "text-3", "border", "border-subtle",
   "ok", "ok-tint", "warning", "warning-tint", "critical", "critical-tint", "info", "info-tint",
+  "scan-bg", "scan-outline", "scan-mesh", "scan-glow", "scan-baseline", "scan-watch", "scan-critical", "scan-info", "scan-text", "scan-text-2",
 ];
 const rootStyle = getComputedStyle(document.documentElement);
 const token = (name) => rootStyle.getPropertyValue(name).trim();

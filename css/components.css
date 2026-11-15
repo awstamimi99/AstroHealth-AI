@@ -255,9 +255,9 @@
   align-items: center;
   gap: var(--space-1);
   padding: 2px 7px;
-  border: 1px dashed var(--color-primary);
+  border: 1px dashed var(--color-text-2);
   border-radius: var(--radius-sm);
-  color: var(--color-primary);
+  color: var(--color-text-2);
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: var(--weight-semibold);

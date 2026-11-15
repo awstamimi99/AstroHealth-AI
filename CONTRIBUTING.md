@@ -72,7 +72,7 @@ fix(sidebar): close drawer on Escape
 
 - **No hard-coded colours.** Use tokens: `color: var(--color-text-2);` — never `#A4ACB9`.
   Same for spacing, radii, font sizes and z-index.
-- **Orange = brand/interaction only.** Never use orange to mean "warning".
+- **Red = brand/interaction only.** Never use the brand red to mean a health state; critical has its own colour, icon and label.
   Every status shows **colour + icon + text**.
 - **No remote assets** in HTML/CSS/JS: no CDNs, Google Fonts, remote images, scripts, styles or analytics.
 - **APIs only under the API policy** in `docs/ARCHITECTURE.md`:

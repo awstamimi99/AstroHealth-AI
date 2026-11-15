@@ -972,9 +972,9 @@
       --home-border: #e2e7ef;
       --home-text: #172033;
       --home-muted: #59667c;
-      --home-subtle: #7b879c;
-      --home-orange: #5267f7;
-      --home-orange-2: #4055e8;
+      --home-subtle: #646d7e;
+      --home-orange: #c8102e;
+      --home-orange-2: #9f0f25;
       --home-green: #168565;
       --home-card: #ffffff;
       --home-shadow: 0 18px 50px rgba(21, 32, 51, 0.1);
@@ -984,8 +984,8 @@
     }
     body {
       background:
-        linear-gradient(rgba(82, 103, 247, 0.035) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(82, 103, 247, 0.035) 1px, transparent 1px),
+        linear-gradient(rgba(200, 16, 46, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200, 16, 46, 0.035) 1px, transparent 1px),
         var(--home-bg);
       background-size: 32px 32px;
     }
@@ -993,7 +993,7 @@
       display: none;
     }
     body::after {
-      background: radial-gradient(520px circle at var(--home-pointer-x) var(--home-pointer-y), rgba(82, 103, 247, 0.08), transparent 72%);
+      background: radial-gradient(520px circle at var(--home-pointer-x) var(--home-pointer-y), rgba(200, 16, 46, 0.08), transparent 72%);
     }
     .topbar {
       position: sticky;
@@ -1086,7 +1086,7 @@
     .hero::after {
       right: -360px;
       bottom: -620px;
-      background: radial-gradient(circle at 34% 28%, rgba(82, 103, 247, 0.2), rgba(238, 240, 255, 0.9) 34%, rgba(247, 248, 252, 0.2) 66%);
+      background: radial-gradient(circle at 34% 28%, rgba(200, 16, 46, 0.2), rgba(253, 236, 238, 0.9) 34%, rgba(247, 248, 252, 0.2) 66%);
       box-shadow: none;
     }
     .eyebrow,
@@ -1108,7 +1108,7 @@
     .btn--primary {
       background: var(--color-primary);
       border-color: var(--color-primary);
-      box-shadow: 0 10px 24px rgba(82, 103, 247, 0.22);
+      box-shadow: 0 10px 24px rgba(200, 16, 46, 0.22);
       color: #ffffff;
     }
     .btn--secondary {
@@ -1119,7 +1119,7 @@
       -webkit-backdrop-filter: none;
     }
     .btn:hover {
-      box-shadow: 0 12px 28px rgba(82, 103, 247, 0.16);
+      box-shadow: 0 12px 28px rgba(200, 16, 46, 0.16);
     }
     .preview-card,
     .card,
@@ -1133,7 +1133,7 @@
     }
     .card[data-tilt]:hover,
     .preview-card:hover {
-      border-color: rgba(82, 103, 247, 0.32);
+      border-color: rgba(200, 16, 46, 0.32);
       box-shadow: 0 18px 42px rgba(21, 32, 51, 0.1);
     }
     .live-tag,
