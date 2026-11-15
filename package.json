@@ -12,6 +12,7 @@
     "build:brand": "node scripts/build-brand.mjs",
     "test:unit": "node --test \"tests/unit/*.test.mjs\"",
     "test:e2e": "node tests/e2e/run.mjs",
+    "test:responsive": "node tests/e2e/responsive.mjs",
     "test:release": "npm run build:sw && npm run test:unit && npm run check:offline && npm run test:e2e"
   },
   "license": "UNLICENSED",

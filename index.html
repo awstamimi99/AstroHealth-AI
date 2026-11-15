@@ -1204,6 +1204,17 @@
     .footer {
       border-top-color: var(--home-border);
     }
+    /* Header: nav links and the brand never wrap; the status pill goes first. */
+    .topnav a,
+    .brand-text strong,
+    .header-cta {
+      white-space: nowrap;
+    }
+    @media (max-width: 1280px) {
+      .topbar__actions .state-pill {
+        display: none;
+      }
+    }
     @media (max-width: 1120px) {
       .topbar {
         gap: 18px;
@@ -1211,9 +1222,6 @@
       .topnav a {
         padding-inline: 8px;
         font-size: 0.82rem;
-      }
-      .topbar__actions .state-pill {
-        display: none;
       }
     }
     @media (max-width: 620px) {

@@ -92,7 +92,7 @@ function connectors(items) {
   return layer;
 }
 
-/** The stage, inside a keyboard-scrollable container (it scrolls sideways on small screens). */
+/** The stage, inside its container (in a card narrower than 720px the CSS stacks it: body on top, rings below). */
 export function createVitalsStage({ items = [], pins = [], ringFor, onPinClick = null }) {
   const severities = vitalSeverities(pins.map((p) => p.alert));
   const placed = items.filter((item) => RING_POSITIONS[item.key]);
@@ -114,7 +114,7 @@ export function createVitalsStage({ items = [], pins = [], ringFor, onPinClick =
     el("div", { class: "vitals-stage__body", style: { left: pct(BODY_LEFT, STAGE.width), width: pct(BODY_VIEWBOX.width * BODY_SCALE, STAGE.width) } }, body),
     ...rings,
   ]);
-  return el("div", { class: "scan-stage__scroll", tabindex: "0", role: "region", "aria-label": "Body scan stage — scrolls sideways on small screens" }, stage);
+  return el("div", { class: "scan-stage__scroll", tabindex: "0", role: "region", "aria-label": "Body scan stage" }, stage);
 }
 
 /** On narrow screens, start every sideways-scrolling stage in `root` centred on the body. */

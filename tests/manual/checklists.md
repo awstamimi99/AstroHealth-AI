@@ -488,7 +488,7 @@ Sign in as `reyes` / `demo` (open alert ALT-0190) and open Overview:
 - [ ] Ticking a step updates the bar and the count; closing and reopening keeps the tick; signing in as `chen` doesn't show reyes's ticks
 - [ ] Esc closes the pop-up/drawer and focus returns to the pin or list button that opened it
 - [ ] Alert activity (right column) lists recent alert events with links to `#/alerts/ALT-…`
-- [ ] 1440 px: stage and right column side by side; 768 / 375 px: stacked, the stage scrolls sideways inside its card, the page itself doesn't
+- [ ] 1440 px: stage and right column side by side; 768 / 375 px: stacked; the stage shows the body on top and the 4 rings below it (2 × 2, one per row on small phones) — nothing scrolls sideways
 - [ ] Medical Officer (`medofficer` / `demo`) Overview is unchanged
 
 ## 19. Medical Officer body scan (body-scan redesign — app version 0.10.3)
@@ -501,7 +501,7 @@ Sign in as `medofficer` / `demo`:
 - [ ] Crew Monitor → a crew member (e.g. `#/crew/AH-04`): "Body scan · latest readings" shows the same stage as the astronaut Overview — 4 rings (incl. blood pressure) with dashed connectors and numbered pins; the Open alerts list beside it shows "Pin 1 · Head"
 - [ ] Pin 1 or the alert title opens a read-only pop-up naming the crew member, body location, rule and threshold, readings and limitation, with "Review on Alerts page"; there are no acknowledge/resolve buttons in it
 - [ ] Esc closes it and focus returns to the pin or list button
-- [ ] 1440 / 768 / 375 px: no page-level horizontal scrolling; on phones the crew member stage scrolls sideways inside its card
+- [ ] 1440 / 768 / 375 px: no page-level horizontal scrolling; on narrow screens the crew member stage stacks (body on top, rings below) instead of scrolling sideways
 - [ ] Astronaut Overview (`reyes`) still looks and works as in section 18
 
 ## 20. Body-scan severity colours and layout polish (app version 0.10.4)
@@ -524,3 +524,13 @@ Sign in as `medofficer` / `demo`:
 - [ ] After the "Low oxygen saturation demonstration" run on AH-03: Mei Chen's SpO₂ ring is raspberry with CRITICAL, the chest glows raspberry, pin 1 is a squared raspberry marker
 - [ ] Brand red never marks a health state; the arc end has a small marker dot
 - [ ] Screen reader: a coloured ring's spoken value ends with "Open warning/critical alert for this measure"
+
+## 23. Responsive layout (1400 → 320 px)
+
+Automated: `npm run test:responsive` (needs Chrome; no Python). It opens every public page and every app route for `reyes` and `medofficer` (including detail views and Simulation Center → Live control) at 1400, 1350, … 350 and 320 px. It fails on any page-level horizontal scrolling or any element sticking out of the screen, and warns about content hidden inside a sideways-scrolling or clipping box. Screenshots for 1400, 768/750 and 320 px go to the output folder.
+
+- [ ] Home page header 1000–1280 px: logo, nav links and "Launch Dashboard" on one line, none wrapping (the network pill is hidden below 1280 px)
+- [ ] Overview / crew member body scan below about 1000 px: body on top, rings 2 × 2 below; on a 320 px phone one ring per row; the alert pin keeps its number and the alert list names it
+- [ ] Physical, Alerts, History, Reports body scans on phones: no pin label cut off at the panel edge
+- [ ] Reports below 720 px: table rows become labelled blocks; printing still prints tables
+- [ ] Settings on a 320 px phone: the thresholds table becomes labelled blocks; nothing scrolls sideways

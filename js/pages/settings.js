@@ -124,9 +124,9 @@ export function createSettingsRenderer({ service, prefs = preferences, notifyRes
                 el("thead", {}, el("tr", {}, ["Rule", "Measure", "Warning", "Critical"].map((h) => el("th", { scope: "col" }, h)))),
                 el("tbody", {}, t.rows.map((r) => el("tr", {}, [
                   el("th", { scope: "row" }, r.rule),
-                  el("td", {}, r.label),
-                  el("td", {}, r.warning === null ? "Not set" : `${r.direction === "high" ? "above" : "below"} ${formatNumber(r.warning, r.warning % 1 ? 1 : 0)} ${r.unit}`),
-                  el("td", {}, r.critical === null ? "Not set" : `${r.direction === "high" ? "above" : "below"} ${formatNumber(r.critical, r.critical % 1 ? 1 : 0)} ${r.unit}`),
+                  el("td", { "data-label": "Measure" }, r.label),
+                  el("td", { "data-label": "Warning" }, r.warning === null ? "Not set" : `${r.direction === "high" ? "above" : "below"} ${formatNumber(r.warning, r.warning % 1 ? 1 : 0)} ${r.unit}`),
+                  el("td", { "data-label": "Critical" }, r.critical === null ? "Not set" : `${r.direction === "high" ? "above" : "below"} ${formatNumber(r.critical, r.critical % 1 ? 1 : 0)} ${r.unit}`),
                 ]))),
               ]))
             : el("p", {}, "Stored thresholds are not available."),
