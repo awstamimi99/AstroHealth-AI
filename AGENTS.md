@@ -38,7 +38,8 @@ machine-learning capabilities.
 - Never insert untrusted strings with `innerHTML`; use `el()` and `textContent`.
 - Use tokens from `css/tokens.css` and components from `css/components.css`.
   Check `tests/browser/styleguide.html` before adding new UI patterns.
-- Orange is for brand and interaction, never warning. Status always needs color,
+- Red is for brand and interaction, never a health state. Critical uses its own
+  raspberry-magenta colour with its icon and label. Status always needs color,
   an icon, and text.
 - Never fabricate citations. Risk detection is deterministic, rule-based and
   explainable (which rule, which values, which thresholds), including when

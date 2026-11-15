@@ -39,7 +39,7 @@ function heartbeat(s, cx = 256, cy = 256) {
 
 const GRADIENT =
   `<linearGradient id="ah-grad" x1="0" y1="0" x2="1" y2="1">` +
-  `<stop offset="0" stop-color="#FF7A2F"/><stop offset="1" stop-color="#C4501A"/>` +
+  `<stop offset="0" stop-color="#C8102E"/><stop offset="1" stop-color="#9F0F25"/>` +
   `</linearGradient>`;
 
 // Path spans 20 grid units; 20 × 15.36 ≈ 307px ≈ 60% of 512.
@@ -71,8 +71,8 @@ const fullSvg =
   `<style>` +
   `@font-face{font-family:"Inter";font-weight:700;src:url(data:font/woff2;base64,${font("inter-latin-700-normal.woff2")}) format("woff2");}` +
   `@font-face{font-family:"Inter";font-weight:600;src:url(data:font/woff2;base64,${font("inter-latin-600-normal.woff2")}) format("woff2");}` +
-  `.n{font:700 50px "Inter",system-ui,sans-serif;fill:#F5F7FA;letter-spacing:-0.5px}` +
-  `.t{font:600 15px "Inter",system-ui,sans-serif;fill:#6E7786;letter-spacing:4.2px}` +
+  `.n{font:700 50px "Inter",system-ui,sans-serif;fill:#172033;letter-spacing:-0.5px}` +
+  `.t{font:600 15px "Inter",system-ui,sans-serif;fill:#646D7E;letter-spacing:4.2px}` +
   `</style>` +
   `<g transform="scale(0.25)">${MARK_BODY}</g>` +
   `<text class="n" x="154" y="70">AstroHealth AI</text>` +

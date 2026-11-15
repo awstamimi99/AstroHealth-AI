@@ -36,6 +36,9 @@
     .sg-type { display: grid; gap: var(--space-3); }
     .sg-type__row { display: flex; align-items: baseline; gap: var(--space-5); border-bottom: 1px solid var(--color-border-subtle); padding-bottom: var(--space-2); }
     .sg-type__row code { width: 150px; flex-shrink: 0; color: var(--color-text-3); font-size: var(--text-2xs); }
+    .sg-scan { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-6); }
+    .sg-scan__body { width: 220px; margin-right: 210px; }
+    .sg-scan__rings { display: flex; flex-direction: column; gap: var(--space-6); }
     .sg-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: var(--space-2); }
     .sg-icon { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-4) var(--space-2); background: var(--color-card); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); }
     .sg-icon .icon { width: 22px; height: 22px; }
@@ -72,7 +75,7 @@
     <!-- ===================================================== Colours -->
     <section aria-labelledby="h-colors">
       <h2 id="h-colors">Colour tokens</h2>
-      <p>Orange is brand &amp; interaction only — it never means "warning". A status is always colour + icon + text.</p>
+      <p>Red is brand &amp; interaction only — it never means a health state. Critical is a separate raspberry-magenta and always has its icon and label. A status is always colour + icon + text. The <code>scan-*</code> colours are for the dark body-scan stage only.</p>
       <div class="sg-swatches" id="swatches"></div>
     </section>
 
@@ -208,7 +211,7 @@
     <!-- ===================================================== Forms -->
     <section aria-labelledby="h-forms">
       <h2 id="h-forms">Segmented control &amp; form fields</h2>
-      <p>The orange ring appears on <code>.field__control</code> when its input has focus (click into the fields).</p>
+      <p>The red focus ring appears on <code>.field__control</code> when its input has focus (click into the fields).</p>
       <h3>Segmented control</h3>
       <div class="segmented" role="radiogroup" aria-label="Time range" id="segmented">
         <button class="segmented__option" type="button" role="radio" aria-checked="false">1 h</button>
@@ -357,6 +360,13 @@
         <span class="avatar avatar--brand">MO</span>
         <span class="avatar avatar--lg">RS</span>
       </div>
+    </section>
+
+    <!-- ===================================================== Body scan -->
+    <section aria-labelledby="h-scan">
+      <h2 id="h-scan">Body scan stage, pins, rings &amp; drawer</h2>
+      <p>From <code>js/components/body-scan.js</code>: <code>createBodyScan({ crop, pins, hotspots, onPinClick })</code>, <code>createRing()</code> and <code>scanStage()</code>; pop-ups and drawers from <code>openDialog()</code> in <code>js/components/dialog.js</code>. The body is decorative (aria-hidden). Pins are &ge; 44 px buttons and must also be listed as text. Ring fill is a display scale only, never a status. Colours come only from the <code>--color-scan-*</code> tokens.</p>
+      <div id="scan-demo"></div>
     </section>
 
     <!-- ===================================================== Icons -->

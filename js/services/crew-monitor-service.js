@@ -141,6 +141,7 @@ function presentAlert(a, member) {
     severity: SEVERITIES.includes(a.severity) ? a.severity : "info",
     status: a.status,
     category: isText(a.category) ? a.category : "",
+    ruleId: isText(a.ruleId) ? a.ruleId : "", // public rule id (shown on #/alerts); places the body-scan pin
     detectedAt: isTime(a.detectedAt) ? a.detectedAt : 0,
     explanation: isText(a.explanation) ? a.explanation : "",
     synthetic: true, // every record in this prototype is synthetic

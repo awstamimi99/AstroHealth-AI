@@ -7,6 +7,8 @@ import { ICON_NAMES } from "../../vendor/lucide/icons.js";
 import { el, $, $$ } from "../../js/core/utils/dom.js";
 import { formatTime } from "../../js/core/utils/format.js";
 import { checkEnvironment } from "../../js/core/environment.js";
+import { createBodyScan, createRing, scanStage } from "../../js/components/body-scan.js";
+import { openDialog } from "../../js/components/dialog.js";
 
 checkEnvironment();
 
@@ -16,6 +18,7 @@ const COLOR_TOKENS = [
   "primary", "primary-2", "primary-dark", "on-primary", "primary-tint",
   "text", "text-2", "text-3", "border", "border-subtle",
   "ok", "ok-tint", "warning", "warning-tint", "critical", "critical-tint", "info", "info-tint",
+  "scan-bg", "scan-outline", "scan-mesh", "scan-glow", "scan-baseline", "scan-watch", "scan-critical", "scan-info", "scan-text", "scan-text-2",
 ];
 const rootStyle = getComputedStyle(document.documentElement);
 const token = (name) => rootStyle.getPropertyValue(name).trim();
@@ -159,8 +162,35 @@ function selfCheck(label, ok) {
   );
 }
 
+function drawScanDemo() {
+  const host = document.getElementById("scan-demo");
+  if (!host) return;
+  const pins = [
+    { number: 1, zone: "lungs", severity: "critical", tag: "Critical example", label: "Pin 1: critical example, chest. Open details." },
+    { number: 2, zone: "head", severity: "warning", tag: "Warning example", label: "Pin 2: warning example, head. Open details." },
+    { number: 3, zone: "arm", severity: "info", tag: "Info example", label: "Pin 3: info example, arm. Open details." },
+  ];
+  const onPinClick = (pin, button) => openDialog({
+    kind: pin.number === 3 ? "drawer" : "modal",
+    title: `Example ${pin.number === 3 ? "drawer" : "pop-up"} · pin ${pin.number}`,
+    body: [el("p", {}, "Esc, the Close button or a click outside closes it; focus returns to the pin.")],
+    footer: [el("button", { type: "button", class: "btn btn--secondary btn--sm", disabled: true }, "Disabled action")],
+    returnFocus: button,
+  });
+  const ring = (id, label, value, unit, fraction) => createRing({ id, label, value, unit, fraction, baseline: "Baseline example", meta: "Example reading" });
+  host.append(scanStage({ id: "sg-scan", label: "Body scan example" }, [
+    el("div", { class: "sg-scan" }, [
+      el("div", { class: "sg-scan__body" }, createBodyScan({ pins, hotspots: pins, onPinClick })),
+      el("div", { class: "sg-scan__body" }, createBodyScan({ crop: "upper", pins: pins.slice(0, 2), hotspots: pins.slice(0, 2), onPinClick })),
+      el("div", { class: "sg-scan__rings" }, [ring("sg-ring-1", "Heart rate", "72", "bpm", 0.28), ring("sg-ring-2", "SpO₂", "—", "", null)]),
+    ]),
+    el("p", { class: "scan-stage__note" }, "Pin 3 opens the drawer variant. Synthetic example values."),
+  ]));
+}
+
 window.addEventListener("load", async () => {
   drawSparkline();
+  drawScanDemo();
   // fonts.load() resolves with the matching @font-face entries it loaded
   // (empty list = the local woff2 file is missing).
   const inter = await document.fonts.load('600 14px "Inter"');

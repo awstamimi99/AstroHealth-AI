@@ -443,3 +443,75 @@ All data is synthetic. Sprint 9 writes nothing to the database.
 - [ ] Check keyboard-only operation, visible focus, 375 / 768 / 1440 px layouts, offline reload after one online visit, and print preview.
 - [ ] Capture current screenshots from the running app; verify `docs/screenshots/` is not in the precache manifest.
 - [ ] Record Firefox, Safari, a real screen reader and physical printing as passed only when actually tested.
+
+## 15. Light theme (body-scan redesign, PR 0a — app version 0.10.0)
+
+Reload once so the service worker cache `astrohealth-v0.10.0` takes over.
+
+- [ ] Every page (landing, About, login, app routes) uses the light surfaces; no dark leftovers, no unreadable text
+- [ ] Captions and notes (muted text) are readable; status badges (OK, Watch/warning, Critical, Info) keep icon + text and are readable on their tinted backgrounds
+- [ ] Active navigation item, buttons, links and focus rings use the brand colour; the focus ring is clearly visible with the keyboard
+- [ ] Medical Officer Overview: each crew-count card links to Alerts or Crew Monitor; astronaut Overview vital cards link to Physical Health
+- [ ] 1440 / 768 / 375 px: no horizontal page scrolling
+- [ ] Browser address-bar / installed-app colour is light (theme-color and manifest)
+
+## 16. Red brand (body-scan redesign, PR 0b)
+
+- [ ] Buttons, links, active navigation, focus rings and the 3 px line under the app top bar are brand red (`#C8102E`)
+- [ ] Critical alerts use raspberry-magenta (`#A3195B`) with the circle-alert icon and the word "Critical" — never brand red alone
+- [ ] The SIMULATED tag is neutral grey (it is a label, not an action)
+- [ ] Logo, favicon and app icons are red; the full logo's text is dark and readable on the light pages
+- [ ] Style guide (`tests/browser/styleguide.html`) shows the red palette and the `scan-*` tokens
+
+## 17. Body scan component (body-scan redesign, phase 1 — app version 0.10.1)
+
+Style guide (`tests/browser/styleguide.html`, section "Body scan stage, pins, rings & drawer"):
+
+- [ ] Dark stage card; the wireframe body has a glowing cyan outline, horizontal and vertical mesh lines inside the silhouette, a floor ring and a slow scan line
+- [ ] The "upper" crop shows head to waist without the floor ring
+- [ ] Pins show a number, a pulse ring and a text tag; critical is pink-magenta, warning amber, info blue — each pin's aria-label names the severity in words
+- [ ] Tab reaches every pin (visible focus outline); Enter/Space opens the example pop-up; Esc, Close and a click outside close it and focus returns to the pin
+- [ ] Pin 3 opens the drawer from the right; Tab / Shift+Tab stay inside it
+- [ ] Reduced motion (system setting or Settings → Reduce motion): no scan line, no pin pulse, no drawer slide
+- [ ] Screen reader: the drawing itself is not announced; pins and ring labels/values are
+
+## 18. Astronaut Overview body scan (body-scan redesign, phase 2 — app version 0.10.2)
+
+Sign in as `reyes` / `demo` (open alert ALT-0190) and open Overview:
+
+- [ ] The "Body scan · latest vital signs" stage shows the wireframe body with 4 rings (Sleep duration and SpO₂ on the left, Heart rate and Blood pressure on the right), each joined to its body zone by a dashed line
+- [ ] Each ring shows value, unit, baseline, time (UTC), Simulated/Manual tag and a History link; the ring fill is described as a display scale, not a health assessment
+- [ ] Pin 1 sits on the head; the Open alerts list beside the stage shows the same alert as "Pin 1 · Head"
+- [ ] Clicking pin 1 (or the alert title in the list) opens the pop-up: severity badge with icon and word, body location, rule PHY-05 and threshold, what was detected, key readings, the not-clinically-validated limitation
+- [ ] "Acknowledge" and "Message the Medical Officer" are disabled and their reasons are shown and announced
+- [ ] "View action plan" opens the drawer: synthetic-content notice, progress bar "0 of 4 review steps ticked", 4 checkbox steps, a labelled video placeholder, the alert's activity, disabled "Escalate" / "Mark resolved" with reasons
+- [ ] Ticking a step updates the bar and the count; closing and reopening keeps the tick; signing in as `chen` doesn't show reyes's ticks
+- [ ] Esc closes the pop-up/drawer and focus returns to the pin or list button that opened it
+- [ ] Alert activity (right column) lists recent alert events with links to `#/alerts/ALT-…`
+- [ ] 1440 px: stage and right column side by side; 768 / 375 px: stacked, the stage scrolls sideways inside its card, the page itself doesn't
+- [ ] Medical Officer (`medofficer` / `demo`) Overview is unchanged
+
+## 19. Medical Officer body scan (body-scan redesign — app version 0.10.3)
+
+Sign in as `medofficer` / `demo`:
+
+- [ ] Overview → "Crew body scan": one dark card per crew member in review order, each with the wireframe body, small Heart rate / SpO₂ / Sleep duration rings, the state badge and a SIMULATED tag
+- [ ] Reyes (Watch) and Chen (Info) show pin 1 on the head; Haddad and Karim show no pin and "No open alerts."
+- [ ] Clicking a pin or "Open body scan" opens that crew member's page
+- [ ] Crew Monitor → a crew member (e.g. `#/crew/AH-04`): "Body scan · latest readings" shows the same stage as the astronaut Overview — 4 rings (incl. blood pressure) with dashed connectors and numbered pins; the Open alerts list beside it shows "Pin 1 · Head"
+- [ ] Pin 1 or the alert title opens a read-only pop-up naming the crew member, body location, rule and threshold, readings and limitation, with "Review on Alerts page"; there are no acknowledge/resolve buttons in it
+- [ ] Esc closes it and focus returns to the pin or list button
+- [ ] 1440 / 768 / 375 px: no page-level horizontal scrolling; on phones the crew member stage scrolls sideways inside its card
+- [ ] Astronaut Overview (`reyes`) still looks and works as in section 18
+
+## 20. Body-scan severity colours and layout polish (app version 0.10.4)
+
+- [ ] Pins are coloured by severity everywhere (astronaut Overview, Medical Officer Overview cards, crew member stage, style guide): critical magenta-pink with a squared marker and faster pulse, warning amber, info blue — never brand red
+- [ ] Each pin tag shows the severity icon and word (CRITICAL / WARNING / INFO) before the alert title; the zone has a matching glow and dashed ring
+- [ ] The stage footer shows the colour key (swatch + icon + word for Critical, Warning, Info)
+- [ ] The body looks rounded: shaded fill, brighter front / fainter back mesh rings, inner rim line, light beam and platform rings, frame corners
+- [ ] Reduced motion: no scan line, pin pulse or rotating zone ring
+- [ ] 1440 px, astronaut Overview: stage on the left with Alert status, Open alerts and Alert activity beside it; message and Go to stacked beside Today's routine; no half-empty cards
+- [ ] 1440 px, crew member page: Status, Open alerts and Cognitive check beside the stage; sleep shown as 7 night tiles
+- [ ] 768 / 375 px: everything stacks; no page-level horizontal scrolling
+- [ ] To see a critical pin with real data: as `medofficer`, Simulation Center → "Low oxygen saturation demonstration" → run it for a crew member, then open that crew member (Crew Monitor) — the SpO₂ alert pin sits on the chest

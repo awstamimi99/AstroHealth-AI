@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0B1018">
+  <meta name="theme-color" content="#F6F7FB">
   <meta name="description" content="AstroHealth AI — research and educational prototype exploring explainable crew health monitoring with synthetic data. Not a medical device.">
   <title>AstroHealth AI — Crew Health System</title>
 
@@ -736,6 +736,13 @@
       .status-metrics { grid-template-columns: 1fr; }
       .footer { flex-direction: column; align-items: flex-start; }
       .footer-note { text-align: left; }
+      .topbar .state-pill { display: none; }
+      .topbar__actions > .btn {
+        width: auto;
+        min-width: 0;
+        padding-inline: 16px;
+        font-size: 0.78rem;
+      }
     }
 
     :root {
@@ -956,6 +963,256 @@
         transition: none;
       }
     }
+
+    /* Light presentation layer: calm, spacious and consistent with the app. */
+    :root {
+      --home-bg: #f7f8fc;
+      --home-panel: rgba(255, 255, 255, 0.9);
+      --home-panel-strong: #ffffff;
+      --home-border: #e2e7ef;
+      --home-text: #172033;
+      --home-muted: #59667c;
+      --home-subtle: #646d7e;
+      --home-orange: #c8102e;
+      --home-orange-2: #9f0f25;
+      --home-green: #168565;
+      --home-card: #ffffff;
+      --home-shadow: 0 18px 50px rgba(21, 32, 51, 0.1);
+      --home-glass: rgba(255, 255, 255, 0.88);
+      --home-glass-border: rgba(215, 221, 232, 0.92);
+      --home-glass-shine: rgba(255, 255, 255, 0.9);
+    }
+    body {
+      background:
+        linear-gradient(rgba(200, 16, 46, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(200, 16, 46, 0.035) 1px, transparent 1px),
+        var(--home-bg);
+      background-size: 32px 32px;
+    }
+    body::before {
+      display: none;
+    }
+    body::after {
+      background: radial-gradient(520px circle at var(--home-pointer-x) var(--home-pointer-y), rgba(200, 16, 46, 0.08), transparent 72%);
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      width: 100vw;
+      min-height: 80px;
+      margin-left: calc(50% - 50vw);
+      gap: 28px;
+      padding: 0 clamp(24px, 4vw, 72px);
+      background: rgba(255, 255, 255, 0.96);
+      border-bottom-color: var(--home-border);
+      box-shadow: 0 1px 0 var(--home-border), 0 8px 28px rgba(21, 32, 51, 0.04);
+    }
+    .topnav {
+      flex: 1;
+      justify-content: center;
+      gap: 4px;
+    }
+    .topnav a {
+      padding: 10px 12px;
+      border-radius: 10px;
+      color: #403e49;
+      font-weight: 500;
+      line-height: 1;
+      opacity: 1;
+      transition: background-color 180ms ease, color 180ms ease;
+    }
+    .topnav a:hover {
+      background: #f4f5f8;
+      color: var(--home-text);
+    }
+    .topnav a[aria-current="location"] {
+      background: var(--color-primary-tint);
+      color: var(--color-primary-dark);
+    }
+    .topnav a::after {
+      display: none;
+    }
+    .topbar__actions {
+      display: flex;
+      flex-shrink: 0;
+      align-items: center;
+      gap: 10px;
+    }
+    .topbar__actions .state-pill {
+      min-height: 42px;
+      padding: 0 13px;
+      border-color: var(--home-border);
+      background: #ffffff;
+      color: var(--home-muted);
+      box-shadow: none;
+    }
+    .topbar__actions .btn {
+      min-height: 46px;
+      height: 46px;
+      gap: 12px;
+      padding-inline: 18px 14px;
+      border-radius: 12px;
+    }
+    .header-cta__arrow {
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.16);
+      font-size: 1rem;
+      transition: transform 180ms ease;
+    }
+    .header-cta__label--mobile {
+      display: none;
+    }
+    .topbar__actions .btn:hover .header-cta__arrow {
+      transform: translateX(2px);
+    }
+    .brand,
+    .topnav a,
+    .footer {
+      color: var(--home-text);
+    }
+    .state-pill {
+      border-color: #cfe8df;
+      background: #f0faf6;
+      box-shadow: none;
+    }
+    .hero {
+      min-height: 680px;
+    }
+    .hero::after {
+      right: -360px;
+      bottom: -620px;
+      background: radial-gradient(circle at 34% 28%, rgba(200, 16, 46, 0.2), rgba(253, 236, 238, 0.9) 34%, rgba(247, 248, 252, 0.2) 66%);
+      box-shadow: none;
+    }
+    .eyebrow,
+    .hero-copy p,
+    .team-card .role,
+    .offline-list li {
+      color: var(--home-muted);
+    }
+    h1,
+    h1 .highlight,
+    .section-title {
+      background: none;
+      color: var(--home-text);
+      animation: none;
+    }
+    h1 .highlight {
+      color: var(--color-primary);
+    }
+    .btn--primary {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      box-shadow: 0 10px 24px rgba(200, 16, 46, 0.22);
+      color: #ffffff;
+    }
+    .btn--secondary {
+      background: #ffffff;
+      border-color: var(--home-border);
+      color: var(--home-text);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    .btn:hover {
+      box-shadow: 0 12px 28px rgba(200, 16, 46, 0.16);
+    }
+    .preview-card,
+    .card,
+    .card[data-tilt] {
+      background-color: #ffffff;
+      background-image: none;
+      border-color: var(--home-border);
+      box-shadow: 0 12px 34px rgba(21, 32, 51, 0.07);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    .card[data-tilt]:hover,
+    .preview-card:hover {
+      border-color: rgba(200, 16, 46, 0.32);
+      box-shadow: 0 18px 42px rgba(21, 32, 51, 0.1);
+    }
+    .live-tag,
+    .mini-box,
+    .process-card .icon-box {
+      background: #f4f6fa;
+      border-color: var(--home-border);
+      color: var(--home-text);
+    }
+    .chart-box {
+      border-color: var(--home-border);
+      background: linear-gradient(180deg, #f7f8fc, #eef1f7);
+    }
+    .card .icon,
+    .cap-card .cap-icon {
+      background: var(--color-primary-tint);
+      color: var(--color-primary);
+    }
+    .section-kicker,
+    .research-card .ref,
+    .topnav a[aria-current="location"] {
+      color: var(--color-primary);
+      text-shadow: none;
+    }
+    .section-kicker::before,
+    .topnav a::after {
+      background: var(--color-primary);
+    }
+    .status-pill {
+      background: var(--color-ok-tint);
+      border-color: #bce4d5;
+      color: var(--color-ok);
+    }
+    .footer {
+      border-top-color: var(--home-border);
+    }
+    @media (max-width: 1120px) {
+      .topbar {
+        gap: 18px;
+      }
+      .topnav a {
+        padding-inline: 8px;
+        font-size: 0.82rem;
+      }
+      .topbar__actions .state-pill {
+        display: none;
+      }
+    }
+    @media (max-width: 620px) {
+      .topbar {
+        min-height: 72px;
+        gap: 12px;
+        padding-inline: 16px;
+      }
+      .brand-text span {
+        display: none;
+      }
+      .brand {
+        gap: 8px;
+      }
+      .brand-text strong {
+        font-size: 0.95rem;
+      }
+      .topbar__actions .btn {
+        min-height: 42px;
+        height: 42px;
+        padding-inline: 14px 10px;
+      }
+      .header-cta__arrow {
+        width: 22px;
+        height: 22px;
+      }
+      .header-cta__label--desktop {
+        display: none;
+      }
+      .header-cta__label--mobile {
+        display: inline;
+      }
+    }
   </style>
 </head>
 <body>
@@ -978,11 +1235,17 @@
         <a href="#team">Team</a>
       </nav>
 
-      <div class="state-pill" data-network-status role="status" aria-live="polite">
-        <span class="state-pill__dot" aria-hidden="true"></span>
-        <span data-network-label>Offline ready</span>
+      <div class="topbar__actions">
+        <div class="state-pill" data-network-status role="status" aria-live="polite">
+          <span class="state-pill__dot" aria-hidden="true"></span>
+          <span data-network-label>Offline ready</span>
+        </div>
+        <a class="btn btn--primary header-cta" href="login.html">
+          <span class="header-cta__label--desktop">Launch Dashboard</span>
+          <span class="header-cta__label--mobile">Dashboard</span>
+          <span class="header-cta__arrow" aria-hidden="true">→</span>
+        </a>
       </div>
-      <a class="btn btn--primary" href="login.html">Launch Dashboard</a>
     </header>
 
     <main>

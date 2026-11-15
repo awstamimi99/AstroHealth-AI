@@ -112,18 +112,45 @@
   list-style: none;
 }
 .crew-counts__item {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  min-height: 64px;
+  padding: var(--space-3);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
+  background: var(--color-card);
+  transition: border-color var(--motion-fast) var(--ease), box-shadow var(--motion-fast) var(--ease), transform var(--motion-fast) var(--ease);
+}
+.crew-counts__item:has(.crew-counts__link:hover) {
+  border-color: color-mix(in srgb, var(--color-primary) 38%, var(--color-border));
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
 }
 .crew-counts__value {
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
+}
+.crew-counts__link {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-left: auto;
+  border-radius: var(--radius-sm);
+  color: var(--color-primary);
+}
+.crew-counts__link::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+}
+.crew-counts__link .icon {
+  width: 16px;
+  height: 16px;
 }
 
 /* ---- Priority queue (#/overview) --------------------------------------------------- */
@@ -135,12 +162,13 @@
   padding-left: var(--space-5);
 }
 .crew-queue__item {
-  padding: var(--space-3);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
-}
-.crew-queue__item > * + * {
-  margin-top: var(--space-2);
 }
 .crew-queue__body {
   display: flex;
@@ -175,6 +203,10 @@
   flex-direction: column;
   gap: var(--space-2);
   min-width: 0;
+}
+.crew-card:has(a:hover) {
+  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+  box-shadow: var(--shadow-md);
 }
 .crew-card__name {
   font-size: var(--text-md);
@@ -289,9 +321,184 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+@media (min-width: 900px) {
+  .crew--overview {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+    align-items: start;
+    gap: var(--space-6);
+  }
+  .crew--overview > .crew__header,
+  .crew--overview > [aria-labelledby="mo-scan-title"] {
+    grid-column: 1 / -1;
+  }
+  .crew--overview > .crew__section {
+    height: 100%;
+  }
+}
 @media (max-width: 699px) {
   .crew-grid,
   .crew-grid--4 {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .crew-queue__item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---- Body-scan redesign ------------------------------------------------------------------ */
+/* #/crew/AH-0n: the body-scan stage beside the numbered open alerts. */
+.crew-scan-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+.crew-scan-layout__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+@media (min-width: 1200px) {
+  .crew-scan-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    align-items: stretch; /* the dark stage grows to the side column's height */
+  }
+}
+.crew-scan {
+  min-width: 0;
+}
+.crew-scan__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.crew-scan__alerts {
+  padding: 0;
+  list-style: none;
+}
+.crew-scan__alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+/* Medical Officer #/overview: one compact scan card per crew member. */
+.mo-scan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mo-scan-grid > li {
+  display: flex;
+  min-width: 0;
+}
+.mo-scan-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.mo-scan-card__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.mo-scan-card__name {
+  font-size: var(--text-md);
+}
+.mo-scan-card__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+.mo-scan-card__body {
+  position: relative;
+  justify-self: center;
+  width: min(118px, 100%);
+}
+.mo-scan-card__rings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.mo-scan-card .scan-ring {
+  width: 92px;
+  gap: 2px;
+}
+.mo-scan-card .scan-ring__face {
+  width: 62px;
+  height: 62px;
+}
+.mo-scan-card .scan-ring__label {
+  font-size: var(--text-2xs);
+}
+.mo-scan-card .scan-stage__note {
+  margin: 0;
+}
+.mo-scan-card > p:last-child {
+  margin: auto 0 0; /* the link sits at the bottom of equal-height cards */
+}
+.mo-scan-card .scan-ring__number {
+  font-size: var(--text-md);
+}
+.mo-scan-card .scan-pin__tag {
+  display: none; /* the card's text line names the alert; the pin keeps its number and aria-label */
+}
+.mo-scan-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  color: var(--color-scan-text);
+  font-weight: var(--weight-semibold);
+}
+.mo-scan-card__link:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 2px solid var(--color-scan-text);
+  outline-offset: 2px;
+}
+
+/* #/crew/AH-0n sleep: 7 compact night tiles instead of one line per night. */
+.crew-sleep {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.crew-sleep__night {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-elevated);
+}
+.crew-sleep__night.is-missing {
+  border-style: dashed;
+}
+.crew-sleep__date {
+  color: var(--color-text-3);
+  font-size: var(--text-2xs);
+}
+.crew-sleep__value {
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 699px) {
+  .crew-sleep {
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
   }
 }
