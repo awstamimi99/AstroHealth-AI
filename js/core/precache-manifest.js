@@ -57,6 +57,7 @@ self.PRECACHE_URLS = [
   "./js/components/icon.js",
   "./js/components/live-chart.js",
   "./js/components/live-control-view.js",
+  "./js/components/mini-charts.js",
   "./js/components/public-body-scan.js",
   "./js/components/review-steps.js",
   "./js/components/vitals-stage.js",

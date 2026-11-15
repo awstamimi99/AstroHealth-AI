@@ -163,7 +163,7 @@ test("5–7. both seeded Medical Officer accounts read the snapshot; every astro
 test("8. seeded order: Reyes (Watch) before Chen (Info), then Haddad and Karim; deterministic across runs", async () => {
   const first = await seeded().service.getCrewSnapshot(MO_SESSION, { now: NOW });
   assert.deepEqual(first.crew.map((m) => [m.crewId, m.state.label]), [["AH-04", "Watch"], ["AH-03", "Info"], ["AH-01", "No open alerts"], ["AH-02", "No open alerts"]]);
-  assert.deepEqual(first.summary, { crewCount: 4, withOpenAlerts: 2, critical: 0, watch: 1, info: 1, unavailable: 0, dataNeedsReview: 0, noOpenAlerts: 2 });
+  assert.deepEqual(first.summary, { crewCount: 4, withOpenAlerts: 2, critical: 0, watch: 1, info: 1, unavailable: 0, dataNeedsReview: 0, noOpenAlerts: 2, alertsBySeverity: { info: 1, warning: 1, critical: 0 } });
   const again = await seeded().service.getCrewSnapshot(MO_SESSION, { now: NOW });
   assert.deepEqual(again.crew.map((m) => m.crewId), first.crew.map((m) => m.crewId));
   // Input order doesn't matter.
@@ -504,4 +504,22 @@ test("29. Sprint 4: the astronaut Overview service and page are unchanged", () =
   assert.match(page, /No unacknowledged messages from the Medical Officer\./);
   const service = read("js/services/astronaut-overview-service.js");
   assert.match(service, /export const STATUS_NOTE = "Based on your open alerts only\. This is not a health assessment\.";/);
+});
+
+test("charts: 7-day daily-average trends per crew member, shared check-in counts, open alerts by severity", async () => {
+  const r = await seeded().service.getCrewSnapshot(MO_SESSION, { now: NOW });
+  assert.equal(r.trendDates.length, svc.TREND_DAYS);
+  assert.equal(r.trendDates.at(-1), new Date(NOW).toISOString().slice(0, 10), "ends today (UTC)");
+  for (const m of r.crew) {
+    for (const key of ["heartRate", "spo2", "sleepDuration"]) {
+      const t = m.trends[key];
+      assert.equal(t.status, "ok", `${m.crewId} ${key}`);
+      assert.deepEqual(t.points.map((p) => p.date), r.trendDates);
+      assert.ok(t.points.some((p) => typeof p.value === "number"), `${m.crewId} ${key} has data`);
+    }
+    assert.equal(typeof m.sharedWellbeing.count30d, "number");
+  }
+  // Missing days are null, never zero; another astronaut's summary is ignored.
+  const t = svc.buildTrend([{ astronautId: "a-01", metric: "spo2", date: "2026-11-13", avg: 97.25 }, { astronautId: "a-02", metric: "spo2", date: "2026-11-14", avg: 90 }], "a-01", "spo2", ["2026-11-13", "2026-11-14"]);
+  assert.deepEqual(t, { status: "ok", points: [{ date: "2026-11-13", value: 97.3 }, { date: "2026-11-14", value: null }] });
 });
