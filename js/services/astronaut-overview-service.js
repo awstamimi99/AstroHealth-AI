@@ -332,6 +332,7 @@ function buildAlerts(result, astronautId) {
   const items = open.slice(0, MAX_LISTED_ALERTS).map((a) => ({
     number: isText(a.number) ? a.number : "",
     title: alertTitle(a),
+    ruleId: isText(a.ruleId) ? a.ruleId : "", // public rule id (also shown on #/alerts); used for body-zone pins
     severity: SEVERITIES.includes(a.severity) ? a.severity : "info",
     status: a.status,
     category: isText(a.category) ? a.category : "",

@@ -474,3 +474,19 @@ Style guide (`tests/browser/styleguide.html`, section "Body scan stage, pins, ri
 - [ ] Pin 3 opens the drawer from the right; Tab / Shift+Tab stay inside it
 - [ ] Reduced motion (system setting or Settings → Reduce motion): no scan line, no pin pulse, no drawer slide
 - [ ] Screen reader: the drawing itself is not announced; pins and ring labels/values are
+
+## 18. Astronaut Overview body scan (body-scan redesign, phase 2 — app version 0.10.2)
+
+Sign in as `reyes` / `demo` (open alert ALT-0190) and open Overview:
+
+- [ ] The "Body scan · latest vital signs" stage shows the wireframe body with 4 rings (Sleep duration and SpO₂ on the left, Heart rate and Blood pressure on the right), each joined to its body zone by a dashed line
+- [ ] Each ring shows value, unit, baseline, time (UTC), Simulated/Manual tag and a History link; the ring fill is described as a display scale, not a health assessment
+- [ ] Pin 1 sits on the head; the Open alerts list beside the stage shows the same alert as "Pin 1 · Head"
+- [ ] Clicking pin 1 (or the alert title in the list) opens the pop-up: severity badge with icon and word, body location, rule PHY-05 and threshold, what was detected, key readings, the not-clinically-validated limitation
+- [ ] "Acknowledge" and "Message the Medical Officer" are disabled and their reasons are shown and announced
+- [ ] "View action plan" opens the drawer: synthetic-content notice, progress bar "0 of 4 review steps ticked", 4 checkbox steps, a labelled video placeholder, the alert's activity, disabled "Escalate" / "Mark resolved" with reasons
+- [ ] Ticking a step updates the bar and the count; closing and reopening keeps the tick; signing in as `chen` doesn't show reyes's ticks
+- [ ] Esc closes the pop-up/drawer and focus returns to the pin or list button that opened it
+- [ ] Alert activity (right column) lists recent alert events with links to `#/alerts/ALT-…`
+- [ ] 1440 px: stage and right column side by side; 768 / 375 px: stacked, the stage scrolls sideways inside its card, the page itself doesn't
+- [ ] Medical Officer (`medofficer` / `demo`) Overview is unchanged

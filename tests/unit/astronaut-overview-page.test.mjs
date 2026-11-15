@@ -65,7 +65,7 @@ test("ready Overview: sections in the approved order with unique heading ids", a
   const root = container.childNodes[0];
   assert.equal(root.getAttribute("aria-busy"), "false");
   const order = all(root, (e) => e.tagName === "SECTION").map((s) => s.getAttribute("aria-labelledby"));
-  assert.deepEqual(order, ["ov-welcome-title", "ov-status-title", "ov-alerts-title", "ov-vitals-title", "ov-message-title", "ov-routine-title", "ov-sleep-title", "ov-links-title"]);
+  assert.deepEqual(order, ["ov-welcome-title", "ov-status-title", "ov-vitals-title", "ov-alerts-title", "ov-message-title", "ov-routine-title", "ov-sleep-title", "ov-links-title"]);
   const ids = all(root, (e) => e.hasAttribute("id")).map((e) => e.getAttribute("id"));
   assert.equal(new Set(ids).size, ids.length, "ids are unique");
   for (const id of order) assert.equal(byId(root, id).tagName, "H2", id);
@@ -99,7 +99,7 @@ test("status: 'No open alerts' for haddad, never a health claim", async () => {
   assert.equal(byTag(message, "button").length, 0);
 });
 
-test("alerts: listed with number, title, severity, status, UTC time and a Synthetic tag; link to #/alerts; no action buttons", async () => {
+test("alerts: listed with number, title, severity, status, UTC time and a Synthetic tag; link to #/alerts; only an 'open details' button", async () => {
   const container = new FakeElement("div");
   await page.createOverviewRenderer({ loadOverview: async () => READY_REYES })(container, ASTRONAUT, {});
   const alerts = sectionOf(container, "ov-alerts-title");
@@ -107,7 +107,10 @@ test("alerts: listed with number, title, severity, status, UTC time and a Synthe
   assert.equal(items.length, 1);
   const text = items[0].textContent;
   for (const part of ["ALT-0190", "Reduced sleep duration", "Warning", "Acknowledged", "Synthetic", "UTC"]) assert.match(text, new RegExp(part));
-  assert.equal(byTag(alerts, "button").length, 0);
+  const buttons = byTag(alerts, "button");
+  assert.equal(buttons.length, 1, "one button: open the alert's details (no lifecycle actions)");
+  assert.equal(buttons[0].getAttribute("data-alert-open"), "1");
+  assert.match(text, /Pin 1 · Head/);
   assert.deepEqual(byTag(alerts, "a").map((a) => a.getAttribute("href")), ["#/alerts"]);
   assert.doesNotMatch(alerts.textContent, /unread/i);
 });
@@ -116,24 +119,25 @@ test("timestamps use <time datetime> and a visible UTC label", async () => {
   const container = new FakeElement("div");
   await page.createOverviewRenderer({ loadOverview: async () => READY_REYES })(container, ASTRONAUT, {});
   const times = byTag(container, "time");
-  assert.ok(times.length >= 6);
+  assert.ok(times.length >= 6, `found ${times.length}`);
   for (const t of times) {
     assert.match(t.getAttribute("datetime"), /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     assert.match(t.textContent, / UTC$/);
   }
 });
 
-test("vital cards: 4 cards; simulated vs manual labels; suspect and stale are data-quality labels", async () => {
+test("vital rings: 4 rings; simulated vs manual labels; suspect and stale are data-quality labels", async () => {
   const data = structuredClone(READY_REYES);
   const card = (key) => data.vitals.items.find((i) => i.key === key);
   Object.assign(card("heartRate"), { quality: "suspect" });
   Object.assign(card("spo2"), { source: "manual", simulated: false, stale: true });
   const container = new FakeElement("div");
   await page.createOverviewRenderer({ loadOverview: async () => data })(container, ASTRONAUT, {});
-  const cards = byClass(container, "overview__vital");
-  assert.deepEqual(cards.map((c) => byTag(c, "h3")[0].textContent), ["Heart rate", "SpO₂", "Blood pressure", "Sleep duration"]);
-  const [hr, spo2, bp] = cards;
-  assert.ok(cards.every((c) => byClass(c, "overview__vital-link")[0].getAttribute("href") === "#/physical"), "every vital offers its health history");
+  const rings = byClass(container, "ov-ring");
+  assert.deepEqual(rings.map((c) => byClass(c, "scan-ring__label")[0].textContent), ["Heart rate", "SpO₂", "Blood pressure", "Sleep duration"]);
+  assert.ok(rings.every((r) => r.tagName === "FIGURE" && byId(r, r.getAttribute("aria-labelledby"))), "each ring is a labelled figure");
+  const [hr, spo2, bp] = rings;
+  assert.ok(rings.every((c) => byClass(c, "ov-ring__link")[0].getAttribute("href") === "#/physical"), "every vital offers its health history");
   assert.match(hr.textContent, /Simulated/);
   assert.match(hr.textContent, /Data quality: suspect/);
   assert.ok(!byClass(hr, "badge--warning").length && !byClass(hr, "badge--critical").length, "suspect isn't shown as a health warning");
@@ -143,10 +147,14 @@ test("vital cards: 4 cards; simulated vs manual labels; suspect and stale are da
   assert.match(bp.textContent, /\d+\/\d+/);
   assert.match(bp.textContent, /Your baseline: \d+\/\d+ mmHg/);
   // the visual value is hidden from screen readers and replaced by a spoken sentence
-  const value = byClass(hr, "metric__value")[0];
-  assert.equal(value.getAttribute("aria-hidden"), "true");
+  assert.equal(byClass(hr, "scan-ring__value")[0].getAttribute("aria-hidden"), "true");
   assert.ok(byClass(hr, "sr-only").some((e) => / beats per minute$/.test(e.textContent)), "spoken value with unit");
   assert.ok(byClass(hr, "sr-only").some((e) => e.textContent === " (demo history)"), "spoken provenance");
+  // ring fill is a display scale: the arc has no status colour class
+  for (const arc of byClass(container, "scan-ring__arc")) assert.equal(arc.getAttribute("class"), "scan-ring__arc");
+  // each ring has a dashed connector to its body zone
+  assert.equal(byClass(container, "ov-stage__link").length, 4);
+  assert.equal(byClass(container, "ov-stage__links")[0].getAttribute("aria-hidden"), "true");
 });
 
 test("empty and incomplete vitals are honest (no zeros, no invented pair)", async () => {
@@ -159,13 +167,14 @@ test("empty and incomplete vitals are honest (no zeros, no invented pair)", asyn
   ];
   const container = new FakeElement("div");
   await page.createOverviewRenderer({ loadOverview: async () => data })(container, ASTRONAUT, {});
-  const [hr, spo2, bp, sleep] = byClass(container, "overview__vital");
+  const [hr, spo2, bp, sleep] = byClass(container, "ov-ring");
   assert.match(hr.textContent, /No recent reading/);
   assert.match(spo2.textContent, /marked invalid/);
   assert.match(bp.textContent, /No complete reading/);
   assert.match(sleep.textContent, /Couldn't load this reading/);
   assert.equal(byTag(sleep, "button").length, 1, "Retry");
   for (const c of [hr, spo2, bp]) assert.doesNotMatch(c.textContent, /(^|\D)0(\.0)? ?(bpm|%|mmHg)/);
+  for (const c of [hr, spo2, bp, sleep]) assert.equal(byClass(c, "scan-ring__arc").length, 0, "no arc without a value");
   assert.match(spo2.textContent, /No baseline recorded/);
 });
 
@@ -310,4 +319,141 @@ test("messages: empty state names the Medical Officer; nothing claims an unverif
   for (const id of ["ov-status-title", "ov-alerts-title", "ov-vitals-title", "ov-routine-title", "ov-sleep-title"]) {
     assert.doesNotMatch(sectionOf(c2, id).textContent, /Couldn't load/, id);
   }
+});
+
+// ---- Body-scan redesign: pins, pop-up, action-plan drawer, activity --------------------
+
+const alertsSvc = await import("../../js/services/alerts-service.js");
+const historySvc = await import("../../js/services/history-service.js");
+const { createPlanProgress } = await import("../../js/core/action-plan-progress.js");
+const alerts = alertsSvc.createAlertsService({ repos: mock, withTransaction: mock.withTransaction });
+const history = historySvc.createHistoryService({ repos: mock });
+const realDetail = (session, number) => alerts.getAlertDetail(session, number, { now: NOW });
+const realActivity = (session) => history.getOwnHistory(session, { days: 7 }, { now: NOW });
+
+function memoryStorage() {
+  const map = new Map();
+  return { getItem: (k) => (map.has(k) ? map.get(k) : null), setItem: (k, v) => map.set(k, String(v)), removeItem: (k) => map.delete(k), map };
+}
+
+async function renderScan(extra = {}) {
+  const host = new FakeElement("body");
+  const container = new FakeElement("div");
+  const storage = memoryStorage();
+  const progress = createPlanProgress({ storage: () => storage });
+  await page.createOverviewRenderer({ loadOverview: async () => READY_REYES, loadAlertDetail: realDetail, loadActivity: realActivity, progress, host, ...extra })(container, ASTRONAUT, extra.options || {});
+  await flush();
+  return { host, container, storage, progress };
+}
+const openDialogOf = (host) => byClass(host, "modal-backdrop")[0];
+
+test("body scan: decorative wireframe body on the dark stage; one numbered pin per open alert, as a labelled button", async () => {
+  const { container } = await renderScan();
+  const stage = sectionOf(container, "ov-vitals-title");
+  assert.ok(stage.classList.includes("scan-stage"));
+  const svg = byClass(stage, "scan-body__svg")[0];
+  assert.equal(svg.getAttribute("aria-hidden"), "true", "the drawing is decorative");
+  const pins = byClass(stage, "scan-pin");
+  assert.equal(pins.length, READY_REYES.alerts.items.length);
+  assert.equal(pins[0].tagName, "BUTTON");
+  assert.match(pins[0].getAttribute("aria-label"), /^Alert 1: ALT-0190 Reduced sleep duration — Warning, Head\. Open details\.$/);
+  assert.ok(pins[0].classList.includes("scan-pin--warning"));
+  assert.equal(byClass(pins[0], "scan-pin__num")[0].textContent, "1");
+  assert.match(stage.textContent, /Illustration only/);
+});
+
+test("pin → pop-up with severity, body location, rule, readings and limitation; lifecycle buttons disabled with reasons", async () => {
+  const { host, container } = await renderScan();
+  const pin = byClass(container, "scan-pin")[0];
+  pin.click();
+  await flush();
+  const backdrop = openDialogOf(host);
+  assert.ok(backdrop, "the pop-up opened");
+  const dialog = backdrop.childNodes[0];
+  assert.equal(dialog.getAttribute("role"), "dialog");
+  assert.equal(dialog.getAttribute("aria-modal"), "true");
+  assert.match(byId(dialog, dialog.getAttribute("aria-labelledby")).textContent, /ALT-0190 · Reduced sleep duration/);
+  const text = dialog.textContent;
+  for (const part of ["Warning", "Acknowledged", "Head (pin 1)", "PHY-05", "What was detected", "Key readings", "not clinically validated"]) assert.ok(text.includes(part), part);
+  const buttons = byTag(dialog, "button");
+  const ack = buttons.find((b) => b.textContent === "Acknowledge");
+  const msg = buttons.find((b) => b.textContent === "Message the Medical Officer");
+  for (const b of [ack, msg]) {
+    assert.ok(b.hasAttribute("disabled"), b.textContent);
+    assert.match(byId(dialog, b.getAttribute("aria-describedby")).textContent, /Medical Officer|isn't available/);
+  }
+  assert.ok(buttons.some((b) => b.hasAttribute("data-plan-open") && !b.hasAttribute("disabled")));
+  assert.equal(text.split("not clinically validated").length, 2, "the threshold label is shown once");
+  assert.doesNotMatch(text.replace("This is not a diagnosis", ""), BANNED, "only the stored disclaimer mentions diagnosis");
+  // Esc closes and focus returns to the pin
+  backdrop.dispatch("keydown", { key: "Escape" });
+  assert.equal(openDialogOf(host), undefined);
+  assert.equal(globalThis.document.activeElement, pin);
+});
+
+test("'View action plan' → drawer with synthetic notice, progress, steps, video placeholder, timeline; ticks are stored per user and alert", async () => {
+  const { host, container, storage } = await renderScan();
+  const pin = byClass(container, "scan-pin")[0];
+  pin.click();
+  await flush();
+  byTag(openDialogOf(host), "button").find((b) => b.hasAttribute("data-plan-open")).click();
+  const backdrop = openDialogOf(host);
+  assert.ok(backdrop.classList.includes("drawer-backdrop"));
+  const drawer = backdrop.childNodes[0];
+  const text = drawer.textContent;
+  assert.match(text, /Synthetic educational content — not medical advice/);
+  assert.match(text, /Sleep alert review/);
+  assert.match(text, /0 of 4 review steps ticked/);
+  assert.match(text, /Video guide/);
+  assert.match(text, /Placeholder/);
+  assert.match(text, /Alert activity/);
+  assert.doesNotMatch(text, BANNED);
+  for (const name of ["Escalate", "Mark resolved"]) {
+    const b = byTag(drawer, "button").find((x) => x.textContent === name);
+    assert.ok(b.hasAttribute("disabled"), name);
+    assert.ok(byId(drawer, b.getAttribute("aria-describedby")), `${name} explains why`);
+  }
+  const boxes = all(drawer, (e) => e.tagName === "INPUT" && e.getAttribute("type") === "checkbox");
+  assert.equal(boxes.length, 4);
+  boxes[0].dispatch("change", { target: { checked: true } });
+  assert.match(drawer.textContent, /1 of 4 review steps ticked/);
+  assert.equal(byClass(drawer, "ov-plan__progress")[0].getAttribute("value"), "1");
+  assert.deepEqual(JSON.parse(storage.getItem("astrohealth.actionplan.v1")), { "u-reyes": { "ALT-0190": ["recent"] } });
+  // closing returns focus to the pin; reopening shows the stored tick
+  byClass(drawer, "dialog__close")[0].click();
+  assert.equal(globalThis.document.activeElement, pin);
+  pin.click();
+  await flush();
+  byTag(openDialogOf(host), "button").find((b) => b.hasAttribute("data-plan-open")).click();
+  assert.match(openDialogOf(host).textContent, /1 of 4 review steps ticked/);
+});
+
+test("the Open alerts list opens the same pop-up; a failed detail load still shows the listed alert honestly", async () => {
+  const { host, container } = await renderScan({ loadAlertDetail: async () => { throw new Error("db"); } });
+  byTag(sectionOf(container, "ov-alerts-title"), "button")[0].click();
+  await flush();
+  const text = openDialogOf(host).textContent;
+  assert.match(text, /ALT-0190/);
+  assert.match(text, /Full details couldn't be loaded/);
+  assert.doesNotMatch(text, /Key readings/, "no readings are invented");
+});
+
+test("alert activity: newest alert events from the last 7 days, linked to their alert; failure is reported", async () => {
+  const { container } = await renderScan();
+  const box = byClass(container, "ov-activity")[0];
+  const links = byTag(box, "a").map((a) => a.getAttribute("href"));
+  assert.ok(links.length >= 1 && links.length <= 6, `found ${links.length}`);
+  assert.ok(links.every((h) => /^#\/alerts\/ALT-\d{4}$/.test(h)));
+  const { container: c2 } = await renderScan({ loadActivity: async () => ({ status: "unavailable" }) });
+  assert.match(byClass(c2, "ov-activity")[0].textContent, /Alert activity couldn't be loaded/);
+});
+
+test("navigating away closes an open pop-up", async () => {
+  const controller = new AbortController();
+  const { host, container } = await renderScan({ options: { signal: controller.signal } });
+  byClass(container, "scan-pin")[0].click();
+  await flush();
+  assert.ok(openDialogOf(host));
+  controller.abort();
+  assert.equal(openDialogOf(host), undefined);
 });

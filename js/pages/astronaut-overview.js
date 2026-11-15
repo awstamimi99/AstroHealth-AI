@@ -14,9 +14,27 @@
 // Async safety: app-shell passes an AbortSignal per navigation. A result
 // that arrives after the user navigated away (or after a newer Retry) is
 // dropped, so it can never overwrite the current route.
+//
+// Body-scan redesign: the latest vital signs are shown as 4 rings around a
+// decorative wireframe body on a dark scan stage (js/components/body-scan.js),
+// joined to their body zone by dashed lines. Open alerts are numbered pins
+// (zone from js/components/alert-zones.js) AND a text list; both open an
+// accessible pop-up (js/components/dialog.js) with the alert's rule, readings
+// and limitation from alerts-service.js. "View action plan" opens a drawer
+// with static synthetic review steps (js/components/action-plans.js); ticks
+// are kept in this browser per user and alert (js/core/action-plan-progress.js).
+// Acknowledge / Message / Escalate / Resolve are shown disabled with the
+// reason: astronauts can't perform them in this version.
 
 import { getAstronautOverview } from "../services/astronaut-overview-service.js";
+import { getAlertDetail } from "../services/alerts-service.js";
+import { getOwnHistory } from "../services/history-service.js";
 import { icon } from "../components/icon.js";
+import { createBodyScan, createRing, BODY_VIEWBOX, zonePoint } from "../components/body-scan.js";
+import { zoneForRule, ZONE_LABELS, VITAL_ZONES } from "../components/alert-zones.js";
+import { planForRule, PLAN_NOTICE, VIDEO_PLACEHOLDER } from "../components/action-plans.js";
+import { openDialog } from "../components/dialog.js";
+import { planProgress } from "../core/action-plan-progress.js";
 import { el } from "../core/utils/dom.js";
 import { formatDate, formatDateTime, formatNumber, formatRelative, formatTime } from "../core/utils/format.js";
 
@@ -133,42 +151,6 @@ function statusSection(overall, onRetry) {
   ]);
 }
 
-function alertItem(alert) {
-  const view = SEVERITY_VIEW[alert.severity] || SEVERITY_VIEW.info;
-  const title = [alert.number, alert.title].filter(Boolean).join(" · ");
-  return el("li", { class: ["alert-item", view.item] }, [
-    el("span", { class: "alert-item__icon" }, icon(view.icon)),
-    el("div", { class: "alert-item__body" }, [
-      el("p", { class: "alert-item__title" }, title),
-      alert.explanation ? el("p", { class: "alert-item__text" }, alert.explanation) : null,
-      el("p", { class: "overview__tags" }, [
-        badge(view.badge, view.icon, view.label),
-        badge("badge--neutral", "clock", ALERT_STATUS_LABEL[alert.status] || alert.status),
-        el("span", { class: "sim-tag" }, "Synthetic"),
-      ]),
-      alert.detectedAt ? el("p", { class: "overview__meta" }, ["Detected ", utcTime(alert.detectedAt)]) : null,
-    ]),
-  ]);
-}
-
-function alertsSection(alerts, onRetry) {
-  let body;
-  if (alerts.status === "error") {
-    body = [sectionError(onRetry, "your alerts")];
-  } else if (!alerts.items.length) {
-    body = [el("p", { class: "overview__empty" }, "No open alerts.")];
-  } else {
-    body = [
-      el("ul", { class: "overview__alerts", role: "list" }, alerts.items.map(alertItem)),
-      alerts.moreCount ? el("p", { class: "overview__meta" }, `and ${alerts.moreCount} more open alert${alerts.moreCount === 1 ? "" : "s"}`) : null,
-    ];
-  }
-  return section("ov-alerts-title", "Open alerts", [
-    ...body,
-    el("p", {}, el("a", { class: "btn btn--secondary btn--sm", href: "#/alerts" }, [icon("bell"), "View all alerts"])),
-  ]);
-}
-
 function vitalValue(item, view) {
   if (item.key === "bloodPressure") {
     const sys = formatNumber(item.systolic, view.decimals);
@@ -190,60 +172,171 @@ function baselineText(item, view) {
   return `Your baseline: ${formatNumber(item.baseline, view.decimals)} ${item.unit}`;
 }
 
-function vitalCard(item, data, onRetry) {
-  const view = VITAL_VIEW[item.key];
-  const labelId = `ov-vital-${item.key}`;
-  const top = el("div", { class: "metric__top" }, [
-    el("span", { class: "metric__icon" }, icon(view.icon)),
-    item.state === "ok" ? provenanceTag(item) : null,
-  ]);
-  const label = el("h3", { class: "metric__label", id: labelId }, item.label);
-  let body;
+// ---- Scan stage: 4 rings around the body + numbered alert pins ----------------------
 
+const STAGE = Object.freeze({ width: 760, height: 560 });
+const BODY_SCALE = STAGE.height / BODY_VIEWBOX.height;
+const BODY_LEFT = (STAGE.width - BODY_VIEWBOX.width * BODY_SCALE) / 2;
+/** Ring anchor (centre of the dial) in stage units, and the side it sits on. */
+const RING_POSITIONS = Object.freeze({
+  sleepDuration: { x: 112, y: 96, side: "left" },
+  spo2: { x: 112, y: 340, side: "left" },
+  heartRate: { x: 648, y: 120, side: "right" },
+  bloodPressure: { x: 648, y: 352, side: "right" },
+});
+/** Fixed display scales for the ring fill (orientation only — no health meaning). */
+const RING_SCALES = Object.freeze({
+  heartRate: (i) => (i.value - 30) / 150,
+  spo2: (i) => (i.value - 80) / 20,
+  bloodPressure: (i) => (i.systolic - 70) / 120,
+  sleepDuration: (i) => i.value / SLEEP_SCALE_HOURS,
+});
+const pct = (v, total) => `${((v / total) * 100).toFixed(2)}%`;
+
+/** A zone's point on the stage. */
+function stagePoint(zone) {
+  const p = zonePoint(zone);
+  return { x: BODY_LEFT + p.x * BODY_SCALE, y: p.y * BODY_SCALE };
+}
+
+function vitalRing(item, data, onRetry) {
+  const view = VITAL_VIEW[item.key];
+  const pos = RING_POSITIONS[item.key];
+  const id = `ov-ring-${item.key}`;
+  const history = el("a", { class: "ov-ring__link", href: "#/physical", "aria-label": `View ${item.label.toLowerCase()} history` }, ["History", icon("arrow-right")]);
+  let ring;
   if (item.state === "ok") {
     const value = vitalValue(item, view);
-    body = [
-      el("p", { class: "metric__value", "aria-hidden": "true" }, [value.visual, el("span", { class: "metric__unit" }, item.unit)]),
-      srOnly(value.spoken),
-      el("p", { class: "overview__meta" }, [utcTime(item.timestamp), ` · ${formatRelative(item.timestamp, data.generatedAt)}`]),
-      item.quality === "suspect" || item.stale
-        ? el("p", { class: "overview__tags" }, [
-            item.quality === "suspect" ? badge("badge--neutral", "eye", "Data quality: suspect") : null,
-            item.stale ? badge("badge--neutral", "clock", "No newer reading") : null,
-          ])
-        : null,
-    ];
-  } else if (item.state === "error") {
-    body = [sectionError(onRetry, "this reading")];
+    ring = createRing({
+      id,
+      label: item.label,
+      value: value.visual,
+      unit: item.unit,
+      fraction: RING_SCALES[item.key](item),
+      baseline: baselineText(item, view),
+      meta: [utcTime(item.timestamp, { dateToo: false }), ` · ${formatRelative(item.timestamp, data.generatedAt)}`],
+      spoken: `${view.spokenLabel}: ${value.spoken}`,
+      tags: [
+        provenanceTag(item),
+        item.quality === "suspect" ? badge("badge--neutral", "eye", "Data quality: suspect") : null,
+        item.stale ? badge("badge--neutral", "clock", "No newer reading") : null,
+      ].filter(Boolean),
+      extra: history,
+    });
   } else {
     const message =
-      item.state === "incomplete"
-        ? "No complete reading (systolic and diastolic from the same measurement)."
-        : item.invalidOnly
-          ? "No usable recent reading — recent readings were marked invalid."
-          : "No recent reading.";
-    body = [
-      el("p", { class: "metric__value overview__no-value", "aria-hidden": "true" }, "—"),
-      el("p", { class: "overview__empty" }, message),
-    ];
+      item.state === "error" ? "Couldn't load this reading."
+        : item.state === "incomplete" ? "No complete reading (systolic and diastolic from the same measurement)."
+          : item.invalidOnly ? "No usable recent reading — recent readings were marked invalid." : "No recent reading.";
+    ring = createRing({ id, label: item.label, value: "—", unit: "", fraction: null, baseline: baselineText(item, view), meta: message, extra: item.state === "error" ? retryButton(onRetry) : history });
   }
+  ring.setAttribute("class", `scan-ring ov-ring ov-ring--${pos.side}`);
+  ring.style.setProperty("left", pct(pos.x, STAGE.width));
+  ring.style.setProperty("top", pct(pos.y, STAGE.height));
+  return ring;
+}
 
-  return el("article", { class: "card metric overview__vital", "aria-labelledby": labelId }, [
-    top,
-    label,
-    ...body,
-    el("div", { class: "metric__footer" }, [
-      el("span", {}, baselineText(item, view)),
-      el("a", { class: "overview__vital-link", href: "#/physical", "aria-label": `View ${item.label.toLowerCase()} history` }, ["History", icon("arrow-right")]),
+/** Dashed connector lines from each ring to its body zone (decorative). */
+function connectors(items) {
+  const NS = "http://www.w3.org/2000/svg";
+  const make = (name, attrs) => {
+    const n = document.createElementNS(NS, name);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
+    return n;
+  };
+  const layer = make("svg", { class: "ov-stage__links", viewBox: `0 0 ${STAGE.width} ${STAGE.height}`, preserveAspectRatio: "none", "aria-hidden": "true", focusable: "false" });
+  for (const item of items) {
+    const pos = RING_POSITIONS[item.key];
+    if (!pos) continue;
+    const to = stagePoint(VITAL_ZONES[item.key]);
+    const startX = pos.side === "left" ? pos.x + 64 : pos.x - 64;
+    const elbowX = pos.side === "left" ? Math.min(to.x - 24, startX + 60) : Math.max(to.x + 24, startX - 60);
+    layer.append(make("path", { class: "ov-stage__link", d: `M${startX} ${pos.y} L${elbowX.toFixed(1)} ${pos.y} L${to.x.toFixed(1)} ${to.y.toFixed(1)}` }));
+    layer.append(make("circle", { class: "ov-stage__link-dot", cx: to.x.toFixed(1), cy: to.y.toFixed(1), r: 4 }));
+  }
+  return layer;
+}
+
+/** Pins for the listed open alerts (same numbers as the Open alerts list). */
+function alertPins(alerts) {
+  if (!alerts || alerts.status !== "ok") return [];
+  return alerts.items.map((a, i) => {
+    const zone = zoneForRule(a.ruleId);
+    const sev = SEVERITY_VIEW[a.severity] || SEVERITY_VIEW.info;
+    return {
+      number: i + 1,
+      zone,
+      severity: a.severity,
+      alert: a,
+      tag: a.title,
+      label: `Alert ${i + 1}: ${[a.number, a.title].filter(Boolean).join(" ")} — ${sev.label}, ${ZONE_LABELS[zone] || "body"}. Open details.`,
+    };
+  });
+}
+
+function scanStageSection(data, onRetry, onOpenAlert) {
+  const items = data.vitals.items;
+  const pins = alertPins(data.alerts);
+  const body = createBodyScan({
+    pins,
+    hotspots: pins.map((p) => ({ zone: p.zone, severity: p.severity })),
+    onPinClick: (pin, button) => onOpenAlert(pin.alert, button, pin.number),
+  });
+  const stage = el("div", { class: "ov-stage" }, [
+    connectors(items),
+    el("div", { class: "ov-stage__body", style: { left: pct(BODY_LEFT, STAGE.width), width: pct(BODY_VIEWBOX.width * BODY_SCALE, STAGE.width) } }, body),
+    ...items.map((item) => vitalRing(item, data, onRetry)),
+  ]);
+  return el("section", { class: "scan-stage ov-scan", "aria-labelledby": "ov-vitals-title" }, [
+    el("div", { class: "ov-scan__head" }, [
+      el("h2", { class: "scan-stage__title", id: "ov-vitals-title" }, "Body scan · latest vital signs"),
+      el("span", { class: "sim-tag" }, [icon("flask-conical", { size: 12 }), "SIMULATED"]),
     ]),
+    el("p", { class: "scan-stage__note" }, "The most recent usable reading of each measure. Invalid readings are left out. Times are UTC."),
+    // Keyboard-scrollable on small screens (the stage keeps its proportions and scrolls sideways).
+    el("div", { class: "scan-stage__scroll", tabindex: "0", role: "region", "aria-label": "Body scan stage — scrolls sideways on small screens" }, stage),
+    el("p", { class: "scan-stage__note" },
+      "Illustration only: the body is a stylised drawing and the ring fill uses a fixed display scale — neither is a health assessment. " +
+        (pins.length ? "Numbered pins mark your open alerts; the same alerts are listed under Open alerts." : "You have no open alerts, so no pins are shown.")),
   ]);
 }
 
-function vitalsSection(data, onRetry) {
-  return section("ov-vitals-title", "Latest vital signs", [
-    el("p", { class: "overview__note" }, "The most recent usable reading of each measure. Invalid readings are left out. Times are UTC."),
-    el("div", { class: "grid grid--4 overview__vitals" }, data.vitals.items.map((item) => vitalCard(item, data, onRetry))),
-  ]);
+function sideAlertsSection(alerts, onRetry, onOpenAlert) {
+  let body;
+  if (alerts.status === "error") body = [sectionError(onRetry, "your alerts")];
+  else if (!alerts.items.length) body = [el("p", { class: "overview__empty" }, "No open alerts.")];
+  else {
+    body = [
+      el("ol", { class: "ov-alerts", role: "list" }, alerts.items.map((a, i) => {
+        const view = SEVERITY_VIEW[a.severity] || SEVERITY_VIEW.info;
+        return el("li", { class: ["alert-item", view.item, "ov-alert"] }, [
+          el("span", { class: ["ov-alert__num", `ov-alert__num--${a.severity}`], "aria-hidden": "true" }, String(i + 1)),
+          el("div", { class: "alert-item__body" }, [
+            el("button", { type: "button", class: "ov-alert__open", "data-alert-open": String(i + 1), onClick: (e) => onOpenAlert(a, e.target && e.target.closest ? e.target.closest("button") : null, i + 1) },
+              `${[a.number, a.title].filter(Boolean).join(" · ")}`),
+            el("p", { class: "overview__tags" }, [
+              badge(view.badge, view.icon, view.label),
+              badge("badge--neutral", "clock", ALERT_STATUS_LABEL[a.status] || a.status),
+              el("span", { class: "sim-tag" }, "Synthetic"),
+            ]),
+            el("p", { class: "overview__meta" }, [`Pin ${i + 1} · ${ZONE_LABELS[zoneForRule(a.ruleId)] || "Body"} · detected `, utcTime(a.detectedAt)]),
+          ]),
+        ]);
+      })),
+      alerts.moreCount ? el("p", { class: "overview__meta" }, `and ${alerts.moreCount} more open alert${alerts.moreCount === 1 ? "" : "s"}`) : null,
+    ];
+  }
+  return section("ov-alerts-title", "Open alerts", [
+    ...body,
+    el("p", {}, el("a", { class: "btn btn--secondary btn--sm", href: "#/alerts" }, [icon("bell"), "View all alerts"])),
+  ], "ov-side");
+}
+
+function activitySection() {
+  return section("ov-activity-title", "Alert activity", [
+    el("div", { class: "ov-activity", "data-activity": "" }, el("p", { class: "overview__empty", role: "status" }, "Loading recent alert activity…")),
+    el("p", { class: "overview__note" }, "Your alert lifecycle from the last 7 days, newest first. Times are UTC."),
+  ], "ov-side");
 }
 
 function messageSection(messages, data, onRetry) {
@@ -419,12 +512,14 @@ export function medicalOfficerPlaceholder() {
   ]);
 }
 
-function readyView(data, onRetry) {
+function readyView(data, onRetry, onOpenAlert, withActivity) {
   return [
     headerSection(data),
     statusSection(data.overall, onRetry),
-    alertsSection(data.alerts, onRetry),
-    vitalsSection(data, onRetry),
+    el("div", { class: "ov-scan-layout" }, [
+      scanStageSection(data, onRetry, onOpenAlert),
+      el("div", { class: "ov-scan-layout__side" }, [sideAlertsSection(data.alerts, onRetry, onOpenAlert), withActivity ? activitySection() : null]),
+    ]),
     messageSection(data.messages, data, onRetry),
     routineSection(data.routine, data, onRetry),
     sleepSection(data.sleep, onRetry),
@@ -439,7 +534,7 @@ function readyView(data, onRetry) {
  * It can't change identity — the real service does that. Pages and app-shell
  * use renderAstronautOverview (bound to getAstronautOverview).
  */
-export function createOverviewRenderer({ loadOverview }) {
+export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, loadActivity = null, progress = planProgress, host = null }) {
   return function render(container, session, { signal } = {}) {
     const root = el("div", { class: "overview", "aria-busy": "false" });
     container.replaceChildren(root);
@@ -450,7 +545,131 @@ export function createOverviewRenderer({ loadOverview }) {
     }
 
     let generation = 0;
+    let dialog = null;
     const isCurrent = (token) => token === generation && !(signal && signal.aborted);
+    const userKey = typeof session.userId === "string" ? session.userId : "";
+    const live = el("p", { class: "sr-only", role: "status", "aria-live": "polite" });
+    if (signal) signal.addEventListener("abort", () => { if (dialog) dialog.close(); }, { once: true });
+
+    // ---- Alert pop-up -------------------------------------------------------------
+    async function openAlert(alert, trigger, pinNumber) {
+      if (dialog) dialog.close();
+      let detail = null;
+      if (loadAlertDetail && alert.number) {
+        try {
+          const res = await loadAlertDetail(session, alert.number);
+          if (res && res.status === "ready") detail = res;
+        } catch {
+          detail = null;
+        }
+      }
+      if (signal && signal.aborted) return;
+      const a = detail ? detail.alert : alert;
+      const view = SEVERITY_VIEW[a.severity] || SEVERITY_VIEW.info;
+      const zone = zoneForRule(a.ruleId || alert.ruleId);
+      const evidence = detail ? a.evidence.slice(-3).reverse() : [];
+      const body = [
+        el("p", { class: "overview__tags" }, [
+          badge(view.badge, view.icon, view.label),
+          badge("badge--neutral", "clock", ALERT_STATUS_LABEL[a.status] || a.status),
+          el("span", { class: "sim-tag" }, "Synthetic"),
+        ]),
+        el("dl", { class: "ov-facts" }, [
+          el("dt", {}, "Body location"), el("dd", {}, `${ZONE_LABELS[zone] || "Body"}${pinNumber ? ` (pin ${pinNumber})` : ""}`),
+          el("dt", {}, "Detected"), el("dd", {}, utcTime(a.detectedAt)),
+          detail && a.rule.id ? el("dt", {}, "Rule") : null,
+          detail && a.rule.id ? el("dd", {}, `${a.rule.id}${a.rule.version ? ` · version ${a.rule.version}` : ""}${a.rule.thresholdUsed ? ` — ${a.rule.thresholdUsed}` : ""}`) : null,
+        ]),
+        el("h3", { class: "ov-dialog__h3" }, "What was detected"),
+        el("p", {}, a.explanation || "No explanation stored."),
+        el("p", { class: "overview__note" }, detail ? (a.limitation.startsWith(detail.thresholdLabel) ? a.limitation : `${detail.thresholdLabel} ${a.limitation}`) : "Demonstration threshold — not clinically validated. Not a diagnosis."),
+        evidence.length ? el("h3", { class: "ov-dialog__h3" }, "Key readings") : null,
+        evidence.length ? el("ul", { class: "ov-readings", role: "list" }, evidence.map((e) => el("li", {}, [
+          el("strong", {}, e.valueHidden || typeof e.value !== "number" ? e.label : `${e.label} ${formatNumber(e.value, Number.isInteger(e.value) ? 0 : 1)} ${e.unit}`),
+          " · ", utcTime(e.timestamp), " ",
+          e.source === "simulation" || e.source === "seed" ? el("span", { class: "sim-tag" }, "Simulated") : null,
+        ]))) : null,
+        detail ? null : el("p", { class: "overview__note" }, "Full details couldn't be loaded; open the alert on the Alerts page."),
+        el("p", { class: "overview__note", id: "ov-ack-note" }, "Acknowledge: only the Medical Officer can acknowledge alerts."),
+        el("p", { class: "overview__note", id: "ov-msg-note" }, "Message the Medical Officer: sending messages from this view isn't available in this version."),
+      ];
+      const footer = [
+        el("button", { type: "button", class: "btn btn--primary btn--sm", "data-plan-open": "", onClick: () => { dialog.close(); openPlan(a, detail, trigger); } }, [icon("check"), "View action plan"]),
+        el("button", { type: "button", class: "btn btn--secondary btn--sm", disabled: true, "aria-describedby": "ov-ack-note" }, [icon("check"), "Acknowledge"]),
+        el("button", { type: "button", class: "btn btn--secondary btn--sm", disabled: true, "aria-describedby": "ov-msg-note" }, [icon("send"), "Message the Medical Officer"]),
+        a.number ? el("a", { class: "btn btn--ghost btn--sm", href: `#/alerts/${a.number}` }, [icon("arrow-right"), "Open on Alerts page"]) : null,
+      ].filter(Boolean);
+      dialog = openDialog({ kind: "modal", title: `${[a.number, a.title].filter(Boolean).join(" · ")}`, body, footer, returnFocus: trigger, onClose: () => { dialog = null; }, host });
+    }
+
+    // ---- Action-plan drawer ---------------------------------------------------------
+    function openPlan(a, detail, trigger) {
+      const plan = planForRule(a.ruleId);
+      const ids = plan.steps.map((st) => st.id);
+      const prog = el("progress", { class: "ov-plan__progress", max: String(ids.length), value: "0", "aria-labelledby": "ov-plan-count" });
+      const count = el("p", { class: "overview__meta", id: "ov-plan-count" });
+      const notice = el("p", { class: "overview__note", role: "note", hidden: true }, "This browser isn't saving your ticks right now, so they apply to this tab only.");
+      const sync = (done, persisted) => {
+        prog.setAttribute("value", String(done.length));
+        count.textContent = `${done.length} of ${ids.length} review steps ticked`;
+        if (persisted === false) notice.removeAttribute("hidden");
+      };
+      const done0 = progress.get(userKey, a.number, ids);
+      const steps = el("ul", { class: "ov-plan__steps", role: "list" }, plan.steps.map((st, i) => el("li", {}, el("label", { class: "ov-plan__step", for: `ov-step-${st.id}` }, [
+        el("input", { type: "checkbox", id: `ov-step-${st.id}`, checked: done0.includes(st.id), onChange: (e) => {
+          const r = progress.set(userKey, a.number, st.id, e.target.checked === true, ids);
+          sync(r.done, r.persisted);
+          live.textContent = `${r.done.length} of ${ids.length} review steps ticked.`;
+        } }),
+        el("span", {}, [el("strong", {}, `Step ${i + 1}. `), st.text]),
+      ]))));
+      const timeline = detail && detail.timeline.status === "ok" && detail.timeline.items.length
+        ? el("ol", { class: "ov-plan__timeline", role: "list" }, detail.timeline.items.map((x) => el("li", {}, [el("strong", {}, x.label), ` · ${x.by} · `, utcTime(x.timestamp)])))
+        : el("p", { class: "overview__empty" }, "Activity for this alert isn't available here; see the Alerts page.");
+      const body = [
+        el("p", { class: "banner" }, [icon("info"), el("span", { class: "banner__text" }, PLAN_NOTICE)]),
+        el("h3", { class: "ov-dialog__h3" }, plan.title),
+        prog, count, notice, steps,
+        el("div", { class: "ov-plan__video" }, [
+          el("span", { class: "ov-plan__video-icon", "aria-hidden": "true" }, icon("play")),
+          el("div", {}, [el("p", {}, [el("strong", {}, VIDEO_PLACEHOLDER.title), " ", el("span", { class: "badge badge--neutral" }, "Placeholder")]), el("p", { class: "overview__note" }, VIDEO_PLACEHOLDER.text)]),
+        ]),
+        el("h3", { class: "ov-dialog__h3" }, "Alert activity"),
+        timeline,
+        el("p", { class: "overview__note", id: "ov-esc-note" }, "Escalate: escalation is decided by the demonstration rules, not from this view."),
+        el("p", { class: "overview__note", id: "ov-res-note" }, "Mark resolved: only the Medical Officer can resolve alerts."),
+      ];
+      const footer = [
+        el("button", { type: "button", class: "btn btn--secondary btn--sm", disabled: true, "aria-describedby": "ov-esc-note" }, [icon("triangle-alert"), "Escalate"]),
+        el("button", { type: "button", class: "btn btn--secondary btn--sm", disabled: true, "aria-describedby": "ov-res-note" }, [icon("circle-check"), "Mark resolved"]),
+      ];
+      dialog = openDialog({ kind: "drawer", title: `Action plan · ${a.number || a.title}`, body, footer, returnFocus: trigger, onClose: () => { dialog = null; }, host });
+      sync(done0);
+    }
+
+    // ---- Alert activity feed (history, alerts only) -----------------------------------------
+    async function fillActivity(token) {
+      const box = root.querySelectorAll("[data-activity]")[0];
+      if (!box) return;
+      let res;
+      try {
+        res = await loadActivity(session);
+      } catch {
+        res = null;
+      }
+      if (!isCurrent(token)) return;
+      if (!res || res.status !== "ready") {
+        box.replaceChildren(el("p", { class: "overview__empty" }, "Alert activity couldn't be loaded."));
+        return;
+      }
+      const items = res.entries.filter((e) => e.category === "alerts").slice(0, 6);
+      box.replaceChildren(items.length
+        ? el("ol", { class: "ov-activity__list", role: "list" }, items.map((e) => el("li", { class: "ov-activity__item" }, [
+            el("span", { class: "overview__meta" }, utcTime(e.timestamp)),
+            e.alertNumber ? el("a", { href: `#/alerts/${e.alertNumber}` }, e.text) : el("span", {}, e.text),
+          ])))
+        : el("p", { class: "overview__empty" }, "No alert activity in the last 7 days."));
+    }
 
     async function load() {
       const token = ++generation;
@@ -467,8 +686,11 @@ export function createOverviewRenderer({ loadOverview }) {
       if (!isCurrent(token)) return; // navigated away, or a newer Retry is running
 
       const retry = () => load();
-      if (result && result.status === "ready") root.replaceChildren(...readyView(result, retry));
-      else root.replaceChildren(refusalView(result || {}, retry));
+      if (result && result.status === "ready") {
+        root.replaceChildren(live, ...readyView(result, retry, openAlert, Boolean(loadActivity)));
+        centreStage(root);
+        if (loadActivity) fillActivity(token);
+      } else root.replaceChildren(refusalView(result || {}, retry));
       root.setAttribute("aria-busy", "false");
     }
 
@@ -476,5 +698,18 @@ export function createOverviewRenderer({ loadOverview }) {
   };
 }
 
+/** On narrow screens, start the sideways-scrolling stage centred on the body. */
+function centreStage(root) {
+  if (typeof globalThis.requestAnimationFrame !== "function") return;
+  globalThis.requestAnimationFrame(() => {
+    const box = root.querySelector ? root.querySelector(".scan-stage__scroll") : null;
+    if (box && box.scrollWidth > box.clientWidth) box.scrollLeft = (box.scrollWidth - box.clientWidth) / 2;
+  });
+}
+
 /** Render #/overview for the signed-in session into `container`. */
-export const renderAstronautOverview = createOverviewRenderer({ loadOverview: (session) => getAstronautOverview(session) });
+export const renderAstronautOverview = createOverviewRenderer({
+  loadOverview: (session) => getAstronautOverview(session),
+  loadAlertDetail: (session, number) => getAlertDetail(session, number),
+  loadActivity: (session) => getOwnHistory(session, { days: 7 }),
+});
