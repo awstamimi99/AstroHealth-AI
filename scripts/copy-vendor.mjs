@@ -30,6 +30,11 @@ function copy(from, to) {
 copy("chart.js/dist/chart.umd.min.js", "vendor/chart.js/chart.umd.min.js");
 copy("chart.js/LICENSE.md", "vendor/chart.js/LICENSE.md");
 
+// --- three.js (MIT) -------------------------------------------------------
+// ES module build, imported on demand by js/components/body-3d.js (3D body).
+copy("three/build/three.module.min.js", "vendor/three/three.module.min.js");
+copy("three/LICENSE", "vendor/three/LICENSE");
+
 // --- Inter (SIL OFL 1.1) --------------------------------------------------
 for (const w of [400, 500, 600, 700]) {
   copy(

@@ -13,8 +13,10 @@
 // Scans:   .html .css .js .mjs .webmanifest .json
 // Skips:   node_modules/, docs/, scripts/, tests/, .git/, .github/,
 //          package.json, package-lock.json (dev metadata, never loaded)
-// Ignores: URLs inside comments, and the SVG namespace
-//          "http://www.w3.org/2000/svg" (an identifier, never fetched).
+// Ignores: URLs inside comments, the SVG namespace
+//          "http://www.w3.org/2000/svg", and exactly the XHTML namespace
+//          "http://www.w3.org/1999/xhtml" (used by vendor/three) — XML
+//          namespace identifiers, never fetched.
 // Exempt:  exactly data/references.json (and no other file). Its URLs are
 //          research/NASA reference links shown to readers, never fetched as
 //          assets or APIs. Every other JSON file, including the rest of data/,
@@ -32,6 +34,8 @@ const ROOT = process.argv[2] ? resolve(process.argv[2]) : REPO_ROOT;
 const SKIP_DIRS = new Set(["node_modules", "docs", "scripts", "tests", ".git", ".github"]);
 const EXTENSIONS = new Set([".html", ".css", ".js", ".mjs", ".webmanifest", ".json"]);
 const ALLOWED = ["http://www.w3.org/2000/svg"];
+// Namespace identifiers allowed only as the exact string (nothing appended).
+const ALLOWED_EXACT = new Set(["http://www.w3.org/1999/xhtml"]);
 // Repository-relative paths (always "/"-separated) whose URLs are reference
 // links for readers. Keep this list to exact files. Never add a folder.
 const REFERENCE_LINK_FILES = new Set(["data/references.json"]);
@@ -78,7 +82,7 @@ for (const file of walk(ROOT)) {
   lines.forEach((line, i) => {
     for (const match of line.matchAll(URL_RE)) {
       const url = match[0];
-      if (ALLOWED.some((ok) => url.startsWith(ok))) continue;
+      if (ALLOWED.some((ok) => url.startsWith(ok)) || ALLOWED_EXACT.has(url)) continue;
       problems.push(`${repoPath(file)}:${i + 1}  ${url.slice(0, 100)}`);
     }
   });

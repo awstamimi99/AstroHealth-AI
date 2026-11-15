@@ -1841,3 +1841,89 @@ html[data-motion="reduce"] .review-steps__step { transition: none; }
 html[data-motion="reduce"] .mc-bars__fill,
 html[data-motion="reduce"] .mc-spark__dot,
 html[data-motion="reduce"] .mc-sev__seg { transition: none; }
+
+/* 3D body (js/components/body-3d.js). Until three.js has loaded (or without
+   WebGL) the 2D .scan-body inside is shown with its usual sizing. */
+.body3d {
+  position: relative;
+}
+.body3d[data-body3d="3d"] {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  width: 100%;
+}
+.body3d__stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 5;
+  border-radius: var(--radius-md);
+  cursor: grab;
+  touch-action: pan-y;          /* horizontal drag rotates; vertical swipes still scroll the page */
+  user-select: none;
+}
+.body3d--upper .body3d__stage { aspect-ratio: 4 / 4; }
+.body3d__stage.is-dragging { cursor: grabbing; }
+.body3d__stage:focus-visible {
+  outline: 2px solid var(--color-scan-text);
+  outline-offset: 2px;
+}
+.body3d__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.body3d__pins {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.body3d__pins .scan-pin {
+  pointer-events: auto;
+  transition: opacity 200ms ease;
+}
+.body3d__pins .scan-pin.is-behind {
+  opacity: 0.4;
+}
+.body3d__pins .scan-pin.is-behind .scan-pin__tag {
+  display: none;
+}
+.body3d__tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1);
+}
+.body3d__tool {
+  display: inline-grid;
+  place-items: center;
+  min-width: 36px;
+  height: 32px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-scan-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-scan-bg-2);
+  color: var(--color-scan-text);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+.body3d__tool:hover { border-color: var(--color-scan-outline); }
+.body3d__tool:focus-visible { outline: 2px solid var(--color-scan-text); outline-offset: 2px; }
+.body3d__tool--flip .icon { transform: scaleX(-1); }
+
+/* Where the 3D body sits. */
+.context-scan__visual .body3d[data-body3d="3d"] { width: min(100%, 300px); margin: var(--space-3) auto 0; }
+.vitals-stage__body .body3d { height: 100%; }
+.vitals-stage__body .body3d[data-body3d="3d"] .body3d__stage { flex: 1; aspect-ratio: auto; min-height: 0; }
+.vitals-stage:has(.body3d[data-body3d="3d"]) .vitals-stage__links { display: none; } /* connectors only fit the flat front view */
+@container (max-width: 719px) {
+  .vitals-stage__body .body3d[data-body3d="3d"] .body3d__stage { aspect-ratio: 3 / 5; }
+}
+html[data-motion="reduce"] .body3d__pins .scan-pin { transition: none; }
+/* Small 3D maps: a turning pin can't keep a long label inside the panel, so the
+   label shows on hover / keyboard focus; the key list beside it names every pin. */
+.context-scan__visual .body3d__pins .scan-pin__tag { display: none; }
+.context-scan__visual .body3d__pins .scan-pin:hover .scan-pin__tag,
+.context-scan__visual .body3d__pins .scan-pin:focus-visible .scan-pin__tag { display: inline-flex; z-index: 3; }
