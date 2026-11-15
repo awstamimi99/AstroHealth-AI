@@ -114,7 +114,7 @@ test("physical (astronaut): sections, baseline sentences, 7/30 toggle, data tabl
   const c = new FakeElement("div");
   await physicalPage.createPhysicalHealthRenderer({ loadOwn: counting(PHYS_REYES), loadCrewMember: counting(null), listCrew: counting(null) })(c, REYES, { hash: "#/physical" });
   const order = all(c, (e) => e.tagName === "SECTION").map((s) => s.getAttribute("aria-labelledby"));
-  assert.deepEqual(order, ["physical-title", "physical-latest-title", "physical-trends-title", "physical-quality-title", "physical-alerts-title"]);
+  assert.deepEqual(order, ["physical-title", "physical-body-map-title", "physical-latest-title", "physical-trends-title", "physical-quality-title", "physical-alerts-title"]);
   assert.equal(byId(c, "physical-title").textContent, "Your physical health");
   const latest = sectionOf(c, "physical-latest-title");
   assert.match(latest.textContent, /\d+ bpm (above|below) the stored personal baseline of \d+ bpm\.|The same as the stored personal baseline/);

@@ -14,6 +14,7 @@ import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
 import { alertItem, dataBadges, loadingView, provenanceTag, section, sectionError, stamp, syntheticNotice, vitalValueText } from "../components/crew-view.js";
 import { astronautNestedNotFound, baselineSentence, crewPicker, parseHealthRoute, refusalView, trendBlock } from "../components/health-view.js";
+import { createContextBodyScan } from "../components/context-body-scan.js";
 
 const BASE = "physical";
 
@@ -50,7 +51,7 @@ function latestSection(data, onRetry) {
     el("div", { class: "health-grid" },
       data.latest.items.map((item) => {
         const id = `physical-card-${item.key}`;
-        return el("article", { class: "card metric health-card", "aria-labelledby": id }, [
+        return el("article", { class: "card metric health-card", id: `physical-${item.key}`, tabindex: "-1", "data-scan-target": item.key, "aria-labelledby": id }, [
           el("div", { class: "metric__top" }, [el("h3", { class: "metric__label", id }, item.label), item.state === "ok" ? provenanceTag(item) : null]),
           el("p", { class: "health-card__value" }, vitalValueText(item)),
           item.state === "ok" ? el("p", { class: "health__meta" }, stamp(item.timestamp, data.generatedAt)) : null,
@@ -59,6 +60,24 @@ function latestSection(data, onRetry) {
         ]);
       })),
   ]);
+}
+
+const PHYSICAL_ZONES = Object.freeze({ heartRate: "heart", spo2: "lungs", bloodPressure: "arm", sleepDuration: "head" });
+function physicalScan(data) {
+  const pins = data.latest.items.map((item, index) => ({
+    number: index + 1,
+    zone: PHYSICAL_ZONES[item.key] || "chest",
+    severity: "info",
+    tag: `${item.label} · ${vitalValueText(item)}`,
+    label: `Go to ${item.label}: ${vitalValueText(item)}`,
+    targetId: item.key,
+  }));
+  return createContextBodyScan({
+    id: "physical-body-map-title",
+    title: "Physical health body map",
+    description: "One shared body view connects each stored physical reading to the area it describes. The map is navigation, not a diagnosis.",
+    pins,
+  });
 }
 
 function trendsSection(data, windowDays, onWindow) {
@@ -125,7 +144,7 @@ export function createPhysicalHealthRenderer({ loadOwn, loadCrewMember, listCrew
 
     const draw = () => {
       const retry = () => load();
-      root.replaceChildren(header(data), latestSection(data, retry), trendsSection(data, windowDays, (n) => { windowDays = n; draw(); }), qualitySection(data), alertsSection(data, retry));
+      root.replaceChildren(header(data), physicalScan(data), latestSection(data, retry), trendsSection(data, windowDays, (n) => { windowDays = n; draw(); }), qualitySection(data), alertsSection(data, retry));
     };
 
     async function load() {

@@ -516,7 +516,7 @@ Sign in as `medofficer` / `demo`:
 - [ ] 768 / 375 px: everything stacks; no page-level horizontal scrolling
 - [ ] To see a critical pin with real data: as `medofficer`, Simulation Center → "Low oxygen saturation demonstration" → run it for a crew member, then open that crew member (Crew Monitor) — the SpO₂ alert pin sits on the chest
 
-## 21. Body-scan status colours (app version 0.10.5)
+## 21. Body-scan status colours (introduced in app version 0.10.5; current app version 0.11.0)
 
 - [ ] Colour key in the stage header (and above the Medical Officer crew cards): No open alert (blue), Info (light blue), Warning (orange), Critical (raspberry) — each with swatch, icon and word
 - [ ] A vital ring is orange / raspberry / light blue only when an open alert's rule covers that measure (PHY-01 heart rate, PHY-02 SpO₂, PHY-03 blood pressure, PHY-05 sleep), and then shows a WARNING / CRITICAL / INFO chip under its label; otherwise it stays blue

@@ -28,7 +28,6 @@
 
 import { getAstronautOverview } from "../services/astronaut-overview-service.js";
 import { getAlertDetail } from "../services/alerts-service.js";
-import { getOwnHistory } from "../services/history-service.js";
 import { icon } from "../components/icon.js";
 import { createRing } from "../components/body-scan.js";
 import { zoneForRule, ZONE_LABELS } from "../components/alert-zones.js";
@@ -57,20 +56,13 @@ const SEVERITY_VIEW = {
   warning: { label: "Warning", icon: "triangle-alert", badge: "badge--warning", item: "alert-item--warning" },
   info: { label: "Info", icon: "info", badge: "badge--info", item: "" },
 };
-const ALERT_STATUS_LABEL = { new: "New", acknowledged: "Acknowledged" };
+const ALERT_STATUS_LABEL = { new: "New", acknowledged: "Acknowledged", resolved: "Resolved" };
 const VITAL_VIEW = {
   heartRate: { icon: "heart", decimals: 0, spokenLabel: "Heart rate", spokenUnit: "beats per minute" },
   spo2: { icon: "droplet", decimals: 0, spokenLabel: "SpO₂, blood oxygen saturation", spokenUnit: "percent" },
   bloodPressure: { icon: "activity", decimals: 0, spokenLabel: "Blood pressure", spokenUnit: "millimetres of mercury" },
   sleepDuration: { icon: "moon", decimals: 1, spokenLabel: "Sleep duration", spokenUnit: "hours" },
 };
-const QUICK_LINKS = [
-  { href: "#/physical", icon: "heart", label: "Physical Health" },
-  { href: "#/wellbeing", icon: "brain", label: "Wellbeing check-in" },
-  { href: "#/history", icon: "history", label: "Health History" },
-  { href: "#/alerts", icon: "bell", label: "Alerts" },
-];
-
 // ---- Small view helpers ----------------------------------------------------------
 
 const srOnly = (text) => el("span", { class: "sr-only" }, text);
@@ -133,12 +125,6 @@ function headerSection(data) {
   return el("section", { class: "overview__header", "aria-labelledby": "ov-welcome-title" }, [
     el("h2", { class: "overview__welcome", id: "ov-welcome-title" }, `Welcome, ${astronaut.displayName}`),
     el("p", { class: "overview__subtitle" }, `${astronaut.crewId} · ${astronaut.missionRole} · ${missionText}`),
-    el("div", { class: "banner overview__notice" }, [
-      icon("info"),
-      el("p", { class: "banner__text" },
-        "All astronaut health, medical, mission and simulation records shown here are synthetic demo data. " +
-          "Research & educational prototype — not a medical device and not clinically validated."),
-    ]),
   ]);
 }
 
@@ -223,6 +209,12 @@ function scanStageSection(data, onRetry, onOpenAlert) {
       el("div", { class: "scan-stage__heading" }, [
         el("h2", { class: "scan-stage__title", id: "ov-vitals-title" }, "Body scan · latest vital signs"),
         el("span", { class: "sim-tag" }, [icon("flask-conical", { size: 12 }), "SIMULATED"]),
+        pins.length
+          ? el("span", { class: "ov-scan__mapped", "aria-label": `${pins.length} open alert${pins.length === 1 ? "" : "s"} mapped to the body scan` }, [
+              icon("activity", { size: 13 }),
+              `${pins.length} mapped to body`,
+            ])
+          : null,
       ]),
       severityLegend(),
     ]),
@@ -231,7 +223,7 @@ function scanStageSection(data, onRetry, onOpenAlert) {
     el("div", { class: "scan-stage__foot" }, [
       el("p", { class: "scan-stage__note" },
         "Illustration only: the body is a stylised drawing and the ring fill uses a fixed display scale — neither is a health assessment. " +
-          (pins.length ? "Numbered pins mark your open alerts, coloured by severity; a ring takes the colour of an open alert for that measure. The same alerts are listed under Open alerts." : "You have no open alerts, so no pins are shown and every ring is blue.")),
+          (pins.length ? "Numbered pins map your current and recently resolved alerts to the body, coloured by their recorded severity. Only an open physical alert colours a vital ring. The same alerts are listed beside the scan." : "You have no current or recently resolved alerts to map, so no pins are shown and every ring is blue.")),
     ]),
   ]);
 }
@@ -244,33 +236,30 @@ function sideAlertsSection(alerts, onRetry, onOpenAlert) {
     body = [
       el("ol", { class: "ov-alerts", role: "list" }, alerts.items.map((a, i) => {
         const view = SEVERITY_VIEW[a.severity] || SEVERITY_VIEW.info;
-        return el("li", { class: ["alert-item", view.item, "ov-alert"] }, [
+        return el("li", { class: ["alert-item", view.item, "ov-alert"], "data-alert-card": String(i + 1) }, [
           el("span", { class: ["alert-num", `alert-num--${a.severity}`], "aria-hidden": "true" }, String(i + 1)),
           el("div", { class: "alert-item__body" }, [
             el("button", { type: "button", class: "alert-open", "data-alert-open": String(i + 1), onClick: (e) => onOpenAlert(a, e.target && e.target.closest ? e.target.closest("button") : null, i + 1) },
               `${[a.number, a.title].filter(Boolean).join(" · ")}`),
             el("p", { class: "overview__tags" }, [
               badge(view.badge, view.icon, view.label),
-              badge("badge--neutral", "clock", ALERT_STATUS_LABEL[a.status] || a.status),
+              badge(a.status === "resolved" ? "badge--ok" : "badge--neutral", a.status === "resolved" ? "circle-check" : "clock", ALERT_STATUS_LABEL[a.status] || a.status),
               el("span", { class: "sim-tag" }, "Synthetic"),
             ]),
-            el("p", { class: "overview__meta" }, [`Pin ${i + 1} · ${ZONE_LABELS[zoneForRule(a.ruleId)] || "Body"} · detected `, utcTime(a.detectedAt)]),
+            el("p", { class: "overview__meta ov-alert__mapping" }, [
+              icon("activity", { size: 13 }),
+              `${a.ruleId === "WB-01" ? "Mental wellbeing" : "Body"} pin ${i + 1} · ${ZONE_LABELS[zoneForRule(a.ruleId)] || "Body"} · detected `,
+              utcTime(a.detectedAt),
+            ]),
           ]),
         ]);
       })),
       alerts.moreCount ? el("p", { class: "overview__meta" }, `and ${alerts.moreCount} more open alert${alerts.moreCount === 1 ? "" : "s"}`) : null,
     ];
   }
-  return section("ov-alerts-title", "Open alerts", [
+  return section("ov-alerts-title", "Alerts on body", [
     ...body,
     el("p", {}, el("a", { class: "btn btn--secondary btn--sm", href: "#/alerts" }, [icon("bell"), "View all alerts"])),
-  ], "ov-side");
-}
-
-function activitySection() {
-  return section("ov-activity-title", "Alert activity", [
-    el("div", { class: "ov-activity", "data-activity": "" }, el("p", { class: "overview__empty", role: "status" }, "Loading recent alert activity…")),
-    el("p", { class: "overview__note" }, "Your alert lifecycle from the last 7 days, newest first. Times are UTC."),
   ], "ov-side");
 }
 
@@ -284,9 +273,18 @@ function messageSection(messages, data, onRetry) {
     const m = messages.latest;
     body = [
       el("div", { class: "overview__message" }, [
-        el("p", { class: "overview__message-body" }, m.body || "(empty message)"),
-        el("p", { class: "overview__meta" }, [`From the ${m.from} · sent `, utcTime(m.sentAt), ` · ${formatRelative(m.sentAt, data.generatedAt)}`]),
-        el("p", { class: "overview__tags" }, el("span", { class: "sim-tag" }, "Synthetic")),
+        el("div", { class: "overview__message-head" }, [
+          el("span", { class: "overview__message-avatar", "aria-hidden": "true" }, icon("user")),
+          el("div", { class: "overview__message-sender" }, [
+            el("strong", {}, `From the ${m.from}`),
+            el("span", { class: "overview__meta" }, ["Sent ", utcTime(m.sentAt), ` · ${formatRelative(m.sentAt, data.generatedAt)}`]),
+          ]),
+          el("span", { class: "sim-tag" }, "Synthetic"),
+        ]),
+        el("div", { class: "overview__message-bubble" }, [
+          icon("message-circle", { size: 17 }),
+          el("p", { class: "overview__message-body" }, m.body || "(empty message)"),
+        ]),
       ]),
       messages.moreCount ? el("p", { class: "overview__meta" }, `and ${messages.moreCount} more unacknowledged message${messages.moreCount === 1 ? "" : "s"} from the Medical Officer`) : null,
       el("p", { class: "overview__note" }, "Read-only here. Medical Officer alert actions are handled on the Alerts page."),
@@ -373,6 +371,11 @@ function sleepSection(sleep, onRetry) {
     el("p", { class: "overview__text" }, sleepSummaryText(sleep)),
     sleep.recorded
       ? el("div", { class: "overview-sleep", style: chartStyle }, [
+          el("div", { class: "overview-sleep__scale", "aria-hidden": "true" }, [
+            el("span", {}, "10 h"),
+            el("span", {}, "5 h"),
+            el("span", {}, "0 h"),
+          ]),
           sleep.baseline === null ? null : el("span", { class: "overview-sleep__baseline", "aria-hidden": "true" }, "baseline"),
           el("ul", { class: "overview-sleep__nights", role: "list", "aria-label": "Sleep per night (UTC dates)" },
             sleep.nights.map((night) =>
@@ -386,14 +389,6 @@ function sleepSection(sleep, onRetry) {
         ])
       : null,
     el("p", { class: "overview__note" }, "Sleep is recorded on waking and dated by the UTC day. Missing nights are shown as “No data”, never as zero."),
-  ]);
-}
-
-function quickLinksSection() {
-  return section("ov-links-title", "Go to", [
-    el("p", { class: "overview__note" }, "Some of these sections are still being built and may show a placeholder."),
-    el("ul", { class: "overview__links", role: "list" },
-      QUICK_LINKS.map((link) => el("li", {}, el("a", { class: "btn btn--secondary btn--sm", href: link.href }, [icon(link.icon), link.label])))),
   ]);
 }
 
@@ -447,21 +442,20 @@ export function medicalOfficerPlaceholder() {
   ]);
 }
 
-function readyView(data, onRetry, onOpenAlert, withActivity) {
+function readyView(data, onRetry, onOpenAlert) {
   return [
     headerSection(data),
-    // Stage on the left; status, open alerts and activity stacked beside it (no half-empty rows).
+    // Stage on the left; status and its matching open-alert list beside it.
     el("div", { class: "ov-scan-layout" }, [
       scanStageSection(data, onRetry, onOpenAlert),
       el("div", { class: "ov-scan-layout__side" }, [
         statusSection(data.overall, onRetry),
         sideAlertsSection(data.alerts, onRetry, onOpenAlert),
-        withActivity ? activitySection() : null,
       ]),
     ]),
-    // Short message + quick links stacked beside the taller routine.
+    // The message reads as a conversation card beside the daily routine.
     el("div", { class: "ov-lower" }, [
-      el("div", { class: "ov-lower__col" }, [messageSection(data.messages, data, onRetry), quickLinksSection()]),
+      messageSection(data.messages, data, onRetry),
       routineSection(data.routine, data, onRetry),
     ]),
     sleepSection(data.sleep, onRetry),
@@ -475,7 +469,7 @@ function readyView(data, onRetry, onOpenAlert, withActivity) {
  * It can't change identity — the real service does that. Pages and app-shell
  * use renderAstronautOverview (bound to getAstronautOverview).
  */
-export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, loadActivity = null, progress = planProgress, host = null }) {
+export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, progress = planProgress, host = null }) {
   return function render(container, session, { signal } = {}) {
     const root = el("div", { class: "overview", "aria-busy": "false" });
     container.replaceChildren(root);
@@ -557,30 +551,6 @@ export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, l
       sync(done0);
     }
 
-    // ---- Alert activity feed (history, alerts only) -----------------------------------------
-    async function fillActivity(token) {
-      const box = root.querySelectorAll("[data-activity]")[0];
-      if (!box) return;
-      let res;
-      try {
-        res = await loadActivity(session);
-      } catch {
-        res = null;
-      }
-      if (!isCurrent(token)) return;
-      if (!res || res.status !== "ready") {
-        box.replaceChildren(el("p", { class: "overview__empty" }, "Alert activity couldn't be loaded."));
-        return;
-      }
-      const items = res.entries.filter((e) => e.category === "alerts").slice(0, 6);
-      box.replaceChildren(items.length
-        ? el("ol", { class: "ov-activity__list", role: "list" }, items.map((e) => el("li", { class: "ov-activity__item" }, [
-            el("span", { class: "overview__meta" }, utcTime(e.timestamp)),
-            e.alertNumber ? el("a", { href: `#/alerts/${e.alertNumber}` }, e.text) : el("span", {}, e.text),
-          ])))
-        : el("p", { class: "overview__empty" }, "No alert activity in the last 7 days."));
-    }
-
     async function load() {
       const token = ++generation;
       root.setAttribute("aria-busy", "true");
@@ -597,9 +567,8 @@ export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, l
 
       const retry = () => load();
       if (result && result.status === "ready") {
-        root.replaceChildren(live, ...readyView(result, retry, openAlert, Boolean(loadActivity)));
+        root.replaceChildren(live, ...readyView(result, retry, openAlert));
         centreStages(root);
-        if (loadActivity) fillActivity(token);
       } else root.replaceChildren(refusalView(result || {}, retry));
       root.setAttribute("aria-busy", "false");
     }
@@ -612,5 +581,4 @@ export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, l
 export const renderAstronautOverview = createOverviewRenderer({
   loadOverview: (session) => getAstronautOverview(session),
   loadAlertDetail: (session, number) => getAlertDetail(session, number),
-  loadActivity: (session) => getOwnHistory(session, { days: 7 }),
 });

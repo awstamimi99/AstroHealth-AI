@@ -20,6 +20,8 @@ import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
 import { formatNumber } from "../core/utils/format.js";
 import { SEVERITY_VIEW, badge, loadingView, retryButton, section, sectionError, srOnly, syntheticNotice, utcTime } from "../components/crew-view.js";
+import { createContextBodyScan } from "../components/context-body-scan.js";
+import { zoneForRule, ZONE_LABELS } from "../components/alert-zones.js";
 
 const STATUS_VIEW = {
   new: { icon: "bell", label: "New", badge: "badge--neutral" },
@@ -252,6 +254,18 @@ export function createAlertsRenderer({ service, channel = defaultChannel }) {
     function listView(d) {
       const parts = [header(d), messageBox()];
       if (d.viewer === "officer") parts.push(toolbar(d));
+      const mapped = d.items.slice(0, 4).map((a, index) => ({
+        number: index + 1, zone: zoneForRule(a.ruleId), severity: a.severity,
+        tag: `${a.number} · ${a.title}`, label: `Open alert ${a.number}: ${a.title}`,
+        href: `#/alerts/${a.number}`,
+      }));
+      parts.push(createContextBodyScan({
+        id: "alerts-body-map-title",
+        title: d.viewer === "officer" ? "Crew alert body map" : "Your alert body map",
+        description: "The map places the first visible alerts on their related body areas using their stored demonstration rule.",
+        pins: mapped, compact: true, eyebrow: "Alert map",
+        note: mapped.length ? "Select a point to open the complete alert explanation." : "No visible alert can be mapped with the current filters.",
+      }));
       parts.push(section("alerts-list-title", d.viewer === "officer" ? "Crew alerts" : "Your alerts", [
         d.items.length
           ? el("ul", { class: "alerts-list", role: "list" }, d.items.map((a) => row(a, d.viewer === "officer")))
@@ -265,6 +279,7 @@ export function createAlertsRenderer({ service, channel = defaultChannel }) {
 
     function detailView(d) {
       const a = d.alert;
+      const zone = zoneForRule(a.rule.id);
       const facts = [
         a.crewId ? ["Crew member", `${a.name} · ${a.crewId}`] : null,
         ["Rule", `${a.rule.id}${a.rule.version ? ` · version ${a.rule.version}` : ""}`],
@@ -283,6 +298,14 @@ export function createAlertsRenderer({ service, channel = defaultChannel }) {
           el("p", { class: "alerts__tags" }, [severityBadge(a.severity), statusBadge(a.status), clearedBadge(a.conditionCleared, a.status), el("span", { class: "sim-tag" }, a.fromSimulation ? "Simulated" : "Synthetic")]),
           syntheticNotice(),
         ]),
+        createContextBodyScan({
+          id: "alert-body-map-title",
+          title: `Alert location · ${ZONE_LABELS[zone] || "Body"}`,
+          description: "The marker connects this stored demonstration-rule alert to its related body area. It does not identify or diagnose an injury.",
+          pins: [{ number: 1, zone, severity: a.severity, tag: `${a.number} · ${a.title}`, label: `Go to why this alert was created: ${a.number} ${a.title}`, targetId: "alert-why-title" }],
+          compact: true,
+          eyebrow: "Alert body map",
+        }),
         messageBox(),
         section("alert-facts-title", "Summary", [el("dl", { class: "alerts-facts" }, facts.flatMap(([k, v]) => [el("dt", {}, k), el("dd", {}, v)]))]),
         section("alert-why-title", "Why this alert", [

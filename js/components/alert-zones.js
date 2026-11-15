@@ -52,6 +52,7 @@ const RANK = Object.freeze({ info: 1, warning: 2, critical: 3 });
 export function vitalSeverities(alerts) {
   const out = {};
   for (const a of Array.isArray(alerts) ? alerts : []) {
+    if (a && a.status && a.status !== "new" && a.status !== "acknowledged") continue;
     const key = a && RULE_VITALS[a.ruleId];
     if (!key || !RANK[a.severity]) continue;
     if (!out[key] || RANK[a.severity] > RANK[out[key]]) out[key] = a.severity;

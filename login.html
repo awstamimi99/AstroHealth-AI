@@ -43,20 +43,26 @@
         <span class="logo__text"><span class="logo__name">AstroHealth AI</span><span class="logo__tag">Crew Health System</span></span>
       </a>
 
-      <div class="login__hero-copy">
-        <p class="login__headline">Crew health,<br><span class="login__accent">monitored on board.</span></p>
-        <p class="login__lead">Sign in with a demonstration account to open the mission health console.
-          Everything runs on this device — it keeps working without a network connection.</p>
-        <div class="login__status">
-          <div class="offline-card" data-offline-status role="status">
-            <span class="offline-card__icon"><i data-icon="wifi"></i></span>
-            <div>
-              <p class="offline-card__title">Checking offline status…</p>
-              <p class="offline-card__text">Offline mode</p>
+      <div class="login__hero-content">
+        <div class="login__hero-copy">
+          <p class="login__headline">Crew health,<br><span class="login__accent">monitored on board.</span></p>
+          <p class="login__lead">Sign in with a demonstration account to open the mission health console.
+            Everything runs on this device — it keeps working without a network connection.</p>
+          <div class="login__status">
+            <div class="offline-card" data-offline-status role="status">
+              <span class="offline-card__icon"><i data-icon="wifi"></i></span>
+              <div>
+                <p class="offline-card__title">Checking offline status…</p>
+                <p class="offline-card__text">Offline mode</p>
+              </div>
             </div>
+            <span class="chip"><i data-icon="database"></i> Local data only</span>
           </div>
-          <span class="chip"><i data-icon="database"></i> Local data only</span>
         </div>
+        <figure class="login__body-preview">
+          <div class="login__body-scan" data-public-body-scan aria-hidden="true"></div>
+          <figcaption><strong>Interactive body context</strong><span>Available after sign in with synthetic demonstration data.</span></figcaption>
+        </figure>
       </div>
 
       <div class="login__planet" aria-hidden="true"></div>

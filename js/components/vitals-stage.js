@@ -59,13 +59,15 @@ export function alertPins(alertItems, { who = "" } = {}) {
   return (Array.isArray(alertItems) ? alertItems : []).map((a, i) => {
     const zone = zoneForRule(a.ruleId);
     const severity = SEVERITY_LABEL[a.severity] ? a.severity : "info";
+    const status = a.status === "resolved" ? "Resolved, " : "";
+    const context = a.ruleId === "WB-01" ? "Mental wellbeing · " : "";
     return {
       number: i + 1,
       zone,
       severity,
       alert: a,
-      tag: a.title,
-      label: `${who}Alert ${i + 1}: ${[a.number, a.title].filter(Boolean).join(" ")} — ${SEVERITY_LABEL[severity]}, ${ZONE_LABELS[zone] || "body"}. Open details.`,
+      tag: `${context}${a.title}`,
+      label: `${who}Alert ${i + 1}: ${context}${[a.number, a.title].filter(Boolean).join(" ")} — ${status}${SEVERITY_LABEL[severity]}, ${ZONE_LABELS[zone] || "body"}. Open details.`,
     };
   });
 }

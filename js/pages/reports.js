@@ -17,6 +17,8 @@ import { el } from "../core/utils/dom.js";
 import { formatNumber } from "../core/utils/format.js";
 import { loadingView, utcTime } from "../components/crew-view.js";
 import { refusalView } from "../components/health-view.js";
+import { createContextBodyScan } from "../components/context-body-scan.js";
+import { zoneForRule } from "../components/alert-zones.js";
 
 const BASE = "reports";
 const NO_DATA = "No data";
@@ -74,11 +76,20 @@ function healthReport(r) {
     ["Messages from the Medical Officer", a.messages.status === "ok" ? String(a.messages.count) : "Couldn't load"],
   ];
   const p = r.provenance;
+  const reportPins = r.alerts.status === "ok"
+    ? r.alerts.items.slice(0, 4).map((a, index) => ({ number: index + 1, zone: zoneForRule(a.ruleId), severity: a.severity, tag: `${a.number} · ${a.title}`, label: `Go to report alerts: ${a.number} ${a.title}`, targetId: "report-alerts-title" }))
+    : [];
   return frame(r, [
     el("section", { class: "report__section", "aria-labelledby": "report-subject-title" }, [
       el("h3", { class: "report__h3", id: "report-subject-title" }, "Crew member"),
       el("p", {}, `${s.name} · ${s.crewId} · ${s.missionRole}`),
     ]),
+    createContextBodyScan({
+      id: "report-body-map-title", title: "Report body snapshot",
+      description: "A compact map of alerts detected during this report period. It is generated from the same stored synthetic report data.",
+      pins: reportPins, compact: true, eyebrow: "Printable body snapshot",
+      note: reportPins.length ? "Select a point to continue to the alerts table." : "No alert marker is available for this report period.",
+    }),
     el("section", { class: "report__section", "aria-labelledby": "report-metrics-title" }, [
       el("h3", { class: "report__h3", id: "report-metrics-title" }, "Physical readings (daily summaries)"),
       table("report-metrics", "Daily-summary statistics per measure. Average is the average of daily averages. Missing days are not filled in.", ["Measure", "Days with data", "Missing days", "Average", "Minimum", "Maximum", "Difference from stored baseline"], metrics),

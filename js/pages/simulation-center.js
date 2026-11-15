@@ -35,6 +35,7 @@ import { el } from "../core/utils/dom.js";
 import { formatNumber, formatRelative } from "../core/utils/format.js";
 import { badge, loadingView, section, sectionError, srOnly, syntheticNotice, utcTime } from "../components/crew-view.js";
 import { refusalView } from "../components/health-view.js";
+import { createContextBodyScan } from "../components/context-body-scan.js";
 
 const BASE = "simulation";
 
@@ -324,6 +325,7 @@ export function createSimulationCenterRenderer({ service, timers = defaultTimers
       const d = st.data;
       const run = d.run;
       const parts = [header(d), messageBox()];
+      parts.push(simulationScan(run));
       if (run && run.active) parts.push(activeRunSection(run));
       if (d.active.status === "error") parts.push(section("sim-active-title", "Active run", [sectionError(() => load(), "the active run")]));
       else if (!run || !run.active) {
@@ -336,6 +338,30 @@ export function createSimulationCenterRenderer({ service, timers = defaultTimers
       if (activeId) {
         for (const n of content.querySelectorAll("[id]")) if (n.getAttribute("id") === activeId && typeof n.focus === "function") n.focus();
       }
+    }
+
+    function simulationScan(run) {
+      if (!run) return createContextBodyScan({
+        id: "simulation-body-map-title",
+        title: "Simulation body map",
+        description: "Start a simulation to see its deterministic synthetic readings mapped to the relevant body area here.",
+        pins: [], compact: true, eyebrow: "Simulation ready",
+        note: "No simulation is active. The body map never generates or changes a reading by itself.",
+      });
+      const targetId = run.active ? "sim-run-title" : "sim-readings-title";
+      return createContextBodyScan({
+        id: "simulation-body-map-title",
+        title: run.active ? "Live simulation body map" : "Last simulation body map",
+        description: `${run.scenarioName} for ${run.name || run.crewId || "the selected crew member"}. The marker follows generated synthetic readings only.`,
+        pins: [{
+          number: 1, zone: "lungs", severity: run.active ? "warning" : "info",
+          tag: `Step ${run.step} of ${run.totalSteps}`,
+          label: `Go to simulation details, step ${run.step} of ${run.totalSteps}`,
+          targetId,
+        }],
+        compact: true, eyebrow: run.active ? "Simulation running" : "Simulation record",
+        note: "Simulation output is deterministic demonstration data and is not clinically validated.",
+      });
     }
 
     function header(d) {

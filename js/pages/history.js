@@ -19,6 +19,7 @@ import { el } from "../core/utils/dom.js";
 import { formatDate } from "../core/utils/format.js";
 import { badge, loadingView, section, srOnly, syntheticNotice, utcTime } from "../components/crew-view.js";
 import { refusalView } from "../components/health-view.js";
+import { createContextBodyScan } from "../components/context-body-scan.js";
 
 const BASE = "history";
 const CATEGORY_VIEW = {
@@ -48,6 +49,21 @@ export function provenanceLabel(p) {
 }
 
 const dayTitle = (key) => `${formatDate(Date.parse(`${key}T00:00:00Z`), { timeZone: "UTC" })} (UTC)`;
+
+const HISTORY_ZONES = Object.freeze({ readings: "heart", wellbeing: "head", alerts: "chest", messages: "arm", simulation: "lungs" });
+function historyScan(data) {
+  const counts = new Map(data.categories.map((c) => [c.id, data.entries.filter((e) => e.category === c.id).length]));
+  const pins = data.categories.map((c, index) => ({
+    number: index + 1, zone: HISTORY_ZONES[c.id] || "chest", severity: "info",
+    tag: `${c.label} · ${counts.get(c.id) || 0}`,
+    label: `Go to activity history: ${c.label}, ${counts.get(c.id) || 0} entries`, targetId: "history-list-title",
+  }));
+  return createContextBodyScan({
+    id: "history-body-map-title", title: "Body history at a glance",
+    description: `The body map summarizes activity recorded in the selected ${data.range.days}-day period. Choose a point to continue to the filtered timeline.`,
+    pins, compact: true, eyebrow: "History replay", note: "Counts describe stored activity, not health status.",
+  });
+}
 
 /** TEST SEAM. Production uses renderHistory. */
 export function createHistoryRenderer({ service }) {
@@ -152,6 +168,7 @@ export function createHistoryRenderer({ service }) {
         : null;
       content.replaceChildren(
         header,
+        historyScan(d),
         section("history-list-title", "Activity", [
           el("div", { class: "history-controls" }, [rangeGroup, filters]),
           ...notes.filter(Boolean),

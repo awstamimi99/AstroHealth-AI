@@ -9,6 +9,7 @@ import { usersRepo, ROLES, seedDemoData, DatabaseError, DEMO_PASSWORD } from "..
 import { createSession, onSessionChange } from "../auth/session.js";
 import { redirectAuthenticatedUser } from "../auth/guard.js";
 import { icon } from "../components/icon.js";
+import { mountPublicBodyScans } from "../components/public-body-scan.js";
 import { $, $$, clear } from "../core/utils/dom.js";
 
 const MESSAGES = {
@@ -26,7 +27,10 @@ const DEMO_ROLES = { haddad: ROLES.ASTRONAUT, medofficer: ROLES.MEDICAL_OFFICER 
 const UNAVAILABLE_CODES = new Set(["UNSUPPORTED", "OPEN_FAILED", "VERSION", "BLOCKED", "INVALID_STATE", "QUOTA", "ABORTED"]);
 
 // Already signed in? Go straight to the app (and stop here).
-if (!redirectAuthenticatedUser()) initLoginPage();
+if (!redirectAuthenticatedUser()) {
+  mountPublicBodyScans();
+  initLoginPage();
+}
 
 function initLoginPage() {
   // Make sure the demo accounts exist. seedDemoData() does nothing if the
