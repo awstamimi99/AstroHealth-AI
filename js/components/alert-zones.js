@@ -34,3 +34,27 @@ export const VITAL_ZONES = Object.freeze({
   bloodPressure: "arm",
   sleepDuration: "head",
 });
+
+/** Which vital ring a demonstration rule is about (rules without a ring map to nothing). */
+export const RULE_VITALS = Object.freeze({
+  "PHY-01": "heartRate",
+  "PHY-02": "spo2",
+  "PHY-03": "bloodPressure",
+  "PHY-05": "sleepDuration",
+});
+const RANK = Object.freeze({ info: 1, warning: 2, critical: 3 });
+
+/**
+ * The most severe OPEN alert per vital ring, from alert items with { ruleId, severity }.
+ * → { heartRate: "warning", … }. A ring without an entry has no open alert.
+ * Deterministic and explainable: it only reads the rule id and stored severity.
+ */
+export function vitalSeverities(alerts) {
+  const out = {};
+  for (const a of Array.isArray(alerts) ? alerts : []) {
+    const key = a && RULE_VITALS[a.ruleId];
+    if (!key || !RANK[a.severity]) continue;
+    if (!out[key] || RANK[a.severity] > RANK[out[key]]) out[key] = a.severity;
+  }
+  return out;
+}

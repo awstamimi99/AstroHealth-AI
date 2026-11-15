@@ -176,7 +176,7 @@ function baselineText(item, view) {
 
 // ---- Scan stage: 4 rings around the body + numbered alert pins (js/components/vitals-stage.js) ----
 
-function vitalRing(item, data, onRetry) {
+function vitalRing(item, data, onRetry, alertSeverity = "") {
   const view = VITAL_VIEW[item.key];
   const id = `ov-ring-${item.key}`;
   const history = el("a", { class: "vitals-stage__ring-link", href: "#/physical", "aria-label": `View ${item.label.toLowerCase()} history` }, ["History", icon("arrow-right")]);
@@ -191,7 +191,8 @@ function vitalRing(item, data, onRetry) {
       fraction: ringFraction(item),
       baseline: baselineText(item, view),
       meta: [utcTime(item.timestamp, { dateToo: false }), ` · ${formatRelative(item.timestamp, data.generatedAt)}`],
-      spoken: `${view.spokenLabel}: ${value.spoken}`,
+      spoken: `${view.spokenLabel}: ${value.spoken}${alertSeverity ? `. Open ${alertSeverity} alert for this measure` : ""}`,
+      alertSeverity,
       tags: [
         provenanceTag(item),
         item.quality === "suspect" ? badge("badge--neutral", "eye", "Data quality: suspect") : null,
@@ -214,21 +215,23 @@ function scanStageSection(data, onRetry, onOpenAlert) {
   const stage = createVitalsStage({
     items: data.vitals.items,
     pins,
-    ringFor: (item) => vitalRing(item, data, onRetry),
+    ringFor: (item, severity) => vitalRing(item, data, onRetry, severity),
     onPinClick: (pin, button) => onOpenAlert(pin.alert, button, pin.number),
   });
   return el("section", { class: "scan-stage scan-stage--fill ov-scan", "aria-labelledby": "ov-vitals-title" }, [
-    el("div", { class: "ov-scan__head" }, [
-      el("h2", { class: "scan-stage__title", id: "ov-vitals-title" }, "Body scan · latest vital signs"),
-      el("span", { class: "sim-tag" }, [icon("flask-conical", { size: 12 }), "SIMULATED"]),
+    el("div", { class: "scan-stage__head" }, [
+      el("div", { class: "scan-stage__heading" }, [
+        el("h2", { class: "scan-stage__title", id: "ov-vitals-title" }, "Body scan · latest vital signs"),
+        el("span", { class: "sim-tag" }, [icon("flask-conical", { size: 12 }), "SIMULATED"]),
+      ]),
+      severityLegend(),
     ]),
     el("p", { class: "scan-stage__note" }, "The most recent usable reading of each measure. Invalid readings are left out. Times are UTC."),
     stage,
     el("div", { class: "scan-stage__foot" }, [
-      severityLegend(),
       el("p", { class: "scan-stage__note" },
         "Illustration only: the body is a stylised drawing and the ring fill uses a fixed display scale — neither is a health assessment. " +
-          (pins.length ? "Numbered pins mark your open alerts, coloured by severity; the same alerts are listed under Open alerts." : "You have no open alerts, so no pins are shown.")),
+          (pins.length ? "Numbered pins mark your open alerts, coloured by severity; a ring takes the colour of an open alert for that measure. The same alerts are listed under Open alerts." : "You have no open alerts, so no pins are shown and every ring is blue.")),
     ]),
   ]);
 }

@@ -55,7 +55,8 @@
 
   /* ---- Scan stage (dark card holding the wireframe body) ---------------- */
   /* Contrast on --color-scan-bg: text 15.2, text-2 7.3, outline 10.4,
-     baseline 7.4, watch 11.2, critical pin 7.1 (WCAG AA ≥ 4.5).          */
+     baseline 7.4, watch 8.3, critical 5.6 (WCAG AA ≥ 4.5). Watch is orange and
+     critical raspberry: brand red is never a health state.                  */
   --color-scan-bg: #0B1220;
   --color-scan-bg-2: #111B2E;            /* inner gradient / panels */
   --color-scan-border: #1E2A40;
@@ -65,8 +66,8 @@
   --color-scan-glow: rgba(34, 211, 238, 0.55);
   --color-scan-line: rgba(34, 211, 238, 0.85);
   --color-scan-baseline: #60A5FA;        /* rings / connectors (no health meaning) */
-  --color-scan-watch: #FBBF24;           /* warning pins */
-  --color-scan-critical: #F472B6;        /* critical pins */
+  --color-scan-watch: #FB923C;           /* warning / watch: pins, zone glow, ring arc */
+  --color-scan-critical: #F0508C;        /* critical / high: pins, zone glow, ring arc */
   --color-scan-info: #93C5FD;            /* info pins */
   --color-scan-text: #E2E8F0;
   --color-scan-text-2: #94A3B8;

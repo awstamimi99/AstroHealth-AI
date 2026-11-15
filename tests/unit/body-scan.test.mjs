@@ -267,6 +267,25 @@ test("pins and hot spots: each severity has its own class; hot spots get a sever
   const { severityLegend } = await import("../../js/components/vitals-stage.js");
   const legend = severityLegend();
   assert.equal(legend.tagName, "UL");
-  assert.deepEqual(byTag(legend, "li").map((li) => li.textContent), ["Critical", "Warning", "Info"]);
+  assert.deepEqual(byTag(legend, "li").map((li) => li.textContent), ["No open alert", "Info", "Warning", "Critical"]);
+  // bands light the body area in the alert's colour (clipped to the silhouette)
+  assert.equal(byClass(body, "scan-body__band--critical").length, 1);
+  assert.match(byClass(body, "scan-body__bands")[0].getAttribute("clip-path"), /^url\(#ahscan\d+-clip\)$/);
   assert.ok(byTag(legend, "li").every((li) => byTag(li, "svg").length === 1 && byClass(li, "scan-legend__swatch").length === 1));
+});
+
+test("ring: colour follows an open alert for the measure, always with icon + word; no alert → no status", async () => {
+  const warn = scan.createRing({ id: "rw", label: "Sleep duration", value: "5.8", unit: "h", fraction: 0.58, alertSeverity: "warning" });
+  assert.ok(warn.classList.includes("scan-ring--warning"));
+  const status = byClass(warn, "scan-ring__status")[0];
+  assert.equal(status.textContent, "Warning alert", "visible word + screen-reader ' alert'");
+  assert.equal(byTag(status, "svg").length, 1);
+  assert.equal(byClass(warn, "scan-ring__tip").length, 1, "arc end marker");
+  const clear = scan.createRing({ id: "rc", label: "SpO₂", value: "98", unit: "%", fraction: 0.9 });
+  assert.equal(byClass(clear, "scan-ring__status").length, 0);
+  assert.ok(!clear.classList.some((c) => /^scan-ring--/.test(c)));
+  assert.equal(scan.createRing({ id: "rb", label: "X", value: "1", unit: "", alertSeverity: "bogus" }).getAttribute("class"), "scan-ring");
+  assert.deepEqual(zones.vitalSeverities([
+    { ruleId: "PHY-05", severity: "info" }, { ruleId: "PHY-05", severity: "warning" }, { ruleId: "PHY-02", severity: "critical" }, { ruleId: "WB-01", severity: "critical" }, { ruleId: "PHY-01", severity: "nope" },
+  ]), { sleepDuration: "warning", spo2: "critical" }, "most severe per measure; non-vital rules ignored");
 });

@@ -130,7 +130,7 @@ function baselineText(item) {
 }
 
 /** One vital ring on the stage: value, unit, baseline, time, provenance and data-quality labels as text. */
-function vitalRing(item, now, onRetry) {
+function vitalRing(item, now, onRetry, alertSeverity = "") {
   const id = `crew-ring-${item.key}`;
   if (item.state === "ok") {
     const bp = item.key === "bloodPressure";
@@ -143,7 +143,8 @@ function vitalRing(item, now, onRetry) {
       fraction: ringFraction(item),
       baseline: baselineText(item),
       meta: stamp(item.timestamp, now),
-      spoken: `${item.label}: ${bp ? visual.replace("/", " over ") : visual} ${SPOKEN_UNIT[item.key] || item.unit}`,
+      spoken: `${item.label}: ${bp ? visual.replace("/", " over ") : visual} ${SPOKEN_UNIT[item.key] || item.unit}${alertSeverity ? `. Open ${alertSeverity} alert for this measure` : ""}`,
+      alertSeverity,
       tags: [provenanceTag(item), ...dataBadges(item)].filter(Boolean),
     });
   }
@@ -257,22 +258,24 @@ function detailView(data, onRetry, onOpenAlert) {
     ]),
     el("div", { class: "crew-scan-layout" }, [
       el("section", { class: "scan-stage scan-stage--fill crew-scan", "aria-labelledby": "crew-detail-vitals-title" }, [
-        el("div", { class: "crew-scan__head" }, [
-          el("h2", { class: "scan-stage__title", id: "crew-detail-vitals-title" }, "Body scan · latest readings"),
-          el("span", { class: "sim-tag" }, [icon("flask-conical", { size: 12 }), "SIMULATED"]),
+        el("div", { class: "scan-stage__head" }, [
+          el("div", { class: "scan-stage__heading" }, [
+            el("h2", { class: "scan-stage__title", id: "crew-detail-vitals-title" }, "Body scan · latest readings"),
+            el("span", { class: "sim-tag" }, [icon("flask-conical", { size: 12 }), "SIMULATED"]),
+          ]),
+          severityLegend(),
         ]),
         el("p", { class: "scan-stage__note" }, "Most recent usable reading of each measure. Invalid readings are left out. Times are UTC."),
         createVitalsStage({
           items: data.vitals.items,
           pins: alerts.status === "ok" ? alertPins(alerts.items, { who: `${p.name}: ` }) : [],
-          ringFor: (item) => vitalRing(item, data.generatedAt, onRetry),
+          ringFor: (item, severity) => vitalRing(item, data.generatedAt, onRetry, severity),
           onPinClick: (pin, button) => onOpenAlert(pin.alert, button, pin.number),
         }),
         el("div", { class: "scan-stage__foot" }, [
-          severityLegend(),
           el("p", { class: "scan-stage__note" },
             "Illustration only: the body is a stylised drawing and the ring fill uses a fixed display scale — neither is a health assessment. " +
-              (alerts.status === "ok" && alerts.items.length ? "Numbered pins mark open alerts, coloured by severity; the same alerts are listed under Open alerts." : "No pins: no open alerts are shown.")),
+              (alerts.status === "ok" && alerts.items.length ? "Numbered pins mark open alerts, coloured by severity; a ring takes the colour of an open alert for that measure. The same alerts are listed under Open alerts." : "No pins: no open alerts are shown.")),
         ]),
       ]),
       // Status, open alerts and the cognitive check beside the stage (no half-empty rows).

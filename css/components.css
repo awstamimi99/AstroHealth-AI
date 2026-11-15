@@ -787,6 +787,20 @@ button.chip:hover { border-color: var(--color-border); color: var(--color-text);
   overflow-x: auto;           /* phones: the stage scrolls sideways inside its card */
   overscroll-behavior-x: contain;
 }
+/* Stage header: title + SIMULATED on the left, colour key on the right. */
+.scan-stage__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+}
+.scan-stage__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
 /* A stage section that is stretched to a taller side column keeps the drawing centred. */
 .scan-stage--fill {
   display: flex;
@@ -836,6 +850,7 @@ button.chip:hover { border-color: var(--color-border); color: var(--color-text);
   font-weight: var(--weight-semibold);
 }
 .scan-legend__item--critical { --pin: var(--color-scan-critical); }
+.scan-legend__item--clear { --pin: var(--color-scan-baseline); }
 .scan-legend__item--warning { --pin: var(--color-scan-watch); }
 .scan-legend__item .icon {
   color: var(--pin);
@@ -913,6 +928,12 @@ button.chip:hover { border-color: var(--color-border); color: var(--color-text);
   stroke-width: 0.8;
   opacity: 0.4;
 }
+.scan-body__band {
+  opacity: 0.4;
+}
+.scan-body__band--critical { fill: var(--color-scan-critical); opacity: 0.5; }
+.scan-body__band--warning { fill: var(--color-scan-watch); }
+.scan-body__band--info { fill: var(--color-scan-info); opacity: 0.3; }
 .scan-body__hot-ring {
   fill: none;
   stroke-width: 1.5;
@@ -1079,11 +1100,44 @@ button.chip:hover { border-color: var(--color-border); color: var(--color-text);
   stroke: var(--color-scan-grid);
   stroke-width: 7;
 }
+/* Ring colour: blue = no open alert for this measure; otherwise the open alert's severity
+   colour, always shown with the .scan-ring__status chip (icon + word). */
+.scan-ring {
+  --ring: var(--color-scan-baseline);
+}
+.scan-ring--info { --ring: var(--color-scan-info); }
+.scan-ring--warning { --ring: var(--color-scan-watch); }
+.scan-ring--critical { --ring: var(--color-scan-critical); }
 .scan-ring__arc {
   fill: none;
-  stroke: var(--color-scan-baseline);
+  stroke: var(--ring);
   stroke-width: 7;
   stroke-linecap: round;
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--ring) 60%, transparent));
+}
+.scan-ring__tip {
+  fill: var(--color-scan-bg);
+  stroke: var(--ring);
+  stroke-width: 2.5;
+}
+.scan-ring--warning .scan-ring__face,
+.scan-ring--critical .scan-ring__face {
+  border-radius: var(--radius-pill);
+  box-shadow: 0 0 28px color-mix(in srgb, var(--ring) 28%, transparent);
+}
+.scan-ring__status {
+  display: inline-flex;
+  align-self: center;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px 1px 6px;
+  border: 1px solid var(--ring);
+  border-radius: var(--radius-pill);
+  color: var(--ring);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 .scan-ring__value {
   position: absolute;
@@ -1177,7 +1231,7 @@ button.chip:hover { border-color: var(--color-border); color: var(--color-text);
 .vitals-stage {
   position: relative;
   min-width: 720px;
-  aspect-ratio: 760 / 560;
+  aspect-ratio: 760 / 610;
 }
 .vitals-stage__links {
   position: absolute;

@@ -12,9 +12,9 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const read = (path) => readFileSync(join(ROOT, path), "utf8");
 
 test("release metadata, cache and database versions are aligned", () => {
-  assert.equal(APP_VERSION, "0.10.4");
+  assert.equal(APP_VERSION, "0.10.5");
   assert.equal(JSON.parse(read("package.json")).version, APP_VERSION);
-  assert.match(read("sw.js"), /const CACHE_VERSION = "0\.10\.4";/);
+  assert.match(read("sw.js"), /const CACHE_VERSION = "0\.10\.5";/);
   assert.equal(DB_VERSION, 1);
 });
 
