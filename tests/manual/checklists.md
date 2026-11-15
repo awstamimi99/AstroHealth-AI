@@ -443,3 +443,14 @@ All data is synthetic. Sprint 9 writes nothing to the database.
 - [ ] Check keyboard-only operation, visible focus, 375 / 768 / 1440 px layouts, offline reload after one online visit, and print preview.
 - [ ] Capture current screenshots from the running app; verify `docs/screenshots/` is not in the precache manifest.
 - [ ] Record Firefox, Safari, a real screen reader and physical printing as passed only when actually tested.
+
+## 15. Light theme (body-scan redesign, PR 0a — app version 0.10.0)
+
+Reload once so the service worker cache `astrohealth-v0.10.0` takes over.
+
+- [ ] Every page (landing, About, login, app routes) uses the light surfaces; no dark leftovers, no unreadable text
+- [ ] Captions and notes (muted text) are readable; status badges (OK, Watch/warning, Critical, Info) keep icon + text and are readable on their tinted backgrounds
+- [ ] Active navigation item, buttons, links and focus rings use the brand colour; the focus ring is clearly visible with the keyboard
+- [ ] Medical Officer Overview: each crew-count card links to Alerts or Crew Monitor; astronaut Overview vital cards link to Physical Health
+- [ ] 1440 / 768 / 375 px: no horizontal page scrolling
+- [ ] Browser address-bar / installed-app colour is light (theme-color and manifest)

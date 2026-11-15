@@ -113,12 +113,34 @@
 /* ---- Vital cards --------------------------------------------------------------- */
 .overview__vital {
   min-width: 0;
+  transition: border-color var(--motion-fast) var(--ease), box-shadow var(--motion-fast) var(--ease), transform var(--motion-fast) var(--ease);
+}
+.overview__vital:has(.overview__vital-link:hover) {
+  border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 .overview__vital .metric__label {
   font-size: var(--text-xs);
 }
 .overview__vital .metric__footer {
   margin-top: auto;
+}
+.overview__vital-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  color: var(--color-primary);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+}
+.overview__vital-link:hover {
+  color: var(--color-primary-dark);
+}
+.overview__vital-link .icon {
+  width: 14px;
+  height: 14px;
 }
 .overview__no-value {
   color: var(--color-text-3);
@@ -256,12 +278,32 @@
   padding: 0;
   list-style: none;
 }
+.overview__links .btn {
+  min-height: 40px;
+}
 
 /* ---- Loading --------------------------------------------------------------------------- */
 .overview__loading {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+
+@media (min-width: 960px) {
+  .overview {
+    display: grid;
+    grid-template-columns: minmax(0, 0.82fr) minmax(420px, 1.18fr);
+    align-items: start;
+    gap: var(--space-6);
+  }
+  .overview > .overview__header,
+  .overview > [aria-labelledby="ov-vitals-title"],
+  .overview > [aria-labelledby="ov-sleep-title"] {
+    grid-column: 1 / -1;
+  }
+  .overview > .overview__section {
+    height: 100%;
+  }
 }
 
 @media (max-width: 599px) {

@@ -11,12 +11,12 @@ import { el } from "../core/utils/dom.js";
 import { loadingView, refusalView, section, sectionError, stateBadge, syntheticNotice, srOnly } from "../components/crew-view.js";
 
 const COUNTS = [
-  ["critical", "Critical alert", "circle-alert", "badge--critical"],
-  ["watch", "Watch", "triangle-alert", "badge--warning"],
-  ["info", "Info", "info", "badge--info"],
-  ["unavailable", "Status unavailable", "eye-off", "badge--neutral"],
-  ["dataNeedsReview", "Data needs review", "clock", "badge--neutral"],
-  ["noOpenAlerts", "No open alerts", "circle-check", "badge--ok"],
+  ["critical", "Critical alert", "circle-alert", "badge--critical", "#/alerts"],
+  ["watch", "Watch", "triangle-alert", "badge--warning", "#/alerts"],
+  ["info", "Info", "info", "badge--info", "#/alerts"],
+  ["unavailable", "Status unavailable", "eye-off", "badge--neutral", "#/crew"],
+  ["dataNeedsReview", "Data needs review", "clock", "badge--neutral", "#/crew"],
+  ["noOpenAlerts", "No open alerts", "circle-check", "badge--ok", "#/crew"],
 ];
 
 function headerSection(data) {
@@ -39,10 +39,11 @@ function summarySection(data, onRetry) {
         ? `${s.crewCount} crew members. Open alerts couldn't be loaded.`
         : `${s.crewCount} crew members · ${s.withOpenAlerts} with open alerts.`),
     el("ul", { class: "crew-counts", role: "list" },
-      COUNTS.map(([key, label, iconName, cls]) =>
+      COUNTS.map(([key, label, iconName, cls, href]) =>
         el("li", { class: "crew-counts__item" }, [
           el("span", { class: ["badge", cls] }, [icon(iconName), label]),
           el("span", { class: "crew-counts__value" }, String(s[key])),
+          el("a", { class: "crew-counts__link", href, "aria-label": `View ${label.toLowerCase()} details` }, icon("arrow-right")),
         ]))),
     el("p", { class: "crew__note" }, "Crew status is based on stored open alerts only. This is not a health assessment."),
     s.unavailable ? sectionError(onRetry, "the crew's alerts") : null,
@@ -72,7 +73,7 @@ function queueSection(data) {
 /** TEST SEAM: tests pass a fake loader returning presentation data. Pages use renderMedicalOfficerOverview. */
 export function createMedicalOfficerOverviewRenderer({ loadSnapshot }) {
   return function render(container, session, { signal } = {}) {
-    const root = el("div", { class: "crew", "aria-busy": "false" });
+    const root = el("div", { class: "crew crew--overview", "aria-busy": "false" });
     container.replaceChildren(root);
     let generation = 0;
 

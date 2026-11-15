@@ -232,7 +232,10 @@ function vitalCard(item, data, onRetry) {
     top,
     label,
     ...body,
-    el("div", { class: "metric__footer" }, el("span", {}, baselineText(item, view))),
+    el("div", { class: "metric__footer" }, [
+      el("span", {}, baselineText(item, view)),
+      el("a", { class: "overview__vital-link", href: "#/physical", "aria-label": `View ${item.label.toLowerCase()} history` }, ["History", icon("arrow-right")]),
+    ]),
   ]);
 }
 

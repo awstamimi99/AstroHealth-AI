@@ -1,51 +1,54 @@
 /* ==========================================================================
    AstroHealth AI — Design tokens
-   SHARED FILE: changes need one reviewer from each team.
+   Light, calm interface inspired by modern MENA SaaS products. The visual
+   language is original to AstroHealth AI; no third-party assets are copied.
 
    Every colour, size and timing in the app comes from here. Never hard-code
    a hex value in another file — use var(--token) instead.
 
    RULES
-   • Orange (--color-primary*) = brand & interaction ONLY (buttons, active nav,
-     focus rings, links). It NEVER means "warning" — use --color-warning.
+   • Blue (--color-primary*) = brand & interaction ONLY (buttons, active nav,
+     focus rings, links). It NEVER means a health state.
    • A status is ALWAYS shown as colour + icon + text, never colour alone.
+   • Text colours meet WCAG AA (4.5:1) on --color-card, --color-bg,
+     --color-elevated and their own 10% tints.
    ========================================================================== */
 
 :root {
-  /* ---- Surfaces (dark mission-control) ---------------------------------- */
-  --color-bg: #0B1018;          /* page background */
-  --color-sidebar: #111722;     /* app sidebar */
-  --color-card: #1C222D;        /* cards / panels */
-  --color-elevated: #252C38;    /* popovers, modals, hover rows */
-  --color-topbar: #0D131C;      /* app top bar */
+  /* ---- Surfaces (light, low-noise workspace) ---------------------------- */
+  --color-bg: #F6F7FB;
+  --color-sidebar: #FFFFFF;
+  --color-card: #FFFFFF;
+  --color-elevated: #F0F3F8;
+  --color-topbar: rgba(255, 255, 255, 0.92);
 
-  /* ---- Brand / interaction (orange) ------------------------------------- */
-  --color-primary: #FF7A2F;
-  --color-primary-2: #FF9A3D;   /* hover / gradient end */
-  --color-primary-dark: #C4501A;/* pressed / gradient start */
-  --color-on-primary: #160A03;  /* text on orange buttons */
+  /* ---- Brand / interaction --------------------------------------------- */
+  --color-primary: #4B5EE1;
+  --color-primary-2: #4055E8;
+  --color-primary-dark: #3044C8;
+  --color-on-primary: #FFFFFF;
 
   /* ---- Text -------------------------------------------------------------- */
-  --color-text: #F5F7FA;        /* primary text */
-  --color-text-2: #A4ACB9;      /* secondary text */
-  --color-text-3: #6E7786;      /* muted / captions */
+  --color-text: #172033;
+  --color-text-2: #536078;
+  --color-text-3: #646D7E;
 
   /* ---- Borders ----------------------------------------------------------- */
-  --color-border: #343C49;
-  --color-border-subtle: #2A313D;
+  --color-border: #D7DDE8;
+  --color-border-subtle: #E8ECF2;
 
   /* ---- Status (health states) ------------------------------------------- */
-  --color-ok: #43C988;
-  --color-warning: #F6A623;
-  --color-critical: #F05252;
-  --color-info: #5B9BF0;
+  --color-ok: #157D5F;
+  --color-warning: #9F5F00;
+  --color-critical: #C23A43;
+  --color-info: #3268C9;
 
   /* 10% tints — backgrounds for badges, alert rows, banners */
-  --color-primary-tint: rgba(255, 122, 47, 0.10);
-  --color-ok-tint: rgba(67, 201, 136, 0.10);
-  --color-warning-tint: rgba(246, 166, 35, 0.10);
-  --color-critical-tint: rgba(240, 82, 82, 0.10);
-  --color-info-tint: rgba(91, 155, 240, 0.10);
+  --color-primary-tint: #EEF0FF;
+  --color-ok-tint: #E8F7F1;
+  --color-warning-tint: #FFF4DD;
+  --color-critical-tint: #FDECEF;
+  --color-info-tint: #EAF1FD;
 
   /* ---- Typography -------------------------------------------------------- */
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -82,21 +85,25 @@
   --space-10: 64px;
 
   /* ---- Radii ------------------------------------------------------------- */
-  --radius-sm: 6px;
-  --radius-md: 9px;
-  --radius-lg: 12px;   /* cards */
-  --radius-xl: 16px;   /* modals */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
   --radius-pill: 999px;
 
   /* ---- Effects ----------------------------------------------------------- */
-  --focus-ring: 0 0 0 3px rgba(255, 122, 47, 0.35);
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --focus-ring: 0 0 0 3px rgba(75, 94, 225, 0.24);
+  --shadow-sm: 0 1px 2px rgba(21, 32, 51, 0.05), 0 4px 14px rgba(21, 32, 51, 0.04);
+  --shadow-lg: 0 18px 48px rgba(21, 32, 51, 0.14);
+  --shadow-xs: 0 1px 1px rgba(21, 32, 51, 0.03);
+  --shadow-md: 0 10px 28px rgba(21, 32, 51, 0.09);
+  --shadow-hairline: 1px 0 0 rgba(21, 32, 51, 0.02);
+  --color-overlay: rgba(23, 32, 51, 0.34);   /* modal / drawer backdrop */
 
   /* ---- Layout ------------------------------------------------------------ */
-  --sidebar-width: 248px;
-  --topbar-height: 68px;
-  --content-max: 1440px;
+  --sidebar-width: 232px;
+  --topbar-height: 76px;
+  --content-max: 1280px;
 
   /* ---- Motion ------------------------------------------------------------ */
   --motion-fast: 120ms;

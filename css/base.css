@@ -68,7 +68,7 @@
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
@@ -80,6 +80,7 @@ body {
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   line-height: var(--leading-normal);
+  letter-spacing: -0.005em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -168,7 +169,7 @@ hr {
 }
 
 ::selection {
-  background: rgba(255, 122, 47, 0.35);
+  background: color-mix(in srgb, var(--color-primary) 20%, transparent);
   color: var(--color-text);
 }
 

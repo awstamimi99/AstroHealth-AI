@@ -66,6 +66,7 @@ test("MO overview: welcome, crew summary counts and the priority queue as an ord
   assert.match(summary.textContent, /4 crew members · 2 with open alerts\./);
   const counts = Object.fromEntries(byClass(summary, "crew-counts__item").map((li) => [li.childNodes[0].textContent, li.childNodes[1].textContent]));
   assert.deepEqual(counts, { "Critical alert": "0", Watch: "1", Info: "1", "Status unavailable": "0", "Data needs review": "0", "No open alerts": "2" });
+  assert.deepEqual(byClass(summary, "crew-counts__link").map((a) => a.getAttribute("href")), ["#/alerts", "#/alerts", "#/alerts", "#/crew", "#/crew", "#/crew"]);
   assert.match(summary.textContent, /based on stored open alerts only\. This is not a health assessment\./i);
   const queue = byTag(sectionOf(root, "mo-queue-title"), "ol")[0];
   assert.ok(queue, "ordered list");

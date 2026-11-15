@@ -133,6 +133,7 @@ test("vital cards: 4 cards; simulated vs manual labels; suspect and stale are da
   const cards = byClass(container, "overview__vital");
   assert.deepEqual(cards.map((c) => byTag(c, "h3")[0].textContent), ["Heart rate", "SpO₂", "Blood pressure", "Sleep duration"]);
   const [hr, spo2, bp] = cards;
+  assert.ok(cards.every((c) => byClass(c, "overview__vital-link")[0].getAttribute("href") === "#/physical"), "every vital offers its health history");
   assert.match(hr.textContent, /Simulated/);
   assert.match(hr.textContent, /Data quality: suspect/);
   assert.ok(!byClass(hr, "badge--warning").length && !byClass(hr, "badge--critical").length, "suspect isn't shown as a health warning");
