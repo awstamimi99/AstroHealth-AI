@@ -65,12 +65,14 @@ test("ready Overview: sections in the approved order with unique heading ids", a
   const root = container.childNodes[0];
   assert.equal(root.getAttribute("aria-busy"), "false");
   const order = all(root, (e) => e.tagName === "SECTION").map((s) => s.getAttribute("aria-labelledby"));
-  assert.deepEqual(order, ["ov-welcome-title", "ov-vitals-title", "ov-status-title", "ov-alerts-title", "ov-message-title", "ov-links-title", "ov-routine-title", "ov-sleep-title"]);
+  assert.deepEqual(order, ["ov-welcome-title", "ov-vitals-title", "ov-status-title", "ov-alerts-title", "ov-message-title", "ov-routine-title", "ov-sleep-title"]);
   const ids = all(root, (e) => e.hasAttribute("id")).map((e) => e.getAttribute("id"));
   assert.equal(new Set(ids).size, ids.length, "ids are unique");
   for (const id of order) assert.equal(byId(root, id).tagName, "H2", id);
   assert.match(byId(root, "ov-welcome-title").textContent, /Welcome, Jonas Reyes/);
-  assert.match(root.textContent, /synthetic demo data/);
+  assert.equal(byClass(root, "overview__notice").length, 0, "the redundant synthetic-data banner was removed");
+  assert.equal(byId(root, "ov-activity-title"), undefined, "the Overview alert-activity section was removed");
+  assert.equal(byId(root, "ov-links-title"), undefined, "the Overview quick-links section was removed");
 });
 
 test("status: Watch for reyes with icon + text + colour class, and the not-a-health-assessment note", async () => {
@@ -110,7 +112,8 @@ test("alerts: listed with number, title, severity, status, UTC time and a Synthe
   const buttons = byTag(alerts, "button");
   assert.equal(buttons.length, 1, "one button: open the alert's details (no lifecycle actions)");
   assert.equal(buttons[0].getAttribute("data-alert-open"), "1");
-  assert.match(text, /Pin 1 · Head/);
+  assert.match(text, /Body pin 1 · Head/);
+  assert.equal(items[0].getAttribute("data-alert-card"), "1");
   assert.deepEqual(byTag(alerts, "a").map((a) => a.getAttribute("href")), ["#/alerts"]);
   assert.doesNotMatch(alerts.textContent, /unread/i);
 });
@@ -192,6 +195,7 @@ test("sleep: CSS bars with a visible summary; missing nights are 'No data', neve
   assert.equal(byClass(nights[2], "overview-sleep__bar").length, 0, "no zero-height bar for a missing night");
   assert.equal(byClass(nights[0], "overview-sleep__track")[0].getAttribute("aria-hidden"), "true");
   assert.match(byClass(nights[0], "overview-sleep__bar")[0].style["--h"], /^\d+(\.\d)?%$/);
+  assert.equal(byClass(sleep, "overview-sleep__scale").length, 1, "the chart has a visible fixed scale");
   assert.doesNotMatch(sleep.textContent, BANNED);
   // no data at all
   data.sleep = { status: "ok", nights: data.sleep.nights.map((n) => ({ ...n, hours: null })), recorded: 0, average: null, baseline: 7, belowBaseline: 0 };
@@ -210,12 +214,25 @@ test("routine: UTC day, check-in completion + shared/private only, never due/ove
   assert.doesNotMatch(routine.textContent, /\bdue\b|overdue|mood|stress/i);
 });
 
-test("quick links go to the approved routes and say they may be placeholders", async () => {
+test("Medical Officer message is presented as a sender and message bubble", async () => {
+  const container = new FakeElement("div");
+  await page.createOverviewRenderer({ loadOverview: async () => READY_HADDAD })(container, { ...ASTRONAUT, astronautId: "a-01" }, {});
+  const message = sectionOf(container, "ov-message-title");
+  assert.equal(byClass(message, "overview__message-head").length, 1);
+  assert.equal(byClass(message, "overview__message-avatar").length, 1);
+  assert.equal(byClass(message, "overview__message-bubble").length, 1);
+  assert.match(message.textContent, /From the Medical Officer/);
+});
+
+test("Overview removes redundant banner, alert activity and quick links while keeping alerts mapped to the body", async () => {
   const container = new FakeElement("div");
   await page.createOverviewRenderer({ loadOverview: async () => READY_REYES })(container, ASTRONAUT, {});
-  const links = sectionOf(container, "ov-links-title");
-  assert.deepEqual(byTag(links, "a").map((a) => a.getAttribute("href")), ["#/physical", "#/wellbeing", "#/history", "#/alerts"]);
-  assert.match(links.textContent, /may show a placeholder/);
+  assert.equal(byClass(container, "overview__notice").length, 0);
+  assert.equal(byId(container, "ov-activity-title"), undefined);
+  assert.equal(byId(container, "ov-links-title"), undefined);
+  assert.equal(byClass(container, "scan-pin").length, READY_REYES.alerts.items.length);
+  assert.match(byClass(container, "ov-scan__mapped")[0].textContent, /mapped to body/);
+  assert.match(byClass(container, "ov-alert__mapping")[0].textContent, /Body pin 1/);
 });
 
 test("loading: aria-busy and a status message, then aria-busy=false when done", async () => {
@@ -324,12 +341,9 @@ test("messages: empty state names the Medical Officer; nothing claims an unverif
 // ---- Body-scan redesign: pins, pop-up, action-plan drawer, activity --------------------
 
 const alertsSvc = await import("../../js/services/alerts-service.js");
-const historySvc = await import("../../js/services/history-service.js");
 const { createPlanProgress } = await import("../../js/core/action-plan-progress.js");
 const alerts = alertsSvc.createAlertsService({ repos: mock, withTransaction: mock.withTransaction });
-const history = historySvc.createHistoryService({ repos: mock });
 const realDetail = (session, number) => alerts.getAlertDetail(session, number, { now: NOW });
-const realActivity = (session) => history.getOwnHistory(session, { days: 7 }, { now: NOW });
 
 function memoryStorage() {
   const map = new Map();
@@ -341,7 +355,7 @@ async function renderScan(extra = {}) {
   const container = new FakeElement("div");
   const storage = memoryStorage();
   const progress = createPlanProgress({ storage: () => storage });
-  await page.createOverviewRenderer({ loadOverview: async () => READY_REYES, loadAlertDetail: realDetail, loadActivity: realActivity, progress, host, ...extra })(container, ASTRONAUT, extra.options || {});
+  await page.createOverviewRenderer({ loadOverview: async () => READY_REYES, loadAlertDetail: realDetail, progress, host, ...extra })(container, ASTRONAUT, extra.options || {});
   await flush();
   return { host, container, storage, progress };
 }
@@ -359,7 +373,31 @@ test("body scan: decorative wireframe body on the dark stage; one numbered pin p
   assert.match(pins[0].getAttribute("aria-label"), /^Alert 1: ALT-0190 Reduced sleep duration — Warning, Head\. Open details\.$/);
   assert.ok(pins[0].classList.includes("scan-pin--warning"));
   assert.equal(byClass(pins[0], "scan-pin__num")[0].textContent, "1");
+  assert.match(byClass(stage, "ov-scan__mapped")[0].textContent, /1 mapped to body/);
+  assert.equal(sectionOf(container, "ov-alerts-title").querySelectorAll("[data-alert-card]")[0].getAttribute("data-alert-card"), "1");
   assert.match(stage.textContent, /Illustration only/);
+});
+
+test("body scan maps physical, recently resolved and mental wellbeing alerts as separate numbered pins", async () => {
+  const data = structuredClone(READY_REYES);
+  data.alerts = {
+    status: "ok",
+    openCount: 2,
+    moreCount: 0,
+    items: [
+      { ...data.alerts.items[0], number: "ALT-0201", ruleId: "PHY-02", title: "Low SpO₂", status: "new" },
+      { ...data.alerts.items[0], number: "ALT-0200", ruleId: "PHY-03", title: "Elevated blood pressure", status: "resolved", resolvedAt: NOW - HOUR },
+      { ...data.alerts.items[0], number: "ALT-0199", ruleId: "WB-01", category: "wellbeing", severity: "info", title: "Supportive check-in recommended", status: "new" },
+    ],
+  };
+  const container = new FakeElement("div");
+  await page.createOverviewRenderer({ loadOverview: async () => data })(container, ASTRONAUT, {});
+  const pins = byClass(container, "scan-pin");
+  assert.equal(pins.length, 3);
+  assert.deepEqual(pins.map((p) => byClass(p, "scan-pin__num")[0].textContent), ["1", "2", "3"]);
+  assert.match(pins[1].getAttribute("aria-label"), /Resolved, Warning, Arm/);
+  assert.match(pins[2].getAttribute("aria-label"), /Mental wellbeing.*Info, Head/);
+  assert.match(byClass(container, "ov-alert__mapping")[2].textContent, /Mental wellbeing pin 3 · Head/);
 });
 
 test("pin → pop-up with severity, body location, rule, readings and limitation; lifecycle buttons disabled with reasons", async () => {
@@ -436,16 +474,6 @@ test("the Open alerts list opens the same pop-up; a failed detail load still sho
   assert.match(text, /ALT-0190/);
   assert.match(text, /Full details couldn't be loaded/);
   assert.doesNotMatch(text, /Key readings/, "no readings are invented");
-});
-
-test("alert activity: newest alert events from the last 7 days, linked to their alert; failure is reported", async () => {
-  const { container } = await renderScan();
-  const box = byClass(container, "ov-activity")[0];
-  const links = byTag(box, "a").map((a) => a.getAttribute("href"));
-  assert.ok(links.length >= 1 && links.length <= 6, `found ${links.length}`);
-  assert.ok(links.every((h) => /^#\/alerts\/ALT-\d{4}$/.test(h)));
-  const { container: c2 } = await renderScan({ loadActivity: async () => ({ status: "unavailable" }) });
-  assert.match(byClass(c2, "ov-activity")[0].textContent, /Alert activity couldn't be loaded/);
 });
 
 test("navigating away closes an open pop-up", async () => {

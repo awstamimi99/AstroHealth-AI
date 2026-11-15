@@ -158,12 +158,15 @@ export function createBodyScan({ crop = "full", pins = [], hotspots = [], onPinC
   }
   for (let y = 40; y < height - 20; y += 40) frame.append(svg("line", { class: "scan-body__tick", x1: 4, y1: y, x2: y % 120 === 0 ? 14 : 9, y2: y }));
 
-  // Hot spots (soft glows at zones).
+  // Hot spots: the body area lights up in the alert's severity colour (band clipped to the
+  // silhouette), plus a soft glow and a dashed ring at the zone.
   const hot = svg("g", { class: "scan-body__hotspots" });
+  const bands = svg("g", { class: "scan-body__bands", "clip-path": `url(#${id}-clip)` });
   for (const h of Array.isArray(hotspots) ? hotspots : []) {
     const p = zonePoint(h.zone);
     const sev = ["critical", "warning", "info"].includes(h.severity) ? h.severity : "info";
-    hot.append(svg("circle", { cx: p.x, cy: p.y, r: 34, fill: `url(#${id}-hot-${sev})`, class: `scan-body__hotspot scan-body__hotspot--${sev}` }));
+    bands.append(svg("ellipse", { cx: p.x, cy: p.y, rx: 78, ry: 20, class: `scan-body__band scan-body__band--${sev}` }));
+    hot.append(svg("circle", { cx: p.x, cy: p.y, r: 46, fill: `url(#${id}-hot-${sev})`, class: `scan-body__hotspot scan-body__hotspot--${sev}` }));
     hot.append(svg("circle", { cx: p.x, cy: p.y, r: 20, class: `scan-body__hot-ring scan-body__hot-ring--${sev}` }));
   }
 
@@ -192,7 +195,7 @@ export function createBodyScan({ crop = "full", pins = [], hotspots = [], onPinC
     preserveAspectRatio: "xMidYMid meet",
     "aria-hidden": "true",
     focusable: "false",
-  }, [defs, grid, frame, beam, fill, mesh, hot, rim, outline, scan, floor]);
+  }, [defs, grid, frame, beam, fill, bands, mesh, hot, rim, outline, scan, floor]);
 
   const root = el("div", { class: ["scan-body", crop === "upper" ? "scan-body--upper" : "", className], style: { "--scan-aspect": `${BODY_VIEWBOX.width} / ${height}` } }, [drawing]);
 
@@ -235,21 +238,29 @@ export function createBodyScan({ crop = "full", pins = [], hotspots = [], onPinC
  * `spoken`, the visual value is hidden from screen readers and the spoken
  * sentence is read instead. `extra` is appended to the caption (e.g. a link).
  */
-export function createRing({ id, label, value, unit, fraction = null, baseline = "", meta = "", tags = [], spoken = "", extra = null }) {
+export function createRing({ id, label, value, unit, fraction = null, baseline = "", meta = "", tags = [], spoken = "", extra = null, alertSeverity = "" }) {
   const R = 44;
   const C = 2 * Math.PI * R;
   const f = typeof fraction === "number" && Number.isFinite(fraction) ? Math.min(1, Math.max(0, fraction)) : null;
+  const sev = PIN_SEVERITY[alertSeverity] ? alertSeverity : "";
+  const end = f === null ? null : { x: 50 + R * Math.sin(2 * Math.PI * f), y: 50 - R * Math.cos(2 * Math.PI * f) };
   const dial = svg("svg", { class: "scan-ring__dial", viewBox: "0 0 100 100", "aria-hidden": "true", focusable: "false" }, [
     svg("circle", { class: "scan-ring__track", cx: 50, cy: 50, r: R }),
     f === null ? null : svg("circle", { class: "scan-ring__arc", cx: 50, cy: 50, r: R, "stroke-dasharray": `${r1(C * f)} ${r1(C)}`, transform: "rotate(-90 50 50)" }),
+    end ? svg("circle", { class: "scan-ring__tip", cx: r1(end.x), cy: r1(end.y), r: 4.5 }) : null,
   ]);
-  return el("figure", { class: "scan-ring", id, "aria-labelledby": `${id}-label` }, [
+  // Colour follows an OPEN ALERT for this measure (never the value itself), always with icon + word.
+  const status = sev
+    ? el("span", { class: ["scan-ring__status", `scan-ring__status--${sev}`] }, [icon(PIN_SEVERITY[sev].icon, { size: 12 }), PIN_SEVERITY[sev].label, el("span", { class: "sr-only" }, " alert")])
+    : null;
+  return el("figure", { class: ["scan-ring", sev ? `scan-ring--${sev}` : ""], id, "aria-labelledby": `${id}-label` }, [
     el("div", { class: "scan-ring__face" }, [
       dial,
       el("p", { class: "scan-ring__value", "aria-hidden": spoken ? "true" : null }, [el("span", { class: "scan-ring__number" }, value), unit ? el("span", { class: "scan-ring__unit" }, unit) : null]),
     ]),
     el("figcaption", { class: "scan-ring__caption" }, [
       el("span", { class: "scan-ring__label", id: `${id}-label` }, label),
+      status,
       baseline ? el("span", { class: "scan-ring__baseline" }, baseline) : null,
       meta ? el("span", { class: "scan-ring__meta" }, meta) : null,
       spoken ? el("span", { class: "sr-only" }, spoken) : null,

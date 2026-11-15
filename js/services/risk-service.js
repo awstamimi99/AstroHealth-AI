@@ -86,7 +86,7 @@ export function createRiskService({ repos, withTransaction: runTransaction, rule
             const openRaw = await repos.alertsRepo.getOpenByDedupeKey(`${aid}:${rule.id}`, { tx });
             const open = openRaw && openRaw.astronautId === aid ? openRaw : null;
             const plan = planAlertChange({ rule, result: evaluation, openAlert: open, astronautId: aid, now, trigger });
-            const entry = { ruleId: rule.id, ruleVersion: rule.version, title: rule.title, outcome: evaluation.outcome, severity: evaluation.severity, reason: evaluation.reason || plan.reason || "", change: CHANGE_LABEL[plan.kind], alertNumber: open ? open.number : "", alertSeverity: open ? open.severity : null };
+            const entry = { ruleId: rule.id, ruleVersion: rule.version, metric: rule.metric, title: rule.title, outcome: evaluation.outcome, severity: evaluation.severity, reason: evaluation.reason || plan.reason || "", change: CHANGE_LABEL[plan.kind], alertNumber: open ? open.number : "", alertSeverity: open ? open.severity : null, explanation: typeof evaluation.explanation === "string" ? evaluation.explanation : "", thresholdUsed: evaluation.thresholdUsed || "" };
 
             if (plan.kind === "open") {
               const created = await repos.alertsRepo.add({ ...plan.record }, { tx });

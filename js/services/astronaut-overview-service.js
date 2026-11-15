@@ -5,7 +5,7 @@
 //
 // WHAT IT DOES
 //   Reads (never writes) the signed-in astronaut's OWN records and turns them
-//   into presentation-safe data: open alerts, latest vital signs, today's
+//   into presentation-safe data: current and recently resolved alerts, latest vital signs, today's
 //   routine, the last 7 nights of sleep and any unacknowledged message from
 //   the Medical Officer. All records are SYNTHETIC demo data.
 //
@@ -68,8 +68,10 @@ export const SLEEP_STALE_MS = 36 * HOUR_MS;
 export const RECENT_READINGS_LIMIT = 12;
 /** D9: number of UTC dates in the sleep trend. */
 export const SLEEP_NIGHTS = 7;
-/** Maximum open alerts listed on the Overview (the rest are counted). */
-export const MAX_LISTED_ALERTS = 3;
+/** Maximum current/recent alerts mapped on the Overview body scan. */
+export const MAX_LISTED_ALERTS = 4;
+/** Match the Alerts page: keep resolved alerts visible for 30 days. */
+export const RESOLVED_ALERT_WINDOW_MS = 30 * DAY_MS;
 /** Shown under the overall status. */
 export const STATUS_NOTE = "Based on your open alerts only. This is not a health assessment.";
 
@@ -324,12 +326,14 @@ const valueOf = (settled) => (settled.status === "fulfilled" ? settled.value : E
 /** Keep only records that belong to this astronaut (defence in depth). */
 const own = (list, astronautId) => (Array.isArray(list) ? list.filter((r) => r && r.astronautId === astronautId) : []);
 
-function buildAlerts(result, astronautId) {
+function buildAlerts(result, astronautId, now) {
   if (result === ERROR) return { section: { status: "error", items: [], openCount: null, moreCount: 0 }, open: null };
-  const open = own(result, astronautId)
-    .filter((a) => OPEN_ALERT_STATUSES.includes(a.status))
+  const owned = own(result, astronautId);
+  const open = owned.filter((a) => OPEN_ALERT_STATUSES.includes(a.status)).sort(bySeverityThenNewest);
+  const visible = owned
+    .filter((a) => OPEN_ALERT_STATUSES.includes(a.status) || (a.status === "resolved" && isTime(a.resolvedAt) && now - a.resolvedAt <= RESOLVED_ALERT_WINDOW_MS))
     .sort(bySeverityThenNewest);
-  const items = open.slice(0, MAX_LISTED_ALERTS).map((a) => ({
+  const items = visible.slice(0, MAX_LISTED_ALERTS).map((a) => ({
     number: isText(a.number) ? a.number : "",
     title: alertTitle(a),
     ruleId: isText(a.ruleId) ? a.ruleId : "", // public rule id (also shown on #/alerts); used for body-zone pins
@@ -337,11 +341,12 @@ function buildAlerts(result, astronautId) {
     status: a.status,
     category: isText(a.category) ? a.category : "",
     detectedAt: isTime(a.detectedAt) ? a.detectedAt : 0,
+    resolvedAt: isTime(a.resolvedAt) ? a.resolvedAt : 0,
     explanation: isText(a.explanation) ? a.explanation : "",
     synthetic: true, // every record in this prototype is synthetic
   }));
   return {
-    section: { status: "ok", items, openCount: open.length, moreCount: Math.max(0, open.length - items.length) },
+    section: { status: "ok", items, openCount: open.length, moreCount: Math.max(0, visible.length - items.length) },
     open,
   };
 }
@@ -493,7 +498,7 @@ export function createAstronautOverviewService({ repos, getMissionContext: loadM
       attempt(() => repos.measurementsRepo.getRecent(aid, "bpDiastolic", RECENT_READINGS_LIMIT)),
       attempt(() => repos.measurementsRepo.getRecent(aid, "sleepDuration", RECENT_READINGS_LIMIT)),
       attempt(() => repos.dailySummariesRepo.getRange(aid, "sleepDuration", sleepDates[0], sleepDates[sleepDates.length - 1])),
-      attempt(() => repos.alertsRepo.query({ astronautId: aid, status: [...OPEN_ALERT_STATUSES] })),
+      attempt(() => repos.alertsRepo.query({ astronautId: aid })),
       attempt(() => repos.messagesRepo.getUnacknowledged(aid)),
       attempt(() => repos.wellbeingRepo.getLatest(aid)),
       attempt(() => repos.cognitiveRepo.getRange(aid, undefined, now)),
@@ -508,7 +513,7 @@ export function createAstronautOverviewService({ repos, getMissionContext: loadM
       bpDiastolic: r.bpDiastolic,
       sleepDuration: r.sleepDuration,
     };
-    const alerts = buildAlerts(r.alerts, aid);
+    const alerts = buildAlerts(r.alerts, aid, now);
     const mission = r.mission === ERROR || !r.mission ? MISSION_UNAVAILABLE : r.mission;
 
     return {

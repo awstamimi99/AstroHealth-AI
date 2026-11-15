@@ -129,3 +129,41 @@ export function resolveScenarioStartValue(scenario, astronautBaseline) {
 export function stepIntervalMs(speed) {
   return BASE_STEP_MS / speed;
 }
+
+// ---- Live control (Medical Officer sets synthetic values directly) ------------------------
+//
+// INPUT LIMITS ONLY: the range a Live control handle or number field accepts
+// for each stored metric. They are demonstration input limits — NOT risk
+// limits, not clinical ranges and not used by any rule. `step` is the
+// rounding grid; `curve` says whether a 6–12 point custom curve is offered
+// (not for sleep: one value per UTC night; not for activity: cumulative).
+export const CUSTOM_CURVE_ID = "custom_curve";
+export const CURVE_MIN_POINTS = 6;
+export const CURVE_MAX_POINTS = 12;
+export const LIVE_METRICS = Object.freeze([
+  Object.freeze({ key: "heartRate", label: "Heart rate", min: 30, max: 220, step: 1, curve: true }),
+  Object.freeze({ key: "spo2", label: "SpO₂", min: 70, max: 100, step: 1, curve: true }),
+  Object.freeze({ key: "bpSystolic", label: "Systolic blood pressure", min: 60, max: 220, step: 1, curve: true }),
+  Object.freeze({ key: "bpDiastolic", label: "Diastolic blood pressure", min: 30, max: 140, step: 1, curve: false }),
+  Object.freeze({ key: "sleepDuration", label: "Sleep duration", min: 0, max: 14, step: 0.1, curve: false }),
+  Object.freeze({ key: "activity", label: "Activity", min: 0, max: 40000, step: 100, curve: false }),
+  Object.freeze({ key: "fatigue", label: "Fatigue", min: 0, max: 10, step: 1, curve: true }),
+]);
+
+/** The live-control definition of a metric, or null. */
+export function liveMetric(key) {
+  return LIVE_METRICS.find((m) => m.key === key) || null;
+}
+
+/**
+ * Clamp a number to the metric's input range and round it to the metric's
+ * step. Returns null for an unknown metric or a non-finite value. Pure.
+ */
+export function clampLiveValue(key, value) {
+  const m = liveMetric(key);
+  if (!m || typeof value !== "number" || !Number.isFinite(value)) return null;
+  const clamped = Math.min(m.max, Math.max(m.min, value));
+  const stepped = Math.round(clamped / m.step) * m.step;
+  return Math.min(m.max, Math.max(m.min, Math.round(stepped * 10) / 10));
+}
+

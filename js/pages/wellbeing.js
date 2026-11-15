@@ -23,6 +23,7 @@ import { el } from "../core/utils/dom.js";
 import { formatTime } from "../core/utils/format.js";
 import { alertItem, loadingView, section, sectionError, stamp, syntheticNotice, utcTime, badge } from "../components/crew-view.js";
 import { astronautNestedNotFound, crewPicker, parseHealthRoute, refusalView, sharingBadge } from "../components/health-view.js";
+import { createContextBodyScan } from "../components/context-body-scan.js";
 
 const BASE = "wellbeing";
 export const QUESTIONS = Object.freeze([
@@ -78,6 +79,29 @@ function summarySection(data) {
           SCORE_FIELDS.flatMap((f) => [el("dt", {}, LABEL_OF[f]), el("dd", {}, s.averages[f] === null ? "—" : `${s.averages[f]} / ${MAX_OF[f]}`)]))
       : el("p", { class: "health__empty" }, "Nothing to summarize yet."),
   ]);
+}
+
+function wellbeingScan(data, officer) {
+  const avg = data.summary && data.summary.averages ? data.summary.averages : {};
+  const values = [
+    ["Mood", "head", avg.mood, 5, "wellbeing-summary-title"],
+    ["Stress", "chest", avg.stress, 10, "wellbeing-summary-title"],
+    ["Sleep quality", "head", avg.sleepQuality, 5, "wellbeing-history-title"],
+    ["Fatigue", "abdomen", avg.fatigue, 10, officer ? "wellbeing-history-title" : "checkin-title"],
+  ];
+  const pins = values.map(([label, zone, value, max, targetId], index) => ({
+    number: index + 1, zone, severity: "info",
+    tag: `${label} · ${value === null || value === undefined ? "No recent average" : `${value} / ${max}`}`,
+    label: `Go to ${label.toLowerCase()} information`, targetId,
+  }));
+  return createContextBodyScan({
+    id: "wellbeing-body-map-title",
+    title: officer ? "Shared wellbeing map" : "Your wellbeing map",
+    description: officer
+      ? "A visual index of shared check-in averages only. Private check-ins and journal text are never included."
+      : "A visual index of your recent self-reported check-ins. It supports reflection and does not provide a diagnosis.",
+    pins, crop: "upper", compact: true, eyebrow: "Mind and body map",
+  });
 }
 
 function extrasSection(data, onRetry) {
@@ -263,7 +287,7 @@ export function createWellbeingRenderer({ loadOwn, saveCheckin, loadShared, list
         if (result && result.status === "ready" && route.view === "base") {
           root.replaceChildren(crewPicker(result.crew, BASE, { title: "Choose a crew member", intro: "Select a crew member to review the wellbeing check-ins they chose to share." }));
         } else if (result && result.status === "ready") {
-          root.replaceChildren(header(result, true), summarySection(result), historySection(result, retry, { officer: true }), extrasSection(result, retry));
+          root.replaceChildren(header(result, true), wellbeingScan(result, true), summarySection(result), historySection(result, retry, { officer: true }), extrasSection(result, retry));
           if (focus) root.querySelectorAll("[tabindex]")[0]?.focus();
         } else {
           root.replaceChildren(refusalView(result, retry, BASE));
@@ -277,6 +301,7 @@ export function createWellbeingRenderer({ loadOwn, saveCheckin, loadShared, list
     let generation = 0;
     let busy = false;
     let attempt = { confirmShare: false, confirmSameDay: false }; // for THIS save attempt only
+    const scanHost = el("div", { class: "health__scan" });
     const dataHost = el("div", { class: "health__data" });
     const checkin = checkinSection({ onSubmit: () => startSave() });
     const { formApi, status, confirmBox, today } = checkin;
@@ -397,6 +422,7 @@ export function createWellbeingRenderer({ loadOwn, saveCheckin, loadShared, list
           : "No check-in yet today (UTC).";
         const retry = () => refresh();
         if (!headerNode) headerNode = header(result, false); // name/crew don't change after a save
+        scanHost.replaceChildren(wellbeingScan(result, false));
         dataHost.replaceChildren(summarySection(result), historySection(result, retry, { officer: false }), extrasSection(result, retry));
       } else {
         dataHost.replaceChildren(refusalView(result, () => refresh(), BASE));
@@ -410,7 +436,7 @@ export function createWellbeingRenderer({ loadOwn, saveCheckin, loadShared, list
       const result = await refresh();
       if (!alive()) return;
       if (result && result.status === "ready") {
-        root.replaceChildren(headerNode, checkin.node, dataHost);
+        root.replaceChildren(headerNode, scanHost, checkin.node, dataHost);
       } else {
         root.replaceChildren(refusalView(result, () => loadAstronaut(), BASE));
       }

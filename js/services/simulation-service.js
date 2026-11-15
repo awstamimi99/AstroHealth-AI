@@ -19,6 +19,24 @@
 //   resumeSimulation(session, runRef, options)
 //   stopSimulation(session, runRef, { confirm }, options)
 //
+// Live control (Medical Officer sets synthetic values directly):
+//   recordManualReading(session, { crewId, metric, value, diastolic? }, options)
+//       ONE reading at the controlled `now` (blood pressure: systolic +
+//       diastolic together, same timestamp and sampleId).
+//   startCustomCurve(session, { crewId, metric, values, diastolic?, speed, confirm }, options)
+//       a run whose 6–12 step values were drawn by the Medical Officer. It is
+//       advanced / paused / resumed / stopped by the same functions as a
+//       catalog run (same compare-and-set, locks and monotonic time).
+//   Values are clamped to the input limits in js/simulation/scenarios.js
+//   (LIVE_METRICS: demonstration input limits, not risk limits).
+//
+// After every COMMITTED reading and after the risk evaluation that follows
+// it, `publish("health:changed", { crewId, metric, alertsChanged })` tells
+// open screens to refresh (same tab + other tabs through the event bus).
+// The payload holds only the public crew ID, the metric name and a flag.
+// Services don't import the event bus: the page layer connects it once with
+// connectSimulationEvents(publish) (js/pages/simulation-center.js).
+//
 // RULES
 //   • Every operation verifies the Medical Officer FIRST (access-control.js),
 //     before any simulation read. Crew IDs are resolved only afterwards.
@@ -40,7 +58,8 @@
 //
 // Extra non-indexed simulationRuns fields used (DATA-MODEL allows extra
 // fields; documented in docs/ARCHITECTURE.md): step, totalSteps,
-// startValue, lastStepAt, pausedAt, catalogVersion.
+// startValue, lastStepAt, pausedAt, catalogVersion; custom curves also
+// customMetric, customValues and (blood pressure only) customDiastolic.
 //
 // Event conventions (existing types only):
 //   start → simulation_started · resume → simulation_started { phase: "resumed" }
@@ -52,7 +71,7 @@
 // records. `runRef` is an opaque control handle for this service only —
 // pages must never render it or put it in a URL.
 //
-// Test seam: createSimulationService({ repos, withTransaction, scenarios }).
+// Test seam: createSimulationService({ repos, withTransaction, scenarios, evaluateRisk, publish }).
 
 import {
   usersRepo,
@@ -80,6 +99,11 @@ import {
   scenarioSequence,
   resolveScenarioStartValue,
   stepIntervalMs,
+  CUSTOM_CURVE_ID,
+  CURVE_MIN_POINTS,
+  CURVE_MAX_POINTS,
+  liveMetric,
+  clampLiveValue,
 } from "../simulation/scenarios.js";
 
 export { SIMULATION_SPEEDS, DEFAULT_SPEED, BASE_STEP_MS, SCENARIO_DISCLAIMER };
@@ -98,6 +122,9 @@ const RUN_STORES = ["simulationRuns", "missionEvents"];
 const STEP_STORES = [...new Set([...MEASUREMENT_WRITE_STORES, "simulationRuns", "missionEvents"])];
 const RUN_EVENT_TYPES = ["simulation_started", "simulation_paused", "simulation_stopped", "measurement_recorded"];
 const START_LOCK = "start";
+const MANUAL_STORES = STEP_STORES;
+export const HEALTH_EVENT = "health:changed";
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const ERROR = Symbol("error");
 const valueOf = (s) => (s.status === "fulfilled" ? s.value : ERROR);
@@ -125,6 +152,12 @@ function presentScenario(s) {
 
 /** A stored run whose progress fields are usable by this catalog version. */
 function compatible(run, scenario) {
+  if (scenario && scenario.custom) {
+    return (
+      Number.isInteger(run.step) && run.step >= 0 && run.step <= scenario.totalSteps &&
+      run.totalSteps === scenario.totalSteps && isTime(run.lastStepAt) && SIMULATION_SPEEDS.includes(run.speed)
+    );
+  }
   return (
     Boolean(scenario) &&
     run.catalogVersion === CATALOG_VERSION &&
@@ -157,13 +190,70 @@ export function presentRiskResult(r) {
     changes: (Array.isArray(r.rules) ? r.rules : [])
       .filter((x) => x && x.change && x.change !== "none")
       .map((x) => ({ ruleId: x.ruleId, title: x.title, change: x.change, alertNumber: x.alertNumber, severity: x.alertSeverity })),
+    // Every rule's own explanation (the engine's text), for the Live control result panel.
+    rules: (Array.isArray(r.rules) ? r.rules : []).filter(Boolean).map((x) => ({
+      ruleId: x.ruleId, metric: x.metric || "", title: x.title, outcome: x.outcome, severity: x.severity || null, reason: x.reason || "",
+      change: x.change, alertNumber: x.alertNumber || "", alertSeverity: x.alertSeverity || null,
+      explanation: typeof x.explanation === "string" ? x.explanation : "", limitsText: x.thresholdUsed || "",
+    })),
   };
 }
 
-export function createSimulationService({ repos, withTransaction: runTransaction, scenarios = SCENARIOS, evaluateRisk = null }) {
+/** A synthetic "scenario" for a stored custom-curve run, or null if its extra fields are unusable. */
+export function customScenarioOf(run) {
+  if (!run || run.scenarioId !== CUSTOM_CURVE_ID) return null;
+  const def = liveMetric(run.customMetric);
+  const values = Array.isArray(run.customValues) ? run.customValues : [];
+  if (!def || !def.curve || values.length < CURVE_MIN_POINTS || values.length > CURVE_MAX_POINTS) return null;
+  if (!values.every((v) => clampLiveValue(def.key, v) === v)) return null;
+  const dia = run.customMetric === "bpSystolic" ? run.customDiastolic : undefined;
+  if (run.customMetric === "bpSystolic" && clampLiveValue("bpDiastolic", dia) !== dia) return null;
+  return {
+    id: CUSTOM_CURVE_ID,
+    custom: true,
+    name: `Custom curve · ${def.label}`,
+    metric: def.key,
+    metricLabel: def.label,
+    unit: METRIC_UNITS[def.key],
+    totalSteps: values.length,
+    values: [...values],
+    diastolic: typeof dia === "number" ? dia : null,
+  };
+}
+
+export function createSimulationService({ repos, withTransaction: runTransaction, scenarios = SCENARIOS, evaluateRisk = null, publish = null }) {
   const locks = new Set();
   const nowOf = (options) => (options && options.now !== undefined ? options.now : Date.now());
   const scenarioOf = (id) => getScenario(id, scenarios);
+  /** Catalog scenario, or the synthetic one of a custom-curve run. */
+  const scenarioForRun = (run) => (run && run.scenarioId === CUSTOM_CURVE_ID ? customScenarioOf(run) : scenarioOf(run && run.scenarioId));
+  const stepValue = (scenario, run, step) => (scenario.custom ? scenario.values[step - 1] : scenarioValue(scenario, run.startValue, step));
+
+  /** Tell open screens that stored data changed. Never throws; payload is public info only. */
+  function announce(crewId, metric, alertsChanged) {
+    if (typeof publish !== "function" || !CREW_ID_PATTERN.test(String(crewId))) return;
+    try {
+      publish(HEALTH_EVENT, { crewId, metric, alertsChanged: alertsChanged === true });
+      if (alertsChanged === true) publish("alert:changed", {});
+    } catch {
+      /* a failed notification never undoes a committed reading */
+    }
+  }
+
+  /** Risk evaluation after a committed write (separate transaction), then the "alerts changed" notice. */
+  async function evaluateAfterCommit(session, crewId, metric, now) {
+    announce(crewId, metric, false);
+    let risk = { status: "not_configured", reason: "", changes: [], rules: [] };
+    if (typeof evaluateRisk === "function") {
+      try {
+        risk = presentRiskResult(await evaluateRisk(session, crewId, { now, trigger: "simulation" }));
+      } catch {
+        risk = { status: "unavailable", reason: "unexpected_error", changes: [], rules: [] };
+      }
+    }
+    if (risk.status === "evaluated" && risk.changes.length) announce(crewId, metric, true);
+    return risk;
+  }
 
   /** Run a write under a per-key in-memory lock. */
   async function locked(key, now, work) {
@@ -180,7 +270,7 @@ export function createSimulationService({ repos, withTransaction: runTransaction
 
   /** Full presentation of one run (readings + timeline). Never throws for repository failures. */
   async function presentRun(run, viewer, now, crewById) {
-    const scenario = scenarioOf(run.scenarioId);
+    const scenario = scenarioForRun(run);
     const settled = await Promise.allSettled([
       crewById && crewById.has(run.astronautId) ? Promise.resolve(crewById.get(run.astronautId)) : attempt(() => repos.astronautsRepo.getById(run.astronautId)),
       run.operatorId === viewer.id ? Promise.resolve({ id: viewer.id, displayName: viewer.displayName }) : attempt(() => repos.usersRepo.getById(run.operatorId)),
@@ -249,6 +339,8 @@ export function createSimulationService({ repos, withTransaction: runTransaction
       step: Number.isInteger(run.step) ? run.step : 0,
       totalSteps: Number.isInteger(run.totalSteps) ? run.totalSteps : scenario ? scenario.totalSteps : 0,
       startValue: Number.isInteger(run.startValue) ? run.startValue : null,
+      custom: Boolean(scenario && scenario.custom),
+      customValues: scenario && scenario.custom ? [...scenario.values] : [],
       startedAt: run.startedAt,
       lastStepAt: isTime(run.lastStepAt) ? run.lastStepAt : 0,
       pausedAt: isTime(run.pausedAt) ? run.pausedAt : 0,
@@ -264,7 +356,7 @@ export function createSimulationService({ repos, withTransaction: runTransaction
 
   const summaryOf = (run, crewById) => {
     const a = crewById.get(run.astronautId);
-    const scenario = scenarioOf(run.scenarioId);
+    const scenario = scenarioForRun(run);
     return {
       crewId: a ? a.crewId : "",
       name: a ? a.name : "",
@@ -434,22 +526,198 @@ export function createSimulationService({ repos, withTransaction: runTransaction
         } catch {
           return result("unavailable", "database_error", now);
         }
-        if (outcome && outcome.conflict) {
-          let other = { crewId: "", name: "" };
-          try {
-            const a = await repos.astronautsRepo.getById(outcome.conflict.astronautId);
-            if (a && CREW_ID_PATTERN.test(a.crewId)) other = { crewId: a.crewId, name: a.name };
-          } catch {
-            /* the conflict is still reported */
-          }
-          const otherScenario = scenarioOf(outcome.conflict.scenarioId);
-          return result("conflict", "another_run_active", now, {
-            activeRun: { ...other, scenarioName: otherScenario ? otherScenario.name : "Scenario no longer available", status: outcome.conflict.status },
-          });
-        }
+        if (outcome && outcome.conflict) return conflictResult(outcome.conflict, now);
         return result("started", "", now, {
           runRef: outcome.run.id,
           run: { crewId: astronaut.crewId, name: astronaut.name, scenarioName: scenario.name, status: "running", step: 0, totalSteps: sequence.length, speed: src.speed, startedAt: now },
+        });
+      });
+    },
+
+    /**
+     * Live control: start a run from a curve the Medical Officer drew.
+     * Page input: { crewId, metric, values (6–12 numbers), diastolic?, speed, confirm }.
+     * Values are clamped to the metric's input limits; anything else is ignored.
+     */
+    async startCustomCurve(session, input, options = {}) {
+      const now = nowOf(options);
+      if (!isTime(now)) return result("invalid", "invalid_time", Date.now());
+      const officer = await verifyMedicalOfficer(session, repos, now);
+      if (!officer.ok) return officer.refusal;
+      const src = input && typeof input === "object" ? input : {};
+      const def = liveMetric(src.metric);
+      if (!def || !def.curve) return result("invalid", "invalid_metric", now);
+      if (!Array.isArray(src.values) || src.values.length < CURVE_MIN_POINTS || src.values.length > CURVE_MAX_POINTS) return result("invalid", "invalid_curve", now);
+      const values = src.values.map((v) => clampLiveValue(def.key, v));
+      if (values.some((v) => v === null)) return result("invalid", "invalid_curve", now);
+      let diastolic;
+      if (def.key === "bpSystolic") {
+        diastolic = clampLiveValue("bpDiastolic", src.diastolic);
+        if (diastolic === null) return result("invalid", "pair_required", now);
+        if (values.some((v) => v <= diastolic)) return result("invalid", "invalid_pair", now);
+      }
+      if (!SIMULATION_SPEEDS.includes(src.speed)) return result("invalid", "invalid_speed", now);
+      if (src.confirm !== true) return result("invalid", "confirmation_required", now);
+      const member = await resolveCrewMember(repos, src.crewId, now);
+      if (!member.ok) return member.refusal;
+      const astronaut = member.astronaut;
+      const officerId = officer.officer.id;
+      const name = `Custom curve · ${def.label}`;
+
+      return locked(START_LOCK, now, async () => {
+        let outcome;
+        try {
+          outcome = await runTransaction(RUN_STORES, "readwrite", async (tx) => {
+            const active = await repos.simulationRunsRepo.getActive({ tx });
+            if (Array.isArray(active) && active.length) return { conflict: active[0] };
+            const run = await repos.simulationRunsRepo.add(
+              {
+                astronautId: astronaut.id,
+                scenarioId: CUSTOM_CURVE_ID,
+                status: "running",
+                speed: src.speed,
+                operatorId: officerId,
+                startedAt: now,
+                endedAt: 0,
+                createdAt: now,
+                createdBy: officerId,
+                step: 0,
+                totalSteps: values.length,
+                startValue: Math.round(values[0]),
+                lastStepAt: now,
+                pausedAt: 0,
+                catalogVersion: CATALOG_VERSION,
+                customMetric: def.key,
+                customValues: values,
+                ...(def.key === "bpSystolic" ? { customDiastolic: diastolic } : {}),
+              },
+              { tx }
+            );
+            await repos.eventsRepo.add(
+              {
+                type: "simulation_started",
+                timestamp: now,
+                astronautId: astronaut.id,
+                actorUserId: officerId,
+                refStore: "simulationRuns",
+                refId: run.id,
+                summary: `Simulation started: ${name} (${values.length} steps, ${src.speed}×)`,
+                data: { phase: "started", scenarioId: CUSTOM_CURVE_ID, metric: def.key, speed: src.speed, totalSteps: values.length },
+              },
+              { tx }
+            );
+            return { run };
+          });
+        } catch {
+          return result("unavailable", "database_error", now);
+        }
+        if (outcome && outcome.conflict) return conflictResult(outcome.conflict, now);
+        return result("started", "", now, {
+          runRef: outcome.run.id,
+          run: { crewId: astronaut.crewId, name: astronaut.name, scenarioName: name, status: "running", step: 0, totalSteps: values.length, speed: src.speed, startedAt: now },
+        });
+      });
+    },
+
+    /**
+     * Live control: write ONE synthetic reading for one crew member at `now`.
+     * Page input: { crewId, metric, value, diastolic? } — the crew member is
+     * resolved here from the public crew ID. Blood pressure is always a pair
+     * (metric "bpSystolic" + `diastolic`), written with one timestamp and
+     * sampleId. Refused: unknown metric, a time not later than the member's
+     * latest reading of that metric, and a member who has the active run.
+     */
+    async recordManualReading(session, input, options = {}) {
+      const now = nowOf(options);
+      if (!isTime(now)) return result("invalid", "invalid_time", Date.now());
+      const officer = await verifyMedicalOfficer(session, repos, now);
+      if (!officer.ok) return officer.refusal;
+      const src = input && typeof input === "object" ? input : {};
+      const def = liveMetric(src.metric);
+      if (!def) return result("invalid", "invalid_metric", now);
+      if (def.key === "bpDiastolic") return result("invalid", "pair_required", now);
+      const value = clampLiveValue(def.key, src.value);
+      if (value === null) return result("invalid", "invalid_value", now);
+      let diastolic = null;
+      if (def.key === "bpSystolic") {
+        diastolic = clampLiveValue("bpDiastolic", src.diastolic);
+        if (diastolic === null) return result("invalid", "pair_required", now);
+        if (diastolic >= value) return result("invalid", "invalid_pair", now);
+      }
+      const member = await resolveCrewMember(repos, src.crewId, now);
+      if (!member.ok) return member.refusal;
+      const astronaut = member.astronaut;
+      const officerId = officer.officer.id;
+      const metrics = diastolic === null ? [[def.key, value]] : [["bpSystolic", value], ["bpDiastolic", diastolic]];
+
+      return locked(`manual:${astronaut.id}`, now, async () => {
+        let outcome;
+        try {
+          outcome = await runTransaction(MANUAL_STORES, "readwrite", async (tx) => {
+            const active = await repos.simulationRunsRepo.getActive({ tx });
+            if ((Array.isArray(active) ? active : []).some((r) => r && r.astronautId === astronaut.id)) return { conflict: "run_active_for_member" };
+            const cur = await repos.astronautsRepo.getById(astronaut.id, { tx });
+            if (!cur || cur.id !== astronaut.id || cur.crewId !== astronaut.crewId) return { conflict: "astronaut_missing" };
+            const latest = cur.latest && typeof cur.latest === "object" ? cur.latest : {};
+            for (const [metric] of metrics) {
+              const last = latest[metric];
+              if (last && isTime(last.timestamp) && !(now > last.timestamp)) return { conflict: "clock_not_monotonic" };
+            }
+            // Activity is cumulative per UTC day: never below today's latest stored value.
+            if (def.key === "activity") {
+              const last = latest.activity;
+              if (last && isTime(last.timestamp) && Math.floor(last.timestamp / DAY_MS) === Math.floor(now / DAY_MS) && value < last.value) return { conflict: "below_todays_total" };
+            }
+            let sampleId = "";
+            const ids = [];
+            for (const [metric, v] of metrics) {
+              const saved = await repos.measurementsRepo.add(
+                {
+                  astronautId: astronaut.id,
+                  metric,
+                  value: v,
+                  unit: METRIC_UNITS[metric],
+                  timestamp: now,
+                  source: "simulation",
+                  quality: "ok",
+                  simulationRunId: "",
+                  ...(sampleId ? { sampleId } : {}),
+                  createdAt: now,
+                  createdBy: officerId,
+                },
+                { tx }
+              );
+              if (!sampleId && saved && isText(saved.sampleId)) sampleId = saved.sampleId;
+              ids.push(saved && saved.id);
+              await repos.eventsRepo.add(
+                {
+                  type: "measurement_recorded",
+                  timestamp: now,
+                  astronautId: astronaut.id,
+                  actorUserId: officerId,
+                  refStore: "measurements",
+                  refId: saved && isText(saved.id) ? saved.id : "",
+                  summary: `Live control: ${liveMetric(metric).label} ${v} ${METRIC_UNITS[metric]} (synthetic)`,
+                  data: { mode: "live_control", metric, value: v, unit: METRIC_UNITS[metric], source: "simulation" },
+                },
+                { tx }
+              );
+            }
+            return { ok: true };
+          });
+        } catch (err) {
+          if (err instanceof DatabaseError && err.code === "NOT_FOUND" && err.store === "astronauts") return result("unavailable", "astronaut_missing", now);
+          return result("unavailable", "database_error", now);
+        }
+        if (outcome && outcome.conflict) {
+          return outcome.conflict === "astronaut_missing" ? result("unavailable", "astronaut_missing", now) : result("conflict", outcome.conflict, now);
+        }
+        // Committed. Notify, evaluate the demonstration rules (separate transaction), notify again if alerts changed.
+        const risk = await evaluateAfterCommit(session, astronaut.crewId, def.key, now);
+        return result("recorded", "", now, {
+          crew: { crewId: astronaut.crewId, name: astronaut.name },
+          readings: metrics.map(([metric, v]) => ({ metric, label: liveMetric(metric).label, value: v, unit: METRIC_UNITS[metric], timestamp: now, source: "simulation" })),
+          risk,
         });
       });
     },
@@ -476,15 +744,16 @@ export function createSimulationService({ repos, withTransaction: runTransaction
           return result("unavailable", "database_error", now);
         }
         if (!run || run.id !== runRef) return result("not_found", "unknown_run", now);
-        const scenario = scenarioOf(run.scenarioId);
+        const scenario = scenarioForRun(run);
         if (!compatible(run, scenario)) return result("conflict", "scenario_unavailable", now, { runStatus: run.status });
         if (run.status !== "running") return result("conflict", "not_running", now, { runStatus: run.status, currentStep: run.step });
         if (run.step !== expectedStep) return result("conflict", "step_mismatch", now, { runStatus: run.status, currentStep: run.step });
         if (!(now > run.lastStepAt)) return result("conflict", "clock_not_monotonic", now, { runStatus: run.status, currentStep: run.step });
 
         const step = expectedStep + 1;
-        const value = scenarioValue(scenario, run.startValue, step);
+        const value = stepValue(scenario, run, step);
         const unit = METRIC_UNITS[scenario.metric];
+        const pairDiastolic = scenario.custom && scenario.metric === "bpSystolic" ? scenario.diastolic : null;
         const final = step === run.totalSteps;
 
         let outcome;
@@ -498,8 +767,11 @@ export function createSimulationService({ repos, withTransaction: runTransaction
             if (cur.scenarioId !== run.scenarioId || cur.startValue !== run.startValue || cur.astronautId !== run.astronautId) {
               return { conflict: "run_changed", runStatus: cur.status, currentStep: cur.step };
             }
+            if (scenario.custom && JSON.stringify(cur.customValues) !== JSON.stringify(run.customValues)) {
+              return { conflict: "run_changed", runStatus: cur.status, currentStep: cur.step };
+            }
 
-            await repos.measurementsRepo.add(
+            const main = await repos.measurementsRepo.add(
               {
                 astronautId: cur.astronautId,
                 metric: scenario.metric,
@@ -514,6 +786,25 @@ export function createSimulationService({ repos, withTransaction: runTransaction
               },
               { tx }
             );
+            if (pairDiastolic !== null) {
+              // Blood pressure is shown as a pair: same timestamp and sampleId as the systolic value.
+              await repos.measurementsRepo.add(
+                {
+                  astronautId: cur.astronautId,
+                  metric: "bpDiastolic",
+                  value: pairDiastolic,
+                  unit: METRIC_UNITS.bpDiastolic,
+                  timestamp: now,
+                  source: "simulation",
+                  quality: "ok",
+                  simulationRunId: cur.id,
+                  ...(main && isText(main.sampleId) ? { sampleId: main.sampleId } : {}),
+                  createdAt: now,
+                  createdBy: officerId,
+                },
+                { tx }
+              );
+            }
             const changes = final ? { step, lastStepAt: now, status: "completed", endedAt: now } : { step, lastStepAt: now };
             await repos.simulationRunsRepo.update(cur.id, changes, { tx });
             await repos.eventsRepo.add(
@@ -555,17 +846,16 @@ export function createSimulationService({ repos, withTransaction: runTransaction
           return result("conflict", outcome.conflict, now, { runStatus: outcome.runStatus, currentStep: outcome.currentStep });
         }
         // The step is committed. Risk evaluation is a separate transaction (Sprint 8).
-        let risk = { status: "not_configured", reason: "", changes: [] };
-        if (typeof evaluateRisk === "function") {
-          try {
-            const a = await repos.astronautsRepo.getById(run.astronautId);
-            risk = a && a.id === run.astronautId && CREW_ID_PATTERN.test(a.crewId)
-              ? presentRiskResult(await evaluateRisk(session, a.crewId, { now, trigger: "simulation" }))
-              : { status: "unavailable", reason: "astronaut_missing", changes: [] };
-          } catch {
-            risk = { status: "unavailable", reason: "unexpected_error", changes: [] };
-          }
+        let risk = { status: "not_configured", reason: "", changes: [], rules: [] };
+        let owner = null;
+        try {
+          const a = await repos.astronautsRepo.getById(run.astronautId);
+          owner = a && a.id === run.astronautId && CREW_ID_PATTERN.test(a.crewId) ? a : null;
+        } catch {
+          owner = null;
         }
+        if (owner) risk = await evaluateAfterCommit(session, owner.crewId, scenario.metric, now);
+        else if (typeof evaluateRisk === "function") risk = { status: "unavailable", reason: "astronaut_missing", changes: [], rules: [] };
         return result(final ? "completed" : "advanced", "", now, {
           step,
           totalSteps: run.totalSteps,
@@ -590,6 +880,21 @@ export function createSimulationService({ repos, withTransaction: runTransaction
       return transition(session, runRef, options, "stop", input);
     },
   };
+
+  /** "another run is active" with who it is for (public crew ID + name only). */
+  async function conflictResult(active, now) {
+    let other = { crewId: "", name: "" };
+    try {
+      const a = await repos.astronautsRepo.getById(active.astronautId);
+      if (a && CREW_ID_PATTERN.test(a.crewId)) other = { crewId: a.crewId, name: a.name };
+    } catch {
+      /* the conflict is still reported */
+    }
+    const otherScenario = scenarioForRun(active);
+    return result("conflict", "another_run_active", now, {
+      activeRun: { ...other, scenarioName: otherScenario ? otherScenario.name : "Scenario no longer available", status: active.status },
+    });
+  }
 
   async function transition(session, runRef, options, action, input) {
     const now = nowOf(options);
@@ -620,7 +925,7 @@ export function createSimulationService({ repos, withTransaction: runTransaction
           if (action === "resume") {
             if (cur.status === "running") return { status: "unchanged", runStatus: cur.status };
             if (cur.status !== "paused") return { status: "conflict", runStatus: cur.status };
-            if (!compatible(cur, scenarioOf(cur.scenarioId))) return { status: "conflict", reason: "scenario_unavailable", runStatus: cur.status };
+            if (!compatible(cur, scenarioForRun(cur))) return { status: "conflict", reason: "scenario_unavailable", runStatus: cur.status };
             await repos.simulationRunsRepo.update(cur.id, { status: "running", pausedAt: 0 }, { tx });
             await repos.eventsRepo.add({ ...base, type: "simulation_started", summary: `Simulation resumed at step ${step} of ${total}`, data: { phase: "resumed", step } }, { tx });
             return { status: "running" };
@@ -643,11 +948,17 @@ export function createSimulationService({ repos, withTransaction: runTransaction
   }
 }
 
+let livePublisher = null;
 const production = createSimulationService({
   repos: Object.freeze({ usersRepo, astronautsRepo, measurementsRepo, simulationRunsRepo, eventsRepo }),
   withTransaction,
   evaluateRisk: (session, crewId, options) => evaluateAstronaut(session, crewId, options),
+  publish: (name, data) => { if (typeof livePublisher === "function") livePublisher(name, data); },
 });
+/** Page layer: connect the production service to the event bus (call once at module load). */
+export function connectSimulationEvents(publish) {
+  livePublisher = typeof publish === "function" ? publish : null;
+}
 export const listSimulationScenarios = () => production.listSimulationScenarios();
 export const getSimulationCenter = (session, options) => production.getSimulationCenter(session, options);
 export const previewSimulation = (session, input, options) => production.previewSimulation(session, input, options);
@@ -656,3 +967,5 @@ export const advanceSimulation = (session, runRef, input, options) => production
 export const pauseSimulation = (session, runRef, options) => production.pauseSimulation(session, runRef, options);
 export const resumeSimulation = (session, runRef, options) => production.resumeSimulation(session, runRef, options);
 export const stopSimulation = (session, runRef, input, options) => production.stopSimulation(session, runRef, input, options);
+export const recordManualReading = (session, input, options) => production.recordManualReading(session, input, options);
+export const startCustomCurve = (session, input, options) => production.startCustomCurve(session, input, options);

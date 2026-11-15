@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#F6F7FB">
-  <meta name="description" content="AstroHealth AI — research and educational prototype exploring explainable crew health monitoring with synthetic data. Not a medical device.">
-  <title>AstroHealth AI — Crew Health System</title>
+  <meta name="description" content="AstroHealth AI is an explainable AI crew-health solution that turns synthetic mission data into clear body context, trends and reviewable alerts. Research and educational prototype; not a medical device.">
+  <title>AstroHealth AI — Explainable Crew Health Intelligence</title>
 
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/app-icons/favicon.svg" type="image/svg+xml">
@@ -90,19 +90,10 @@
       width: 32px;
       height: 32px;
       border-radius: 10px;
-      background: linear-gradient(160deg, #ffb269 0%, #ff7a3d 100%);
-      position: relative;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
-    }
-    .brand-mark::before {
-      content: "";
-      position: absolute;
-      inset: 8px 8px 8px 8px;
-      border: 2px solid rgba(255,255,255,0.9);
-      border-top-color: transparent;
-      border-left-color: transparent;
-      transform: rotate(45deg);
-      border-radius: 2px;
+      display: block;
+      flex: 0 0 auto;
+      object-fit: contain;
+      box-shadow: 0 8px 22px rgba(190, 18, 60, 0.18);
     }
     .brand-text {
       display: flex;
@@ -282,11 +273,46 @@
       box-shadow: var(--home-shadow);
       padding: 18px 18px 16px;
     }
+    .preview-card--body {
+      width: min(430px, 96%);
+      min-height: 610px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 36%, rgba(23, 180, 211, 0.14), transparent 42%),
+        var(--color-scan-bg);
+      border-color: var(--color-scan-border);
+      color: var(--color-scan-text);
+    }
     .preview-card__top {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-bottom: 16px;
+    }
+    .landing-body-scan {
+      width: min(238px, 72vw);
+      margin: 0 auto;
+    }
+    .landing-body-scan .scan-body {
+      width: 100%;
+    }
+    .preview-card__caption {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-top: -10px;
+      padding: 14px 16px;
+      border: 1px solid var(--color-scan-border);
+      border-radius: 14px;
+      background: color-mix(in srgb, var(--color-scan-bg-2) 88%, transparent);
+    }
+    .preview-card__caption strong {
+      font-size: 0.92rem;
+    }
+    .preview-card__caption span {
+      color: var(--color-scan-text-2);
+      font-size: 0.72rem;
+      line-height: 1.5;
     }
     .live-tag {
       display: inline-flex;
@@ -714,6 +740,7 @@
       .hero-copy { padding-right: 0; }
       .hero-panel { min-height: 420px; justify-content: center; }
       .preview-card { width: min(460px, 100%); }
+      .preview-card--body { min-height: 570px; }
       .two-col,
       .offline-wrap,
       .cap-grid,
@@ -1118,6 +1145,13 @@
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
     }
+    .preview-card--body {
+      background:
+        radial-gradient(circle at 50% 36%, rgba(23, 180, 211, 0.14), transparent 42%),
+        var(--color-scan-bg);
+      border-color: var(--color-scan-border);
+      box-shadow: 0 18px 42px rgba(7, 15, 29, 0.2);
+    }
     .btn:hover {
       box-shadow: 0 12px 28px rgba(200, 16, 46, 0.16);
     }
@@ -1219,7 +1253,7 @@
   <div class="page-shell">
     <header class="topbar">
       <a class="brand" href="index.html" aria-label="AstroHealth AI home">
-        <span class="brand-mark" aria-hidden="true"></span>
+        <img class="brand-mark" src="assets/brand/logo-mark.svg" alt="" width="32" height="32">
         <span class="brand-text">
           <strong>AstroHealth AI</strong>
           <span>Crew Health System</span>
@@ -1227,10 +1261,10 @@
       </a>
 
       <nav class="topnav" aria-label="Main navigation">
-        <a href="#mission">Mission</a>
-        <a href="#capabilities">Capabilities</a>
-        <a href="#how-it-works">How it works</a>
-        <a href="#offline">Offline</a>
+        <a href="#mission">Solution</a>
+        <a href="#how-it-works">Capabilities</a>
+        <a href="#offline">How it works</a>
+        <a href="#science">Offline</a>
         <a href="#research">Background</a>
         <a href="#team">Team</a>
       </nav>
@@ -1251,104 +1285,81 @@
     <main>
       <section class="hero" id="mission">
         <div class="hero-copy">
-          <div class="eyebrow">NASA Space Apps Challenge · student project · not affiliated with or endorsed by NASA</div>
+          <div class="eyebrow">Explainable AI solution · synthetic mission data · human-reviewed decisions</div>
           <h1>
-            Explainable crew health monitoring for
-            <span class="highlight">communication-limited</span>
-            space missions.
+            Crew health signals become
+            <span class="highlight">clear, explainable action.</span>
           </h1>
           <p>
-            A research and educational prototype. Astronauts and a Medical Officer review synthetic health records, deterministic demonstration rules and a clear alert audit trail — stored on this device and usable offline after the first visit.
+            AstroHealth AI is an explainable crew-health intelligence solution for communication-limited missions. It brings physical readings, mental-wellbeing signals and mission context into one visual body map, then uses transparent demonstration logic to surface what needs human review.
           </p>
 
           <div class="cta-row">
-            <a class="btn btn--primary" href="login.html">Login</a>
-            <a class="btn btn--secondary" href="#research">Explore Project</a>
+            <a class="btn btn--primary" href="login.html">Explore the AI dashboard</a>
+            <a class="btn btn--secondary" href="#how-it-works">See how it works</a>
           </div>
 
           <div class="metric-strip">
-            <div class="metric"><strong>4</strong><span>Demonstration rules</span></div>
-            <div class="metric"><strong>2</strong><span>Crew roles</span></div>
-            <div class="metric"><strong>100%</strong><span>Synthetic data</span></div>
-            <div class="metric"><strong>Offline</strong><span>After first visit</span></div>
+            <div class="metric"><strong>1</strong><span>Unified body view</span></div>
+            <div class="metric"><strong>2</strong><span>Role-aware experiences</span></div>
+            <div class="metric"><strong>100%</strong><span>Explainable output</span></div>
+            <div class="metric"><strong>Local</strong><span>Privacy-first data</span></div>
           </div>
         </div>
 
-        <div class="hero-panel" aria-label="Illustration of the dashboard with synthetic values">
-          <div class="preview-card">
+        <div class="hero-panel" aria-label="Illustration of the AstroHealth body scanner">
+          <div class="preview-card preview-card--body">
             <div class="preview-card__top">
-              <div class="live-tag"><span class="live-tag__dot"></span> Illustration</div>
+              <div class="live-tag"><span class="live-tag__dot"></span> AI body context</div>
               <div class="live-tag">Synthetic data</div>
             </div>
-
-            <div class="chart-box">
-              <svg viewBox="0 0 380 150" preserveAspectRatio="none" aria-hidden="true">
-                <defs>
-                  <linearGradient id="strokeFill" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stop-color="#ff8a3d" stop-opacity="0.3" />
-                    <stop offset="100%" stop-color="#ff8a3d" stop-opacity="0" />
-                  </linearGradient>
-                </defs>
-                <path d="M0 105 L40 88 L90 90 L130 66 L170 72 L220 61 L260 56 L300 68 L340 54 L380 38 L380 150 L0 150 Z" fill="url(#strokeFill)"></path>
-                <path d="M0 105 L40 88 L90 90 L130 66 L170 72 L220 61 L260 56 L300 68 L340 54 L380 38" fill="none" stroke="#ff8a3d" stroke-width="3" stroke-linecap="round"></path>
-                <path d="M0 114 L40 122 L90 118 L130 120 L170 112 L220 114 L260 110 L300 118 L340 122 L380 110" fill="none" stroke="#63d8d2" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 8" opacity="0.9"></path>
-              </svg>
-            </div>
-
-            <div class="preview-metric">
-              <div class="mini-box">
-                <div class="label">Heart</div>
-                <strong>97</strong>
-                <div class="delta">synthetic example</div>
-              </div>
-              <div class="mini-box">
-                <div class="label">Sleep</div>
-                <strong>6.1</strong>
-                <div class="delta">synthetic example</div>
-              </div>
+            <div class="landing-body-scan" data-public-body-scan aria-hidden="true"></div>
+            <div class="preview-card__caption">
+              <strong>See the person, not a wall of numbers.</strong>
+              <span>The shared body view connects authorized synthetic signals, trends and alerts to understandable body areas.</span>
             </div>
           </div>
         </div>
       </section>
 
       <section class="section content-note" id="capabilities">
-        <div class="section-kicker">01 · Mission overview</div>
+        <div class="section-kicker">01 · The solution</div>
         <div class="two-col">
           <div class="feature-copy">
-            <h2 class="section-title">When help is minutes away, the crew needs answers now.</h2>
+            <h2 class="section-title">An AI solution designed for decisions people can understand.</h2>
             <p>
-              A crew may be minutes or hours from Earth support. AstroHealth AI explores how stored readings, wellbeing check-ins and simple, explainable rules could help a crew and a Medical Officer see what changed and review it together. Everything in this prototype uses synthetic data.
+              AstroHealth AI organizes fragmented crew-health information into a single explainable picture. Its current prototype uses deterministic, inspectable demonstration rules—not a black-box diagnosis—to prioritize changes and show exactly why each alert appeared. The astronaut and Medical Officer remain in control.
             </p>
           </div>
 
           <div class="feature-grid">
             <article class="card">
               <div class="icon">⏱</div>
-              <h3>Review</h3>
-              <p>See each alert with its rule, the readings behind it and its full audit trail in one place.</p>
+              <h3>AI-assisted understanding</h3>
+              <p>Turn multiple health signals into a concise, prioritized view without hiding the evidence behind the result.</p>
             </article>
             <article class="card">
               <div class="icon">☾</div>
-              <h3>Sleep</h3>
-              <p>Nightly sleep duration compared with a stored demonstration threshold over consecutive nights.</p>
+              <h3>Whole-person context</h3>
+              <p>Connect physical readings, sleep and voluntarily shared wellbeing check-ins in one consistent experience.</p>
             </article>
             <article class="card">
               <div class="icon">❤</div>
-              <h3>Vital signs</h3>
-              <p>Heart rate, SpO₂ and blood pressure readings with trends and clear data-quality labels.</p>
+              <h3>Explainable alerts</h3>
+              <p>Every alert keeps its rule, supporting readings, threshold, provenance and lifecycle available for review.</p>
             </article>
             <article class="card">
               <div class="icon">🧠</div>
-              <h3>Wellbeing check-ins</h3>
-              <p>Private by default: only check-ins an astronaut chooses to share are visible to the Medical Officer.</p>
+              <h3>Human authority</h3>
+              <p>The system supports review; it does not diagnose, prescribe treatment or replace clinical judgement.</p>
             </article>
           </div>
         </div>
       </section>
 
       <section class="section" id="how-it-works">
-        <div class="section-kicker">02 · Core capabilities</div>
-        <h2 class="section-title">Everything runs on this device.</h2>
+        <div class="section-kicker">02 · Product capabilities</div>
+        <h2 class="section-title">One clear workspace for the complete crew-health picture.</h2>
 
         <div class="cap-grid">
           <article class="card cap-card">
@@ -1363,8 +1374,8 @@
           </article>
           <article class="card cap-card">
             <div class="cap-icon">⚙</div>
-            <h3>Explainable Demonstration Rules</h3>
-            <p>Four deterministic rules (heart rate, SpO₂, blood pressure, sleep) run after each simulation step or when the Medical Officer asks. Each alert shows the rule, readings and threshold used.</p>
+            <h3>Explainable AI Logic</h3>
+            <p>The current engine applies deterministic demonstration rules to synthetic signals. Each output exposes the rule, readings and threshold used—never an unexplained score.</p>
           </article>
           <article class="card cap-card">
             <div class="cap-icon">🚨</div>
@@ -1385,8 +1396,8 @@
       </section>
 
       <section class="section" id="offline">
-        <div class="section-kicker">03 · How it works</div>
-        <h2 class="section-title">From reading to response, locally.</h2>
+        <div class="section-kicker">03 · How the intelligence works</div>
+        <h2 class="section-title">From signal to human decision—without the black box.</h2>
 
         <div class="process-grid">
           <article class="card process-card">
@@ -1396,8 +1407,8 @@
           </article>
           <article class="card process-card">
             <div class="icon-box">🛰</div>
-            <h3>Local Processing</h3>
-            <p>Deterministic demonstration rules run in the browser, only after a simulation step or when the Medical Officer asks.</p>
+            <h3>Explainable Processing</h3>
+            <p>The AI solution structures and prioritizes context using deterministic rules in this prototype, so every result can be traced and challenged.</p>
           </article>
           <article class="card process-card">
             <div class="icon-box">🔎</div>
@@ -1411,8 +1422,8 @@
           </article>
           <article class="card process-card">
             <div class="icon-box">🩹</div>
-            <h3>Human Review</h3>
-            <p>The Medical Officer reviews the evidence and records the outcome. The app does not recommend treatment.</p>
+            <h3>Human Decision</h3>
+            <p>The Medical Officer reviews the evidence, acknowledges the signal and records the outcome. The system never recommends treatment.</p>
           </article>
         </div>
       </section>
@@ -1487,22 +1498,22 @@
 
         <div class="team-grid">
           <article class="card team-card">
-            <div class="brand-mark"></div>
+            <img class="brand-mark" src="assets/brand/logo-mark.svg" alt="" width="32" height="32">
             <div class="role">Team lead</div>
             <strong>Aws Tamimi</strong>
           </article>
           <article class="card team-card">
-            <div class="brand-mark"></div>
+            <img class="brand-mark" src="assets/brand/logo-mark.svg" alt="" width="32" height="32">
             <div class="role">Programmers</div>
             <strong>Asaad Almoushorji<br>Osama Abu Doush</strong>
           </article>
           <article class="card team-card">
-            <div class="brand-mark"></div>
+            <img class="brand-mark" src="assets/brand/logo-mark.svg" alt="" width="32" height="32">
             <div class="role">Graphic Designer</div>
             <strong>Idriss Bouida</strong>
           </article>
           <article class="card team-card">
-            <div class="brand-mark"></div>
+            <img class="brand-mark" src="assets/brand/logo-mark.svg" alt="" width="32" height="32">
             <div class="role">Business Analyst</div>
             <strong>Fadhel Alawadh</strong>
           </article>
@@ -1512,14 +1523,14 @@
 
     <footer class="footer">
       <div class="brand" aria-label="AstroHealth footer brand">
-        <span class="brand-mark" aria-hidden="true"></span>
+        <img class="brand-mark" src="assets/brand/logo-mark.svg" alt="" width="32" height="32">
         <span class="brand-text">
           <strong>AstroHealth AI</strong>
           <span>Crew Health System</span>
         </span>
       </div>
 
-      <div class="footer-note">Research &amp; educational prototype · Not a medical device · Not affiliated with or endorsed by NASA</div>
+      <div class="footer-note">Explainable AI research prototype · Synthetic data only · Not a medical device · Not affiliated with or endorsed by NASA</div>
     </footer>
   </div>
 </body>

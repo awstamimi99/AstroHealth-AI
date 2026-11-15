@@ -1,4 +1,7 @@
 import { postJson } from "../core/api.js";
+import { mountPublicBodyScans } from "../components/public-body-scan.js";
+
+mountPublicBodyScans();
 
 const state = {
   activeSection: null,

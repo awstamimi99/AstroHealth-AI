@@ -334,6 +334,20 @@ export function createAlertsService({ repos, withTransaction: runTransaction }) 
       });
     },
 
+    /**
+     * How many OPEN alerts the viewer can see (top-bar bell badge).
+     * Astronaut: own alerts only. Medical Officer: the whole crew.
+     * → { open, unacknowledged, topSeverity } — counts only, no alert content.
+     */
+    async countOpenAlerts(session, options = {}) {
+      const r = await this.listAlerts(session, { status: "open" }, options);
+      if (!r || r.status !== "ready") return result((r && r.status) || "unavailable", (r && r.reason) || "unexpected_error", nowOf(options));
+      const open = r.items.filter((a) => a && (a.status === "new" || a.status === "acknowledged"));
+      const rank = { info: 1, warning: 2, critical: 3 };
+      const top = open.reduce((best, a) => (rank[a.severity] > (rank[best] || 0) ? a.severity : best), null);
+      return result("ready", "", r.generatedAt, { viewer: r.viewer, open: open.length, unacknowledged: open.filter((a) => a.status === "new").length, topSeverity: top });
+    },
+
     /** Medical Officer: new → acknowledged. */
     async acknowledgeAlert(session, number, input, options = {}) {
       return lifecycle(session, number, options, "acknowledge", input);
@@ -352,5 +366,6 @@ const production = createAlertsService({
 });
 export const listAlerts = (session, filters, options) => production.listAlerts(session, filters, options);
 export const getAlertDetail = (session, number, options) => production.getAlertDetail(session, number, options);
+export const countOpenAlerts = (session, options) => production.countOpenAlerts(session, options);
 export const acknowledgeAlert = (session, number, input, options) => production.acknowledgeAlert(session, number, input, options);
 export const resolveAlert = (session, number, input, options) => production.resolveAlert(session, number, input, options);

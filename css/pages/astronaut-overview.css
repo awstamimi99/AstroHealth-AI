@@ -26,11 +26,6 @@
   font-size: var(--text-sm);
   overflow-wrap: anywhere;
 }
-.overview__notice {
-  margin-top: var(--space-2);
-  align-items: flex-start;
-}
-
 /* ---- Sections -------------------------------------------------------------- */
 .overview__section {
   display: flex;
@@ -150,13 +145,53 @@
 .overview__message {
   display: flex;
   flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface));
+}
+.overview__message-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.overview__message-avatar {
+  display: grid;
+  flex: 0 0 40px;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.overview__message-sender {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.overview__message-bubble {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border-left: 3px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-elevated);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: 4px var(--radius-lg) var(--radius-lg) var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-text-2);
+}
+.overview__message-bubble > .icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-primary);
 }
 .overview__message-body {
+  margin: 0;
   overflow-wrap: anywhere;
 }
 
@@ -200,7 +235,23 @@
 /* --baseline and each bar's --h are percentages of a fixed 0–10 h scale. */
 .overview-sleep {
   position: relative;
-  padding-top: var(--space-5);
+  padding: var(--space-5) var(--space-4) var(--space-3) calc(var(--space-4) + 32px);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-elevated);
+}
+.overview-sleep__scale {
+  position: absolute;
+  top: var(--space-5);
+  bottom: calc(var(--space-3) + 38px);
+  left: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: var(--color-text-3);
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
 }
 .overview-sleep__nights {
   display: grid;
@@ -224,15 +275,40 @@
   align-items: flex-end;
   justify-content: center;
   width: 100%;
-  height: 96px;
+  height: 128px;
   border-bottom: 1px solid var(--color-border);
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-border) 70%, transparent) 0 1px,
+    transparent 1px 32px
+  );
 }
 .overview-sleep__bar {
+  position: relative;
   display: block;
-  width: min(100%, 28px);
+  width: min(72%, 36px);
   height: var(--h, 0%);
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  background: color-mix(in srgb, var(--color-info) 70%, transparent);
+  min-height: 4px;
+  border-radius: var(--radius-md) var(--radius-md) 2px 2px;
+  background: linear-gradient(to top, color-mix(in srgb, var(--color-info) 72%, var(--color-surface)), var(--color-info));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-info) 22%, transparent);
+  transition: filter var(--motion-fast) var(--ease), transform var(--motion-fast) var(--ease);
+}
+.overview-sleep__bar::after {
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  transform: translateX(-50%);
+  border: 2px solid var(--color-elevated);
+  border-radius: var(--radius-pill);
+  background: var(--color-info);
+  content: "";
+}
+.overview-sleep__night:hover .overview-sleep__bar {
+  filter: saturate(1.15);
+  transform: scaleX(1.06);
 }
 .overview-sleep__night.is-missing .overview-sleep__track {
   border-bottom-style: dashed;
@@ -252,13 +328,13 @@
   white-space: nowrap;
 }
 /* Dashed baseline line across the bar area (decorative; the text says it too).
-   The 96px track sits below the top padding; the element's BOTTOM border is
+   The 128px track sits below the top padding; the element's BOTTOM border is
    the line, and its "baseline" label sits just above it. */
 .overview-sleep__baseline {
   position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(var(--space-5) + 96px * (1 - var(--baseline-ratio, 0)));
+  left: calc(var(--space-4) + 32px);
+  right: var(--space-4);
+  top: calc(var(--space-5) + 128px * (1 - var(--baseline-ratio, 0)));
   transform: translateY(-100%);
   padding-bottom: 2px;
   border-bottom: 1px dashed var(--color-text-3);
@@ -289,9 +365,8 @@
   gap: var(--space-4);
 }
 
-/* Lower row: the short message card and quick links stacked beside the taller routine. */
-.ov-lower,
-.ov-lower__col {
+/* Lower row: the message card sits beside the daily routine. */
+.ov-lower {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
@@ -302,9 +377,6 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: stretch;
-  }
-  .ov-lower__col > .overview__section:last-child {
-    flex: 1;
   }
 }
 
@@ -340,6 +412,18 @@
 .ov-scan {
   min-width: 0;
 }
+.ov-scan__mapped {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 3px var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--color-scan-watch) 45%, var(--color-border));
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-scan-watch) 10%, transparent);
+  color: var(--color-scan-watch);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+}
 .ov-scan__head {
   display: flex;
   flex-wrap: wrap;
@@ -361,21 +445,13 @@
   align-items: flex-start;
   gap: var(--space-3);
 }
-/* Alert activity feed. */
-.ov-activity__list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.ov-activity__item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-left: var(--space-3);
-  border-left: 2px solid var(--color-border);
+.ov-alert__mapping {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  color: var(--color-text-2);
+  font-weight: var(--weight-medium);
 }
 
 .ov-plan__steps,

@@ -7,7 +7,8 @@
 //   const stage = createVitalsStage({
 //     items,                         // vitals items from a service (key, state, value…)
 //     pins: alertPins(alertItems),   // numbered pins for open alerts
-//     ringFor: (item) => figure,     // the page builds each ring's text (createRing)
+//     ringFor: (item, alertSeverity) => figure, // the page builds each ring (createRing);
+//                                    // alertSeverity = most severe open alert for that measure, or ""
 //     onPinClick: (pin, button) => …,
 //   });
 //
@@ -17,18 +18,18 @@
 import { el } from "../core/utils/dom.js";
 import { icon } from "./icon.js";
 import { createBodyScan, BODY_VIEWBOX, zonePoint, PIN_SEVERITY } from "./body-scan.js";
-import { zoneForRule, ZONE_LABELS, VITAL_ZONES } from "./alert-zones.js";
+import { zoneForRule, ZONE_LABELS, VITAL_ZONES, vitalSeverities } from "./alert-zones.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
-export const STAGE = Object.freeze({ width: 760, height: 560 });
+export const STAGE = Object.freeze({ width: 760, height: 610 });
 const BODY_SCALE = STAGE.height / BODY_VIEWBOX.height;
 const BODY_LEFT = (STAGE.width - BODY_VIEWBOX.width * BODY_SCALE) / 2;
 /** Ring anchor (centre of the dial) in stage units, and the side it sits on. */
 export const RING_POSITIONS = Object.freeze({
   sleepDuration: Object.freeze({ x: 112, y: 96, side: "left" }),
-  spo2: Object.freeze({ x: 112, y: 340, side: "left" }),
-  heartRate: Object.freeze({ x: 648, y: 120, side: "right" }),
-  bloodPressure: Object.freeze({ x: 648, y: 352, side: "right" }),
+  spo2: Object.freeze({ x: 112, y: 372, side: "left" }),
+  heartRate: Object.freeze({ x: 648, y: 116, side: "right" }),
+  bloodPressure: Object.freeze({ x: 648, y: 390, side: "right" }),
 });
 /** Fixed display scales for the ring fill (orientation only — no health meaning). */
 const RING_SCALES = Object.freeze({
@@ -58,13 +59,15 @@ export function alertPins(alertItems, { who = "" } = {}) {
   return (Array.isArray(alertItems) ? alertItems : []).map((a, i) => {
     const zone = zoneForRule(a.ruleId);
     const severity = SEVERITY_LABEL[a.severity] ? a.severity : "info";
+    const status = a.status === "resolved" ? "Resolved, " : "";
+    const context = a.ruleId === "WB-01" ? "Mental wellbeing · " : "";
     return {
       number: i + 1,
       zone,
       severity,
       alert: a,
-      tag: a.title,
-      label: `${who}Alert ${i + 1}: ${[a.number, a.title].filter(Boolean).join(" ")} — ${SEVERITY_LABEL[severity]}, ${ZONE_LABELS[zone] || "body"}. Open details.`,
+      tag: `${context}${a.title}`,
+      label: `${who}Alert ${i + 1}: ${context}${[a.number, a.title].filter(Boolean).join(" ")} — ${status}${SEVERITY_LABEL[severity]}, ${ZONE_LABELS[zone] || "body"}. Open details.`,
     };
   });
 }
@@ -91,6 +94,7 @@ function connectors(items) {
 
 /** The stage, inside a keyboard-scrollable container (it scrolls sideways on small screens). */
 export function createVitalsStage({ items = [], pins = [], ringFor, onPinClick = null }) {
+  const severities = vitalSeverities(pins.map((p) => p.alert));
   const placed = items.filter((item) => RING_POSITIONS[item.key]);
   const body = createBodyScan({
     pins,
@@ -99,8 +103,8 @@ export function createVitalsStage({ items = [], pins = [], ringFor, onPinClick =
   });
   const rings = placed.map((item) => {
     const pos = RING_POSITIONS[item.key];
-    const ring = ringFor(item);
-    ring.setAttribute("class", `scan-ring vitals-stage__ring vitals-stage__ring--${pos.side}`);
+    const ring = ringFor(item, severities[item.key] || "");
+    ring.setAttribute("class", `${ring.getAttribute("class") || "scan-ring"} vitals-stage__ring vitals-stage__ring--${pos.side}`);
     ring.style.setProperty("left", pct(pos.x, STAGE.width));
     ring.style.setProperty("top", pct(pos.y, STAGE.height));
     return ring;
@@ -122,12 +126,18 @@ export function centreStages(root) {
   });
 }
 
-/** Pin colour key: swatch + icon + word for each severity (colour is never the only cue). */
+/** Colour key: rings and pins take the colour of an open alert; blue means no open alert. */
 export function severityLegend() {
-  return el("ul", { class: "scan-legend", role: "list", "aria-label": "Pin colours by alert severity" },
-    ["critical", "warning", "info"].map((sev) => el("li", { class: ["scan-legend__item", `scan-legend__item--${sev}`] }, [
+  const items = [
+    ["clear", "circle-check", "No open alert"],
+    ["info", PIN_SEVERITY.info.icon, PIN_SEVERITY.info.label],
+    ["warning", PIN_SEVERITY.warning.icon, PIN_SEVERITY.warning.label],
+    ["critical", PIN_SEVERITY.critical.icon, PIN_SEVERITY.critical.label],
+  ];
+  return el("ul", { class: "scan-legend", role: "list", "aria-label": "Colour key: alert severity" },
+    items.map(([key, iconName, label]) => el("li", { class: ["scan-legend__item", `scan-legend__item--${key}`] }, [
       el("span", { class: "scan-legend__swatch", "aria-hidden": "true" }),
-      icon(PIN_SEVERITY[sev].icon, { size: 12 }),
-      PIN_SEVERITY[sev].label,
+      icon(iconName, { size: 12 }),
+      label,
     ])));
 }

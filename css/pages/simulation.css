@@ -268,3 +268,276 @@
     transition: none;
   }
 }
+
+/* ---- Tabs: Scenarios | Live control ------------------------------------------------------- */
+.sim-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  align-self: flex-start;
+}
+.sim-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-2);
+  font: inherit;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+.sim-tab:hover {
+  background: var(--color-elevated);
+  color: var(--color-text);
+}
+.sim-tab.is-active {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+}
+.sim-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.sim__content[hidden] {
+  display: none;
+}
+
+/* ---- Live control (js/components/live-control-view.js) ------------------------------------- */
+.live {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+.live__intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.live__h3 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+.live__picker {
+  max-width: 640px;
+}
+.live__strip-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.live__strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.live-chip {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.live-chip:hover {
+  border-color: var(--color-primary);
+}
+.live-chip.is-selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary);
+  background: var(--color-primary-tint);
+}
+.live-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.live-chip__avatar,
+.live__avatar {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+}
+.live-chip__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.live-chip__name {
+  font-weight: var(--weight-semibold);
+}
+.live-chip__values {
+  color: var(--color-text-2);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sticky "Editing: …" header: always shows who is being edited. */
+.live__editing {
+  position: sticky;
+  top: var(--space-2);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+}
+.live__avatar {
+  width: 48px;
+  height: 48px;
+  font-size: var(--text-md);
+}
+.live__editing-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.live__editing-text .scan-stage__note {
+  margin: 0;
+}
+.live__editing-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+.live__editing-scan {
+  position: relative;
+  flex: 0 0 84px;
+  width: 84px;
+}
+.live__editing-scan .scan-body__svg {
+  overflow: hidden; /* upper crop only: keep the drawing inside the header */
+}
+.live__editing-scan .scan-pin__tag {
+  display: none; /* the header text lists the alerts; pins keep their number, colour and aria-label */
+}
+.live__run {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.live__progress {
+  width: 100%;
+  height: 10px;
+  accent-color: var(--color-primary);
+}
+.live__actions,
+.live-card__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.live__charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr));
+  gap: var(--space-5);
+}
+.live-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.live-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.live-card__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+.live-card__chart {
+  padding: var(--space-2);
+}
+.live-card__field {
+  flex: 1 1 160px;
+}
+.live-card__curve {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+}
+.live-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-info);
+  border-radius: var(--radius-md);
+  background: var(--color-elevated);
+}
+.live-result p {
+  margin: 0;
+}
+.live-result__saved {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-weight: var(--weight-semibold);
+}
+.live-result__saved > .icon {
+  color: var(--color-ok);
+}
+.live-result__rule {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+}
+.live__reset {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+@media (max-width: 699px) {
+  .live__editing {
+    flex-wrap: wrap;
+    padding: var(--space-3);
+  }
+  .live__editing-scan {
+    display: none; /* the text still lists the open alerts */
+  }
+}
+

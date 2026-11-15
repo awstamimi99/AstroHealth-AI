@@ -30,6 +30,8 @@ import { requireSession, redirectToLogin, checkRoute } from "../auth/guard.js";
 import { getSession, clearSession, onSessionChange, roleLabel, initialsOf } from "../auth/session.js";
 import { routesForRole, homeRouteFor, findRoute } from "../auth/routes.js";
 import { getMissionContext } from "../services/mission-service.js";
+import { countOpenAlerts } from "../services/alerts-service.js";
+import { onHealthChanged } from "../core/live-updates.js";
 import { renderAstronautOverview } from "./astronaut-overview.js";
 import { renderMedicalOfficerOverview } from "./officer-overview.js";
 import { renderCrewMonitor } from "./crew-monitor.js";
@@ -228,12 +230,43 @@ function startShell(current) {
     else if (session.userId !== current.userId) location.reload();
   });
 
+  // ---- Alert count on the bell (open alerts this user may see) ----------------------------------
+  let bellToken = 0;
+  async function showAlertCount() {
+    const bell = $("[data-alert-bell]");
+    const badge = $("[data-alert-count]");
+    if (!bell || !badge) return;
+    const token = ++bellToken;
+    let res;
+    try {
+      res = await countOpenAlerts(current);
+    } catch {
+      res = null;
+    }
+    if (token !== bellToken) return;
+    const n = res && res.status === "ready" && Number.isInteger(res.open) ? res.open : null;
+    if (!n) {
+      badge.hidden = true;
+      badge.textContent = "";
+      bell.setAttribute("aria-label", n === 0 ? "Alerts, no open alerts" : "Alerts");
+      delete badge.dataset.severity;
+      return;
+    }
+    badge.hidden = false;
+    badge.textContent = n > 99 ? "99+" : String(n);
+    badge.dataset.severity = res.topSeverity || "info";
+    bell.setAttribute("aria-label", `Alerts, ${n} open${res.topSeverity ? `, highest severity ${res.topSeverity}` : ""}`);
+  }
+  // Updated when stored data changes (this tab or another) and on every navigation.
+  onHealthChanged({ crewId: () => null, reload: () => showAlertCount() });
+
   // ---- Start ---------------------------------------------------------------------------------
   showUser(current);
   renderNav();
   renderRoute();
   showMission();
-  window.addEventListener("hashchange", () => renderRoute({ focus: true }));
+  showAlertCount();
+  window.addEventListener("hashchange", () => { renderRoute({ focus: true }); showAlertCount(); });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") stillSignedIn();
   });

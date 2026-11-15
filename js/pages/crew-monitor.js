@@ -28,6 +28,7 @@ import { alertPopupBody, alertTitle, loadAlertDetailSafely } from "../components
 import { openDialog } from "../components/dialog.js";
 import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
+import { onHealthChanged, keepFocus } from "../core/live-updates.js";
 import { formatDate, formatNumber } from "../core/utils/format.js";
 import {
   alertItem,
@@ -130,7 +131,7 @@ function baselineText(item) {
 }
 
 /** One vital ring on the stage: value, unit, baseline, time, provenance and data-quality labels as text. */
-function vitalRing(item, now, onRetry) {
+function vitalRing(item, now, onRetry, alertSeverity = "") {
   const id = `crew-ring-${item.key}`;
   if (item.state === "ok") {
     const bp = item.key === "bloodPressure";
@@ -143,7 +144,8 @@ function vitalRing(item, now, onRetry) {
       fraction: ringFraction(item),
       baseline: baselineText(item),
       meta: stamp(item.timestamp, now),
-      spoken: `${item.label}: ${bp ? visual.replace("/", " over ") : visual} ${SPOKEN_UNIT[item.key] || item.unit}`,
+      spoken: `${item.label}: ${bp ? visual.replace("/", " over ") : visual} ${SPOKEN_UNIT[item.key] || item.unit}${alertSeverity ? `. Open ${alertSeverity} alert for this measure` : ""}`,
+      alertSeverity,
       tags: [provenanceTag(item), ...dataBadges(item)].filter(Boolean),
     });
   }
@@ -257,22 +259,24 @@ function detailView(data, onRetry, onOpenAlert) {
     ]),
     el("div", { class: "crew-scan-layout" }, [
       el("section", { class: "scan-stage scan-stage--fill crew-scan", "aria-labelledby": "crew-detail-vitals-title" }, [
-        el("div", { class: "crew-scan__head" }, [
-          el("h2", { class: "scan-stage__title", id: "crew-detail-vitals-title" }, "Body scan · latest readings"),
-          el("span", { class: "sim-tag" }, [icon("flask-conical", { size: 12 }), "SIMULATED"]),
+        el("div", { class: "scan-stage__head" }, [
+          el("div", { class: "scan-stage__heading" }, [
+            el("h2", { class: "scan-stage__title", id: "crew-detail-vitals-title" }, "Body scan · latest readings"),
+            el("span", { class: "sim-tag" }, [icon("flask-conical", { size: 12 }), "SIMULATED"]),
+          ]),
+          severityLegend(),
         ]),
         el("p", { class: "scan-stage__note" }, "Most recent usable reading of each measure. Invalid readings are left out. Times are UTC."),
         createVitalsStage({
           items: data.vitals.items,
           pins: alerts.status === "ok" ? alertPins(alerts.items, { who: `${p.name}: ` }) : [],
-          ringFor: (item) => vitalRing(item, data.generatedAt, onRetry),
+          ringFor: (item, severity) => vitalRing(item, data.generatedAt, onRetry, severity),
           onPinClick: (pin, button) => onOpenAlert(pin.alert, button, pin.number),
         }),
         el("div", { class: "scan-stage__foot" }, [
-          severityLegend(),
           el("p", { class: "scan-stage__note" },
             "Illustration only: the body is a stylised drawing and the ring fill uses a fixed display scale — neither is a health assessment. " +
-              (alerts.status === "ok" && alerts.items.length ? "Numbered pins mark open alerts, coloured by severity; the same alerts are listed under Open alerts." : "No pins: no open alerts are shown.")),
+              (alerts.status === "ok" && alerts.items.length ? "Numbered pins mark open alerts, coloured by severity; a ring takes the colour of an open alert for that measure. The same alerts are listed under Open alerts." : "No pins: no open alerts are shown.")),
         ]),
       ]),
       // Status, open alerts and the cognitive check beside the stage (no half-empty rows).
@@ -320,7 +324,7 @@ function detailView(data, onRetry, onOpenAlert) {
 // ---- Renderer ---------------------------------------------------------------------------
 
 /** TEST SEAM: tests pass fake loaders returning presentation data. Pages use renderCrewMonitor. */
-export function createCrewMonitorRenderer({ loadSnapshot, loadDetail, loadAlertDetail = null, host = null }) {
+export function createCrewMonitorRenderer({ loadSnapshot, loadDetail, loadAlertDetail = null, host = null, subscribe = onHealthChanged }) {
   return function render(container, session, { signal, hash = "#/crew", focus = false } = {}) {
     const route = parseCrewRoute(hash);
     const root = el("div", { class: "crew", "aria-busy": "false" });
@@ -345,10 +349,15 @@ export function createCrewMonitorRenderer({ loadSnapshot, loadDetail, loadAlertD
       dialog = openDialog({ kind: "modal", title: alertTitle(a), body, footer, returnFocus: trigger, onClose: () => { dialog = null; }, host });
     }
 
-    async function load() {
+    // Live updates: the crew list follows every crew member; a detail view only its own.
+    subscribe({ signal, crewId: () => (route.view === "detail" ? route.crewId : ""), reload: () => keepFocus(root, () => load({ quiet: true })) });
+
+    async function load({ quiet = false } = {}) {
       const token = ++generation;
-      root.setAttribute("aria-busy", "true");
-      for (const b of root.querySelectorAll("[data-retry]")) b.disabled = true;
+      if (!quiet) {
+        root.setAttribute("aria-busy", "true");
+        for (const b of root.querySelectorAll("[data-retry]")) b.disabled = true;
+      }
       if (!root.childNodes.length) root.replaceChildren(...loadingView(route.view === "list" ? "Loading the crew…" : "Loading crew member…"));
 
       let result;
@@ -359,6 +368,7 @@ export function createCrewMonitorRenderer({ loadSnapshot, loadDetail, loadAlertD
         result = { status: "unavailable", reason: "unexpected_error" };
       }
       if (token !== generation || (signal && signal.aborted)) return;
+      if (quiet && !(result && result.status === "ready")) return; // keep what is shown
 
       const retry = () => load();
       if (result && result.status === "ready") {
@@ -367,7 +377,7 @@ export function createCrewMonitorRenderer({ loadSnapshot, loadDetail, loadAlertD
           const { view, heading } = detailView(result, retry, (alert, trigger, n) => openAlert(result.profile, alert, trigger, n));
           root.replaceChildren(...view);
           centreStages(root);
-          if (focus && token === 1) heading.focus(); // opening a crew member moves focus to its name
+          if (focus && token === 1 && !quiet) heading.focus(); // opening a crew member moves focus to its name
         }
       } else {
         root.replaceChildren(refusalView(result, retry));

@@ -388,6 +388,7 @@ test("13. resolved alerts never affect the current status (seeded a-01 ALT-0181)
   const r = await seededService().service.getAstronautOverview(session(), { now: NOW });
   assert.equal(r.overall.level, "clear");
   assert.equal(r.alerts.openCount, 0);
+  assert.deepEqual(r.alerts.items.map((a) => [a.number, a.status]), [["ALT-0181", "resolved"]], "recently resolved alert remains visible on the body map");
   const service = fakeService({ alerts: [alert("ALT-1", "critical", "resolved")] }); // even if a repository returns it
   assert.equal((await service.getAstronautOverview(session(), { now: NOW })).overall.level, "clear");
 });
@@ -421,7 +422,7 @@ test("seeded alert states per astronaut: a-03 Info (ALT-0189), a-04 Watch (ALT-0
   assert.match(reyes.alerts.items[0].explanation, /below 6\.5 h/);
 });
 
-test("open alerts: at most three listed, most severe first, title falls back to type", async () => {
+test("body-map alerts: up to four current/recent alerts, most severe first, title falls back to type", async () => {
   const r = await fakeService({
     alerts: [
       alert("ALT-0001", "info", "new", { detectedAt: NOW - 1 }),
@@ -430,10 +431,10 @@ test("open alerts: at most three listed, most severe first, title falls back to 
       alert("ALT-0004", "warning", "new", { detectedAt: NOW - 2 }),
     ],
   }).getAstronautOverview(session(), { now: NOW });
-  assert.deepEqual(r.alerts.items.map((a) => a.number), ["ALT-0003", "ALT-0004", "ALT-0002"]);
+  assert.deepEqual(r.alerts.items.map((a) => a.number), ["ALT-0003", "ALT-0004", "ALT-0002", "ALT-0001"]);
   assert.equal(r.alerts.items[0].title, "Test alert");
   assert.equal(r.alerts.openCount, 4);
-  assert.equal(r.alerts.moreCount, 1);
+  assert.equal(r.alerts.moreCount, 0);
   assert.equal(r.overall.openAlertCount, 4);
 });
 

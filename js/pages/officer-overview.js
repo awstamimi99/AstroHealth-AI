@@ -14,9 +14,10 @@
 import { getCrewSnapshot } from "../services/crew-monitor-service.js";
 import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
+import { onHealthChanged, keepFocus } from "../core/live-updates.js";
 import { createBodyScan, createRing } from "../components/body-scan.js";
-import { alertPins, ringFraction } from "../components/vitals-stage.js";
-import { zoneForRule, ZONE_LABELS } from "../components/alert-zones.js";
+import { alertPins, ringFraction, severityLegend } from "../components/vitals-stage.js";
+import { zoneForRule, ZONE_LABELS, vitalSeverities } from "../components/alert-zones.js";
 import { formatNumber } from "../core/utils/format.js";
 import { dataBadges, loadingView, refusalView, section, sectionError, stateBadge, syntheticNotice, srOnly } from "../components/crew-view.js";
 
@@ -64,7 +65,7 @@ function summarySection(data, onRetry) {
 }
 
 /** A small ring for one of the snapshot's readings (value + unit as text; fill is a display scale). */
-function miniRing(member, item) {
+function miniRing(member, item, alertSeverity = "") {
   const ok = item.state === "ok";
   const visual = ok ? formatNumber(item.value, item.key === "sleepDuration" ? 1 : 0) : "—";
   return createRing({
@@ -73,7 +74,8 @@ function miniRing(member, item) {
     value: visual,
     unit: ok ? item.unit : "",
     fraction: ringFraction(item),
-    spoken: ok ? `${item.label}: ${visual} ${SPOKEN_UNIT[item.key] || item.unit}` : `${item.label}: no value`,
+    spoken: (ok ? `${item.label}: ${visual} ${SPOKEN_UNIT[item.key] || item.unit}` : `${item.label}: no value`) + (alertSeverity ? `. Open ${alertSeverity} alert for this measure` : ""),
+    alertSeverity,
     tags: ok ? dataBadges(item).filter(Boolean) : dataBadges(item),
   });
 }
@@ -85,6 +87,7 @@ function scanCard(member, navigate) {
   const top = member.alerts.status === "ok" ? member.alerts.top : null;
   const pins = top ? alertPins([top], { who: `${member.name}: top ` }).map((p) => ({ ...p, label: p.label.replace(/Open details\.$/, "Open crew member body scan.") })) : [];
   const items = MINI_RINGS.map((key) => member.vitals.items.find((i) => i.key === key)).filter(Boolean);
+  const severities = vitalSeverities(member.alerts.status === "ok" ? member.alerts.rules || [] : []);
   return el("article", { class: "scan-stage mo-scan-card", "aria-labelledby": titleId }, [
     el("div", { class: "mo-scan-card__head" }, [
       el("h3", { class: "scan-stage__title mo-scan-card__name", id: titleId }, `${member.name} · ${member.crewId}`),
@@ -92,7 +95,7 @@ function scanCard(member, navigate) {
     ]),
     el("div", { class: "mo-scan-card__main" }, [
       el("div", { class: "mo-scan-card__body" }, createBodyScan({ pins, hotspots: pins, onPinClick: () => navigate(href) })),
-      el("div", { class: "mo-scan-card__rings" }, items.map((item) => miniRing(member, item))),
+      el("div", { class: "mo-scan-card__rings" }, items.map((item) => miniRing(member, item, severities[item.key] || ""))),
     ]),
     el("p", { class: "scan-stage__note" },
       member.alerts.status === "error"
@@ -106,7 +109,10 @@ function scanCard(member, navigate) {
 
 function crewScanSection(data, navigate) {
   return section("mo-scan-title", "Crew body scan", [
-    el("p", { class: "crew__note" }, "Latest heart rate, SpO₂ and sleep for each crew member, in review order. Pin 1 marks the top open alert. The drawing and ring fill are illustrations only — not a health assessment. Open a crew member for all 4 readings and every open alert."),
+    el("div", { class: "mo-scan__intro" }, [
+      el("p", { class: "crew__note" }, "Latest heart rate, SpO₂ and sleep for each crew member, in review order. Pin 1 marks the top open alert; a ring takes the colour of an open alert for that measure. The drawing and ring fill are illustrations only — not a health assessment. Open a crew member for all 4 readings and every open alert."),
+      el("div", { class: "mo-scan__legend" }, severityLegend()),
+    ]),
     data.crew.length
       ? el("ul", { class: "mo-scan-grid", role: "list" }, data.crew.map((m) => el("li", {}, scanCard(m, navigate))))
       : el("p", { class: "crew__empty" }, "No crew profiles are stored on this device."),
@@ -134,16 +140,21 @@ function queueSection(data) {
 }
 
 /** TEST SEAM: tests pass a fake loader returning presentation data. Pages use renderMedicalOfficerOverview. */
-export function createMedicalOfficerOverviewRenderer({ loadSnapshot, navigate = (hash) => { globalThis.location.hash = hash; } }) {
+export function createMedicalOfficerOverviewRenderer({ loadSnapshot, navigate = (hash) => { globalThis.location.hash = hash; }, subscribe = onHealthChanged }) {
   return function render(container, session, { signal } = {}) {
     const root = el("div", { class: "crew crew--overview", "aria-busy": "false" });
     container.replaceChildren(root);
     let generation = 0;
 
-    async function load() {
+    // Live updates (crew-wide screen: every crew member's changes count).
+    subscribe({ signal, crewId: () => "", reload: () => keepFocus(root, () => load({ quiet: true })) });
+
+    async function load({ quiet = false } = {}) {
       const token = ++generation;
-      root.setAttribute("aria-busy", "true");
-      for (const b of root.querySelectorAll("[data-retry]")) b.disabled = true;
+      if (!quiet) {
+        root.setAttribute("aria-busy", "true");
+        for (const b of root.querySelectorAll("[data-retry]")) b.disabled = true;
+      }
       if (!root.childNodes.length) root.replaceChildren(...loadingView("Loading the crew overview…"));
       let result;
       try {
@@ -152,8 +163,14 @@ export function createMedicalOfficerOverviewRenderer({ loadSnapshot, navigate = 
         result = { status: "unavailable", reason: "unexpected_error" };
       }
       if (token !== generation || (signal && signal.aborted)) return;
+      if (quiet && !(result && result.status === "ready")) return; // keep what is shown
       const retry = () => load();
-      if (result && result.status === "ready") root.replaceChildren(headerSection(result), summarySection(result, retry), queueSection(result), crewScanSection(result, navigate));
+      if (result && result.status === "ready") root.replaceChildren(
+        headerSection(result),
+        crewScanSection(result, navigate),
+        summarySection(result, retry),
+        queueSection(result),
+      );
       else root.replaceChildren(refusalView(result, retry));
       root.setAttribute("aria-busy", "false");
     }
