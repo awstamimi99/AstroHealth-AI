@@ -503,3 +503,15 @@ Sign in as `medofficer` / `demo`:
 - [ ] Esc closes it and focus returns to the pin or list button
 - [ ] 1440 / 768 / 375 px: no page-level horizontal scrolling; on phones the crew member stage scrolls sideways inside its card
 - [ ] Astronaut Overview (`reyes`) still looks and works as in section 18
+
+## 20. Body-scan severity colours and layout polish (app version 0.10.4)
+
+- [ ] Pins are coloured by severity everywhere (astronaut Overview, Medical Officer Overview cards, crew member stage, style guide): critical magenta-pink with a squared marker and faster pulse, warning amber, info blue — never brand red
+- [ ] Each pin tag shows the severity icon and word (CRITICAL / WARNING / INFO) before the alert title; the zone has a matching glow and dashed ring
+- [ ] The stage footer shows the colour key (swatch + icon + word for Critical, Warning, Info)
+- [ ] The body looks rounded: shaded fill, brighter front / fainter back mesh rings, inner rim line, light beam and platform rings, frame corners
+- [ ] Reduced motion: no scan line, pin pulse or rotating zone ring
+- [ ] 1440 px, astronaut Overview: stage on the left with Alert status, Open alerts and Alert activity beside it; message and Go to stacked beside Today's routine; no half-empty cards
+- [ ] 1440 px, crew member page: Status, Open alerts and Cognitive check beside the stage; sleep shown as 7 night tiles
+- [ ] 768 / 375 px: everything stacks; no page-level horizontal scrolling
+- [ ] To see a critical pin with real data: as `medofficer`, Simulation Center → "Low oxygen saturation demonstration" → run it for a crew member, then open that crew member (Crew Monitor) — the SpO₂ alert pin sits on the chest

@@ -19,10 +19,17 @@
 // "Reduce motion" preference (CSS in css/components.css).
 
 import { el } from "../core/utils/dom.js";
+import { icon } from "./icon.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 export const BODY_VIEWBOX = Object.freeze({ width: 300, height: 640 });
 const UPPER_HEIGHT = 340;
+/** Severity shown on pins: colour + icon + word (never colour alone). */
+export const PIN_SEVERITY = Object.freeze({
+  critical: Object.freeze({ label: "Critical", icon: "circle-alert" }),
+  warning: Object.freeze({ label: "Warning", icon: "triangle-alert" }),
+  info: Object.freeze({ label: "Info", icon: "info" }),
+});
 
 /** Named zones in body coordinates (front view; "arm" is the figure's left arm, on the viewer's right). */
 export const ZONES = Object.freeze({
@@ -108,6 +115,17 @@ export function createBodyScan({ crop = "full", pins = [], hotspots = [], onPinC
       svg("stop", { offset: "0.85", class: "scan-body__scan-stop scan-body__scan-stop--soft" }),
       svg("stop", { offset: "1", class: "scan-body__scan-stop scan-body__scan-stop--line" }),
     ]),
+    // Volumetric shading: darker at the sides, lighter in the middle (a rounded, "3D" body).
+    svg("linearGradient", { id: `${id}-shade`, x1: "0", y1: "0", x2: "1", y2: "0" }, [
+      svg("stop", { offset: "0.1", class: "scan-body__shade-stop scan-body__shade-stop--edge" }),
+      svg("stop", { offset: "0.42", class: "scan-body__shade-stop scan-body__shade-stop--mid" }),
+      svg("stop", { offset: "0.9", class: "scan-body__shade-stop scan-body__shade-stop--edge" }),
+    ]),
+    // Light rising from the floor platform.
+    svg("linearGradient", { id: `${id}-beam`, x1: "0", y1: "1", x2: "0", y2: "0" }, [
+      svg("stop", { offset: "0", class: "scan-body__beam-stop scan-body__beam-stop--base" }),
+      svg("stop", { offset: "1", class: "scan-body__beam-stop scan-body__beam-stop--top" }),
+    ]),
     ...["critical", "warning", "info"].map((sev) => svg("radialGradient", { id: `${id}-hot-${sev}` }, [
       svg("stop", { offset: "0", class: `scan-body__hot-stop scan-body__hot-stop--${sev} scan-body__hot-stop--core` }),
       svg("stop", { offset: "1", class: `scan-body__hot-stop scan-body__hot-stop--${sev} scan-body__hot-stop--edge` }),
@@ -121,19 +139,32 @@ export function createBodyScan({ crop = "full", pins = [], hotspots = [], onPinC
 
   // Mesh clipped to the silhouette: horizontal rings + curved vertical lines.
   const mesh = svg("g", { class: "scan-body__mesh", "clip-path": `url(#${id}-clip)` });
-  for (let y = 26; y <= 630; y += 16) mesh.append(svg("ellipse", { cx: 150, cy: y, rx: 140, ry: 5 }));
+  // Each horizontal ring: a faint back half and a brighter front half, so the mesh reads as 3D.
+  for (let y = 26; y <= 630; y += 16) {
+    mesh.append(svg("path", { class: "scan-body__ring-back", d: `M10 ${y} A140 5 0 0 1 290 ${y}` }));
+    mesh.append(svg("path", { class: "scan-body__ring-front", d: `M10 ${y} A140 5 0 0 0 290 ${y}` }));
+  }
   for (let k = -6; k <= 6; k += 1) {
     const x = 150 + k * 20;
     mesh.append(svg("path", { d: `M${x} 0 Q${150 + k * 24} 320 ${x} 640` }));
   }
-  const fill = svg("g", { class: "scan-body__fill", "clip-path": `url(#${id}-clip)` }, [svg("rect", { x: 0, y: 0, width: 300, height: 640 })]);
+  const fill = svg("g", { class: "scan-body__fill", "clip-path": `url(#${id}-clip)` }, [svg("rect", { x: 0, y: 0, width: 300, height: 640, fill: `url(#${id}-shade)` })]);
+  const beam = crop === "upper" ? null : svg("path", { class: "scan-body__beam", d: "M48 632 L252 632 L214 300 L86 300 Z", fill: `url(#${id}-beam)` });
+  // Scanner frame: corner brackets and a height ruler (decorative).
+  const frame = svg("g", { class: "scan-body__frame" });
+  const c = 18;
+  for (const [x, y, dx, dy] of [[4, 4, 1, 1], [296, 4, -1, 1], [4, height - 4, 1, -1], [296, height - 4, -1, -1]]) {
+    frame.append(svg("path", { d: `M${x} ${y + dy * c} L${x} ${y} L${x + dx * c} ${y}` }));
+  }
+  for (let y = 40; y < height - 20; y += 40) frame.append(svg("line", { class: "scan-body__tick", x1: 4, y1: y, x2: y % 120 === 0 ? 14 : 9, y2: y }));
 
   // Hot spots (soft glows at zones).
   const hot = svg("g", { class: "scan-body__hotspots" });
   for (const h of Array.isArray(hotspots) ? hotspots : []) {
     const p = zonePoint(h.zone);
     const sev = ["critical", "warning", "info"].includes(h.severity) ? h.severity : "info";
-    hot.append(svg("circle", { cx: p.x, cy: p.y, r: 30, fill: `url(#${id}-hot-${sev})`, class: `scan-body__hotspot scan-body__hotspot--${sev}` }));
+    hot.append(svg("circle", { cx: p.x, cy: p.y, r: 34, fill: `url(#${id}-hot-${sev})`, class: `scan-body__hotspot scan-body__hotspot--${sev}` }));
+    hot.append(svg("circle", { cx: p.x, cy: p.y, r: 20, class: `scan-body__hot-ring scan-body__hot-ring--${sev}` }));
   }
 
   // Outline with glow, plus a scan line sweeping inside the silhouette.
@@ -141,10 +172,16 @@ export function createBodyScan({ crop = "full", pins = [], hotspots = [], onPinC
     svg("path", { d: OUTLINE }),
     svg("ellipse", { cx: 150, cy: 62, rx: 34, ry: 42 }),
   ]);
+  // Inner rim light, slightly inset, for depth.
+  const rim = svg("g", { class: "scan-body__rim", transform: "translate(150 330) scale(0.955 0.985) translate(-150 -330)" }, [
+    svg("path", { d: OUTLINE }),
+    svg("ellipse", { cx: 150, cy: 62, rx: 34, ry: 42 }),
+  ]);
   const scan = svg("g", { "clip-path": `url(#${id}-clip)` }, [
     svg("g", { class: "scan-body__scanline" }, [svg("rect", { x: 0, y: -40, width: 300, height: 40, fill: `url(#${id}-scan)` })]),
   ]);
   const floor = crop === "upper" ? null : svg("g", { class: "scan-body__floor" }, [
+    svg("ellipse", { cx: 150, cy: 630, rx: 120, ry: 11 }),
     svg("ellipse", { cx: 150, cy: 630, rx: 96, ry: 9 }),
     svg("ellipse", { cx: 150, cy: 630, rx: 64, ry: 5 }),
   ]);
@@ -155,7 +192,7 @@ export function createBodyScan({ crop = "full", pins = [], hotspots = [], onPinC
     preserveAspectRatio: "xMidYMid meet",
     "aria-hidden": "true",
     focusable: "false",
-  }, [defs, grid, fill, mesh, hot, outline, scan, floor]);
+  }, [defs, grid, frame, beam, fill, mesh, hot, rim, outline, scan, floor]);
 
   const root = el("div", { class: ["scan-body", crop === "upper" ? "scan-body--upper" : "", className], style: { "--scan-aspect": `${BODY_VIEWBOX.width} / ${height}` } }, [drawing]);
 
@@ -168,16 +205,22 @@ export function createBodyScan({ crop = "full", pins = [], hotspots = [], onPinC
     const left = (p.x / BODY_VIEWBOX.width) * 100;
     const top = ((p.y + k * 30) / height) * 100;
     if (top > 100) continue;
+    const sev = PIN_SEVERITY[pin.severity] ? pin.severity : "info";
     const button = el("button", {
       type: "button",
-      class: ["scan-pin", `scan-pin--${["critical", "warning", "info"].includes(pin.severity) ? pin.severity : "info"}`],
+      class: ["scan-pin", `scan-pin--${sev}`],
       style: { left: `${left.toFixed(2)}%`, top: `${top.toFixed(2)}%` },
       "aria-label": pin.label,
       "data-pin": String(pin.number),
     }, [
       el("span", { class: "scan-pin__pulse", "aria-hidden": "true" }),
       el("span", { class: "scan-pin__num", "aria-hidden": "true" }, String(pin.number)),
-      pin.tag ? el("span", { class: "scan-pin__tag", "aria-hidden": "true" }, pin.tag) : null,
+      pin.tag
+        ? el("span", { class: "scan-pin__tag", "aria-hidden": "true" }, [
+            el("span", { class: "scan-pin__sev" }, [icon(PIN_SEVERITY[sev].icon, { size: 12 }), PIN_SEVERITY[sev].label]),
+            el("span", { class: "scan-pin__title" }, pin.tag),
+          ])
+        : null,
     ]);
     if (typeof onPinClick === "function") button.addEventListener("click", () => onPinClick(pin, button));
     root.append(button);

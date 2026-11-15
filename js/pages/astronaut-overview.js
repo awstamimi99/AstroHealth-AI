@@ -32,7 +32,7 @@ import { getOwnHistory } from "../services/history-service.js";
 import { icon } from "../components/icon.js";
 import { createRing } from "../components/body-scan.js";
 import { zoneForRule, ZONE_LABELS } from "../components/alert-zones.js";
-import { createVitalsStage, alertPins, ringFraction, centreStages } from "../components/vitals-stage.js";
+import { createVitalsStage, alertPins, ringFraction, centreStages, severityLegend } from "../components/vitals-stage.js";
 import { alertPopupBody, alertTitle, loadAlertDetailSafely } from "../components/alert-popup.js";
 import { planForRule, PLAN_NOTICE, VIDEO_PLACEHOLDER } from "../components/action-plans.js";
 import { openDialog } from "../components/dialog.js";
@@ -217,16 +217,19 @@ function scanStageSection(data, onRetry, onOpenAlert) {
     ringFor: (item) => vitalRing(item, data, onRetry),
     onPinClick: (pin, button) => onOpenAlert(pin.alert, button, pin.number),
   });
-  return el("section", { class: "scan-stage ov-scan", "aria-labelledby": "ov-vitals-title" }, [
+  return el("section", { class: "scan-stage scan-stage--fill ov-scan", "aria-labelledby": "ov-vitals-title" }, [
     el("div", { class: "ov-scan__head" }, [
       el("h2", { class: "scan-stage__title", id: "ov-vitals-title" }, "Body scan · latest vital signs"),
       el("span", { class: "sim-tag" }, [icon("flask-conical", { size: 12 }), "SIMULATED"]),
     ]),
     el("p", { class: "scan-stage__note" }, "The most recent usable reading of each measure. Invalid readings are left out. Times are UTC."),
     stage,
-    el("p", { class: "scan-stage__note" },
-      "Illustration only: the body is a stylised drawing and the ring fill uses a fixed display scale — neither is a health assessment. " +
-        (pins.length ? "Numbered pins mark your open alerts; the same alerts are listed under Open alerts." : "You have no open alerts, so no pins are shown.")),
+    el("div", { class: "scan-stage__foot" }, [
+      severityLegend(),
+      el("p", { class: "scan-stage__note" },
+        "Illustration only: the body is a stylised drawing and the ring fill uses a fixed display scale — neither is a health assessment. " +
+          (pins.length ? "Numbered pins mark your open alerts, coloured by severity; the same alerts are listed under Open alerts." : "You have no open alerts, so no pins are shown.")),
+    ]),
   ]);
 }
 
@@ -444,15 +447,21 @@ export function medicalOfficerPlaceholder() {
 function readyView(data, onRetry, onOpenAlert, withActivity) {
   return [
     headerSection(data),
-    statusSection(data.overall, onRetry),
+    // Stage on the left; status, open alerts and activity stacked beside it (no half-empty rows).
     el("div", { class: "ov-scan-layout" }, [
       scanStageSection(data, onRetry, onOpenAlert),
-      el("div", { class: "ov-scan-layout__side" }, [sideAlertsSection(data.alerts, onRetry, onOpenAlert), withActivity ? activitySection() : null]),
+      el("div", { class: "ov-scan-layout__side" }, [
+        statusSection(data.overall, onRetry),
+        sideAlertsSection(data.alerts, onRetry, onOpenAlert),
+        withActivity ? activitySection() : null,
+      ]),
     ]),
-    messageSection(data.messages, data, onRetry),
-    routineSection(data.routine, data, onRetry),
+    // Short message + quick links stacked beside the taller routine.
+    el("div", { class: "ov-lower" }, [
+      el("div", { class: "ov-lower__col" }, [messageSection(data.messages, data, onRetry), quickLinksSection()]),
+      routineSection(data.routine, data, onRetry),
+    ]),
     sleepSection(data.sleep, onRetry),
-    quickLinksSection(),
   ];
 }
 

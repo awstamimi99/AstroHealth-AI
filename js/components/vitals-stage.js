@@ -15,7 +15,8 @@
 // meaning. Every pin must also be listed as text on the page.
 
 import { el } from "../core/utils/dom.js";
-import { createBodyScan, BODY_VIEWBOX, zonePoint } from "./body-scan.js";
+import { icon } from "./icon.js";
+import { createBodyScan, BODY_VIEWBOX, zonePoint, PIN_SEVERITY } from "./body-scan.js";
 import { zoneForRule, ZONE_LABELS, VITAL_ZONES } from "./alert-zones.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -119,4 +120,14 @@ export function centreStages(root) {
     const boxes = root && root.querySelectorAll ? [...root.querySelectorAll(".scan-stage__scroll")] : [];
     for (const box of boxes) if (box.scrollWidth > box.clientWidth) box.scrollLeft = (box.scrollWidth - box.clientWidth) / 2;
   });
+}
+
+/** Pin colour key: swatch + icon + word for each severity (colour is never the only cue). */
+export function severityLegend() {
+  return el("ul", { class: "scan-legend", role: "list", "aria-label": "Pin colours by alert severity" },
+    ["critical", "warning", "info"].map((sev) => el("li", { class: ["scan-legend__item", `scan-legend__item--${sev}`] }, [
+      el("span", { class: "scan-legend__swatch", "aria-hidden": "true" }),
+      icon(PIN_SEVERITY[sev].icon, { size: 12 }),
+      PIN_SEVERITY[sev].label,
+    ])));
 }

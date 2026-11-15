@@ -289,21 +289,22 @@
   gap: var(--space-4);
 }
 
+/* Lower row: the short message card and quick links stacked beside the taller routine. */
+.ov-lower,
+.ov-lower__col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
 @media (min-width: 960px) {
-  .overview {
+  .ov-lower {
     display: grid;
-    grid-template-columns: minmax(0, 0.82fr) minmax(420px, 1.18fr);
-    align-items: start;
-    gap: var(--space-6);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: stretch;
   }
-  .overview > .overview__header,
-  .overview > .ov-scan-layout,
-  .overview > [aria-labelledby="ov-status-title"],
-  .overview > [aria-labelledby="ov-sleep-title"] {
-    grid-column: 1 / -1;
-  }
-  .overview > .overview__section {
-    height: 100%;
+  .ov-lower__col > .overview__section:last-child {
+    flex: 1;
   }
 }
 
@@ -326,14 +327,14 @@
 .ov-scan-layout__side {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-4);
   min-width: 0;
 }
 @media (min-width: 1200px) {
   .ov-scan-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
-    align-items: start;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    align-items: stretch; /* the dark stage grows to the side column's height */
   }
 }
 .ov-scan {

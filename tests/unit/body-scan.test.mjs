@@ -27,7 +27,11 @@ test("body: decorative SVG with clip path, glow filter, mesh, outline, scan line
   assert.equal(svg.getAttribute("viewBox"), "0 0 300 640");
   for (const tag of ["clipPath", "filter", "linearGradient"]) assert.ok(all(svg, (e) => e.tagName.toLowerCase() === tag.toLowerCase()).length >= 1, tag);
   for (const cls of ["scan-body__mesh", "scan-body__outline", "scan-body__scanline", "scan-body__floor", "scan-body__grid"]) assert.equal(byClass(svg, cls).length, 1, cls);
-  assert.ok(byTag(byClass(svg, "scan-body__mesh")[0], "ellipse").length > 20, "horizontal mesh rings");
+  assert.ok(byClass(svg, "scan-body__ring-front").length, "front mesh rings");
+  const mesh = byClass(svg, "scan-body__mesh")[0];
+  assert.ok(byClass(mesh, "scan-body__ring-front").length > 20, "horizontal mesh rings (front halves)");
+  assert.equal(byClass(mesh, "scan-body__ring-front").length, byClass(mesh, "scan-body__ring-back").length, "each ring has a faint back half");
+  for (const cls of ["scan-body__rim", "scan-body__frame", "scan-body__beam"]) assert.equal(byClass(svg, cls).length, 1, cls);
   assert.equal(byClass(body, "scan-pin").length, 0);
 });
 
@@ -70,8 +74,12 @@ test("pins: real buttons with aria-label, number, pulse and tag; click calls onP
   assert.ok(p1.classList.includes("scan-pin--critical"));
   assert.equal(byClass(p1, "scan-pin__num")[0].textContent, "1");
   assert.equal(byClass(p1, "scan-pin__pulse").length, 1);
-  assert.equal(byClass(p1, "scan-pin__tag")[0].textContent, "Low SpO₂");
-  for (const span of byTag(p1, "span")) assert.equal(span.getAttribute("aria-hidden"), "true", "the aria-label is the accessible name");
+  const tag = byClass(p1, "scan-pin__tag")[0];
+  assert.equal(byClass(tag, "scan-pin__title")[0].textContent, "Low SpO₂");
+  const sev = byClass(tag, "scan-pin__sev")[0];
+  assert.equal(sev.textContent, "Critical", "severity word, not colour alone");
+  assert.equal(byTag(sev, "svg").length, 1, "severity icon");
+  for (const span of p1.childNodes) assert.equal(span.getAttribute("aria-hidden"), "true", "the aria-label is the accessible name");
   assert.equal(byClass(p2, "scan-pin__tag").length, 0);
   assert.notEqual(p1.style.top, p2.style.top, "pins on one zone don't overlap");
   p2.click();
@@ -91,8 +99,8 @@ test("pins: labels and tags are inserted as text, never markup", () => {
   const body = scan.createBodyScan({ pins: [{ ...PIN, label: '<img src=x onerror="1">', tag: "<b>x</b>" }] });
   assert.equal(byTag(body, "img").length, 0);
   assert.equal(byTag(body, "b").length, 0);
-  assert.equal(byClass(body, "scan-pin__tag")[0].textContent, "<b>x</b>");
-  assert.ok(all(body, (e) => Boolean(e.svgMarkup)).length === 0, "nothing uses innerHTML");
+  assert.equal(byClass(body, "scan-pin__title")[0].textContent, "<b>x</b>");
+  assert.ok(all(body, (e) => Boolean(e.svgMarkup) && !String(e.getAttribute("class") || "").startsWith("icon")).length === 0, "only built-in icons receive markup");
 });
 
 test("ring: labelled figure, real text value/unit/baseline, arc only with a value, clamped display scale", () => {
@@ -245,4 +253,20 @@ test("plan progress: blocked storage keeps ticks in memory for this tab and says
     assert.deepEqual(r, { ok: true, done: ["recent"], persisted: false });
     assert.deepEqual(p.get("u-reyes", "ALT-0190", ALLOWED), ["recent"]);
   }
+});
+
+test("pins and hot spots: each severity has its own class; hot spots get a severity ring; legend shows swatch + icon + word", async () => {
+  const body = scan.createBodyScan({
+    pins: ["critical", "warning", "info"].map((severity, i) => ({ ...PIN, number: i + 1, severity, zone: ["lungs", "head", "arm"][i] })),
+    hotspots: [{ zone: "lungs", severity: "critical" }, { zone: "head", severity: "warning" }],
+  });
+  assert.deepEqual(byClass(body, "scan-pin").map((p) => p.getAttribute("class")), ["scan-pin scan-pin--critical", "scan-pin scan-pin--warning", "scan-pin scan-pin--info"]);
+  assert.deepEqual(byClass(body, "scan-pin__sev").map((e) => e.textContent), ["Critical", "Warning", "Info"]);
+  assert.equal(byClass(body, "scan-body__hot-ring--critical").length, 1);
+  assert.equal(byClass(body, "scan-body__hot-ring--warning").length, 1);
+  const { severityLegend } = await import("../../js/components/vitals-stage.js");
+  const legend = severityLegend();
+  assert.equal(legend.tagName, "UL");
+  assert.deepEqual(byTag(legend, "li").map((li) => li.textContent), ["Critical", "Warning", "Info"]);
+  assert.ok(byTag(legend, "li").every((li) => byTag(li, "svg").length === 1 && byClass(li, "scan-legend__swatch").length === 1));
 });

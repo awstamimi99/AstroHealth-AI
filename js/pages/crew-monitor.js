@@ -23,7 +23,7 @@ import { getCrewSnapshot, getCrewMemberDetail } from "../services/crew-monitor-s
 import { getAlertDetail } from "../services/alerts-service.js";
 import { createRing } from "../components/body-scan.js";
 import { zoneForRule, ZONE_LABELS } from "../components/alert-zones.js";
-import { createVitalsStage, alertPins, ringFraction, centreStages } from "../components/vitals-stage.js";
+import { createVitalsStage, alertPins, ringFraction, centreStages, severityLegend } from "../components/vitals-stage.js";
 import { alertPopupBody, alertTitle, loadAlertDetailSafely } from "../components/alert-popup.js";
 import { openDialog } from "../components/dialog.js";
 import { icon } from "../components/icon.js";
@@ -167,7 +167,7 @@ function numberedAlerts(alerts, onOpenAlert) {
       el("span", { class: ["alert-num", `alert-num--${a.severity}`], "aria-hidden": "true" }, String(i + 1)),
       el("div", { class: "alert-item__body" }, [
         el("button", { type: "button", class: "alert-open", "data-alert-open": String(i + 1), onClick: (e) => onOpenAlert(a, e.target && e.target.closest ? e.target.closest("button") : null, i + 1) }, alertTitle(a)),
-        a.explanation ? el("p", { class: "alert-item__text" }, a.explanation) : null,
+        // The explanation is in the pop-up ("What was detected"); the list stays compact beside the stage.
         el("p", { class: "crew__tags" }, [
           badge(view.badge, view.icon, view.label),
           badge("badge--neutral", "clock", STATUS_LABEL[a.status] || a.status),
@@ -255,13 +255,8 @@ function detailView(data, onRetry, onOpenAlert) {
       el("p", { class: "crew__subtitle" }, `${p.missionRole} · read-only view`),
       syntheticNotice(),
     ]),
-    section("crew-detail-status-title", "Status", [
-      el("p", { class: "crew__tags" }, stateBadge(data.state, "crew__status-badge")),
-      el("p", { class: "crew__text" }, data.state.reason),
-      el("p", { class: "crew__note" }, data.state.note),
-    ]),
     el("div", { class: "crew-scan-layout" }, [
-      el("section", { class: "scan-stage crew-scan", "aria-labelledby": "crew-detail-vitals-title" }, [
+      el("section", { class: "scan-stage scan-stage--fill crew-scan", "aria-labelledby": "crew-detail-vitals-title" }, [
         el("div", { class: "crew-scan__head" }, [
           el("h2", { class: "scan-stage__title", id: "crew-detail-vitals-title" }, "Body scan · latest readings"),
           el("span", { class: "sim-tag" }, [icon("flask-conical", { size: 12 }), "SIMULATED"]),
@@ -273,19 +268,35 @@ function detailView(data, onRetry, onOpenAlert) {
           ringFor: (item) => vitalRing(item, data.generatedAt, onRetry),
           onPinClick: (pin, button) => onOpenAlert(pin.alert, button, pin.number),
         }),
-        el("p", { class: "scan-stage__note" },
-          "Illustration only: the body is a stylised drawing and the ring fill uses a fixed display scale — neither is a health assessment. " +
-            (alerts.status === "ok" && alerts.items.length ? "Numbered pins mark open alerts; the same alerts are listed under Open alerts." : "No pins: no open alerts are shown.")),
+        el("div", { class: "scan-stage__foot" }, [
+          severityLegend(),
+          el("p", { class: "scan-stage__note" },
+            "Illustration only: the body is a stylised drawing and the ring fill uses a fixed display scale — neither is a health assessment. " +
+              (alerts.status === "ok" && alerts.items.length ? "Numbered pins mark open alerts, coloured by severity; the same alerts are listed under Open alerts." : "No pins: no open alerts are shown.")),
+        ]),
       ]),
-      section("crew-detail-alerts-title", "Open alerts", [
-        alerts.status === "error"
-          ? sectionError(onRetry, "open alerts")
-          : alerts.items.length
-            ? numberedAlerts(alerts, onOpenAlert)
-            : el("p", { class: "crew__empty" }, "No open alerts."),
-        el("p", { class: "crew__note" }, "Acknowledge and resolve on the Alerts page, where every action is recorded."),
-        el("p", {}, el("a", { class: "btn btn--secondary btn--sm", href: "#/alerts" }, [icon("bell"), "Open Alerts page"])),
-      ], "crew-scan-layout__side"),
+      // Status, open alerts and the cognitive check beside the stage (no half-empty rows).
+      el("div", { class: "crew-scan-layout__side" }, [
+        section("crew-detail-status-title", "Status", [
+          el("p", { class: "crew__tags" }, stateBadge(data.state, "crew__status-badge")),
+          el("p", { class: "crew__text" }, data.state.reason),
+          el("p", { class: "crew__note" }, data.state.note),
+        ]),
+        section("crew-detail-alerts-title", "Open alerts", [
+          alerts.status === "error"
+            ? sectionError(onRetry, "open alerts")
+            : alerts.items.length
+              ? numberedAlerts(alerts, onOpenAlert)
+              : el("p", { class: "crew__empty" }, "No open alerts."),
+          el("p", { class: "crew__note" }, "Acknowledge and resolve on the Alerts page, where every action is recorded."),
+          el("p", {}, el("a", { class: "btn btn--secondary btn--sm", href: "#/alerts" }, [icon("bell"), "Open Alerts page"])),
+        ]),
+        section("crew-detail-cognitive-title", "Cognitive check", [
+          data.cognitive.status === "error"
+            ? sectionError(onRetry, "cognitive checks")
+            : el("p", { class: "crew__text" }, data.cognitive.lastAt ? ["Last completed ", ...stamp(data.cognitive.lastAt, data.generatedAt)] : "No cognitive check recorded."),
+        ]),
+      ]),
     ]),
     sharedWellbeingSection(data.sharedWellbeing, onRetry),
     section("crew-detail-sleep-title", "Sleep — last 7 nights", [
@@ -294,13 +305,12 @@ function detailView(data, onRetry, onOpenAlert) {
         : el("p", { class: "crew__text" }, sleepText),
       sleep.status === "error" || !sleep.recorded
         ? null
-        : el("ul", { class: "crew__plain-list crew-sleep", role: "list" },
-            sleep.nights.map((n) => el("li", {}, `${formatDate(Date.parse(`${n.date}T00:00:00.000Z`), { timeZone: "UTC" })}: ${n.hours === null ? "No data" : `${formatNumber(n.hours, 1)} h`}`))),
-    ]),
-    section("crew-detail-cognitive-title", "Cognitive check", [
-      data.cognitive.status === "error"
-        ? sectionError(onRetry, "cognitive checks")
-        : el("p", { class: "crew__text" }, data.cognitive.lastAt ? ["Last completed ", ...stamp(data.cognitive.lastAt, data.generatedAt)] : "No cognitive check recorded."),
+        : el("ul", { class: "crew-sleep", role: "list" },
+            sleep.nights.map((n) => el("li", { class: ["crew-sleep__night", n.hours === null ? "is-missing" : ""] }, [
+              el("span", { class: "crew-sleep__date" }, formatDate(Date.parse(`${n.date}T00:00:00.000Z`), { timeZone: "UTC" })),
+              srOnly(": "),
+              el("span", { class: "crew-sleep__value" }, n.hours === null ? "No data" : `${formatNumber(n.hours, 1)} h`),
+            ]))),
     ]),
     messagesSection(data.messages, data, onRetry),
   ];

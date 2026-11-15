@@ -354,11 +354,17 @@
   gap: var(--space-6);
   min-width: 0;
 }
+.crew-scan-layout__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
 @media (min-width: 1200px) {
   .crew-scan-layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
-    align-items: start;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    align-items: stretch; /* the dark stage grows to the side column's height */
   }
 }
 .crew-scan {
@@ -410,29 +416,37 @@
   font-size: var(--text-md);
 }
 .mo-scan-card__main {
-  display: flex;
-  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
+  gap: var(--space-2);
 }
 .mo-scan-card__body {
   position: relative;
-  flex: 0 0 104px;
-  width: 104px;
+  justify-self: center;
+  width: min(118px, 100%);
 }
 .mo-scan-card__rings {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 .mo-scan-card .scan-ring {
-  width: 96px;
-  gap: var(--space-1);
+  width: 92px;
+  gap: 2px;
 }
 .mo-scan-card .scan-ring__face {
-  width: 68px;
-  height: 68px;
+  width: 62px;
+  height: 62px;
+}
+.mo-scan-card .scan-ring__label {
+  font-size: var(--text-2xs);
+}
+.mo-scan-card .scan-stage__note {
+  margin: 0;
+}
+.mo-scan-card > p:last-child {
+  margin: auto 0 0; /* the link sits at the bottom of equal-height cards */
 }
 .mo-scan-card .scan-ring__number {
   font-size: var(--text-md);
@@ -452,4 +466,39 @@
   border-radius: var(--radius-sm);
   outline: 2px solid var(--color-scan-text);
   outline-offset: 2px;
+}
+
+/* #/crew/AH-0n sleep: 7 compact night tiles instead of one line per night. */
+.crew-sleep {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.crew-sleep__night {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-elevated);
+}
+.crew-sleep__night.is-missing {
+  border-style: dashed;
+}
+.crew-sleep__date {
+  color: var(--color-text-3);
+  font-size: var(--text-2xs);
+}
+.crew-sleep__value {
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 699px) {
+  .crew-sleep {
+    grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  }
 }

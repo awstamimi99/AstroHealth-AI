@@ -65,7 +65,7 @@ test("ready Overview: sections in the approved order with unique heading ids", a
   const root = container.childNodes[0];
   assert.equal(root.getAttribute("aria-busy"), "false");
   const order = all(root, (e) => e.tagName === "SECTION").map((s) => s.getAttribute("aria-labelledby"));
-  assert.deepEqual(order, ["ov-welcome-title", "ov-status-title", "ov-vitals-title", "ov-alerts-title", "ov-message-title", "ov-routine-title", "ov-sleep-title", "ov-links-title"]);
+  assert.deepEqual(order, ["ov-welcome-title", "ov-vitals-title", "ov-status-title", "ov-alerts-title", "ov-message-title", "ov-links-title", "ov-routine-title", "ov-sleep-title"]);
   const ids = all(root, (e) => e.hasAttribute("id")).map((e) => e.getAttribute("id"));
   assert.equal(new Set(ids).size, ids.length, "ids are unique");
   for (const id of order) assert.equal(byId(root, id).tagName, "H2", id);
