@@ -20,6 +20,10 @@ export class FakeNode {
     this.childNodes = [];
     this.append(...nodes);
   }
+  remove() {
+    if (this.parentNode) this.parentNode.childNodes = this.parentNode.childNodes.filter((c) => c !== this);
+    this.parentNode = null;
+  }
   get textContent() { return this.childNodes.map((c) => c.textContent).join(""); }
   set textContent(v) { this.replaceChildren(String(v)); }
 }
@@ -50,7 +54,7 @@ export class FakeElement extends FakeNode {
   addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); }
   click() { for (const fn of this.listeners.click || []) fn({ target: this, preventDefault() {} }); }
   /** Fire listeners for any event type (e.g. "submit", "change"). */
-  dispatch(type) { for (const fn of this.listeners[type] || []) fn({ target: this, preventDefault() {} }); }
+  dispatch(type, extra = {}) { for (const fn of this.listeners[type] || []) fn({ target: this, preventDefault() {}, ...extra }); }
   /** Inputs: value reflects the attribute (enough for radio groups). */
   get value() { return this.getAttribute("value") ?? ""; }
   set innerHTML(v) { this.svgMarkup = String(v); } // only icon() uses it, with built-in SVG markup

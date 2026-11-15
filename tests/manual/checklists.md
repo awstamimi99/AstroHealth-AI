@@ -462,3 +462,15 @@ Reload once so the service worker cache `astrohealth-v0.10.0` takes over.
 - [ ] The SIMULATED tag is neutral grey (it is a label, not an action)
 - [ ] Logo, favicon and app icons are red; the full logo's text is dark and readable on the light pages
 - [ ] Style guide (`tests/browser/styleguide.html`) shows the red palette and the `scan-*` tokens
+
+## 17. Body scan component (body-scan redesign, phase 1 — app version 0.10.1)
+
+Style guide (`tests/browser/styleguide.html`, section "Body scan stage, pins, rings & drawer"):
+
+- [ ] Dark stage card; the wireframe body has a glowing cyan outline, horizontal and vertical mesh lines inside the silhouette, a floor ring and a slow scan line
+- [ ] The "upper" crop shows head to waist without the floor ring
+- [ ] Pins show a number, a pulse ring and a text tag; critical is pink-magenta, warning amber, info blue — each pin's aria-label names the severity in words
+- [ ] Tab reaches every pin (visible focus outline); Enter/Space opens the example pop-up; Esc, Close and a click outside close it and focus returns to the pin
+- [ ] Pin 3 opens the drawer from the right; Tab / Shift+Tab stay inside it
+- [ ] Reduced motion (system setting or Settings → Reduce motion): no scan line, no pin pulse, no drawer slide
+- [ ] Screen reader: the drawing itself is not announced; pins and ring labels/values are

@@ -36,6 +36,9 @@
     .sg-type { display: grid; gap: var(--space-3); }
     .sg-type__row { display: flex; align-items: baseline; gap: var(--space-5); border-bottom: 1px solid var(--color-border-subtle); padding-bottom: var(--space-2); }
     .sg-type__row code { width: 150px; flex-shrink: 0; color: var(--color-text-3); font-size: var(--text-2xs); }
+    .sg-scan { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-6); }
+    .sg-scan__body { width: 220px; }
+    .sg-scan__rings { display: flex; flex-direction: column; gap: var(--space-6); }
     .sg-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: var(--space-2); }
     .sg-icon { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-4) var(--space-2); background: var(--color-card); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); }
     .sg-icon .icon { width: 22px; height: 22px; }
@@ -357,6 +360,13 @@
         <span class="avatar avatar--brand">MO</span>
         <span class="avatar avatar--lg">RS</span>
       </div>
+    </section>
+
+    <!-- ===================================================== Body scan -->
+    <section aria-labelledby="h-scan">
+      <h2 id="h-scan">Body scan stage, pins, rings &amp; drawer</h2>
+      <p>From <code>js/components/body-scan.js</code>: <code>createBodyScan({ crop, pins, hotspots, onPinClick })</code>, <code>createRing()</code> and <code>scanStage()</code>; pop-ups and drawers from <code>openDialog()</code> in <code>js/components/dialog.js</code>. The body is decorative (aria-hidden). Pins are &ge; 44 px buttons and must also be listed as text. Ring fill is a display scale only, never a status. Colours come only from the <code>--color-scan-*</code> tokens.</p>
+      <div id="scan-demo"></div>
     </section>
 
     <!-- ===================================================== Icons -->
