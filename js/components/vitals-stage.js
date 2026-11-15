@@ -17,8 +17,7 @@
 
 import { el } from "../core/utils/dom.js";
 import { icon } from "./icon.js";
-import { BODY_VIEWBOX, zonePoint, PIN_SEVERITY } from "./body-scan.js";
-import { createBody3D } from "./body-3d.js";
+import { createBodyScan, BODY_VIEWBOX, zonePoint, PIN_SEVERITY } from "./body-scan.js";
 import { zoneForRule, ZONE_LABELS, VITAL_ZONES, vitalSeverities } from "./alert-zones.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -108,7 +107,7 @@ function connectors(items) {
 export function createVitalsStage({ items = [], pins = [], ringFor, onPinClick = null }) {
   const severities = vitalSeverities(pins.map((p) => p.alert));
   const placed = items.filter((item) => RING_POSITIONS[item.key]);
-  const body = createBody3D({
+  const body = createBodyScan({
     pins,
     hotspots: pins.map((p) => ({ zone: p.zone, severity: p.severity })),
     onPinClick,

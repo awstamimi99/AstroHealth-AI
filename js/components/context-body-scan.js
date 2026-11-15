@@ -1,6 +1,6 @@
 // Shared page-aware body scan. Callers pass authorized presentation data;
 // this component never reads storage or evaluates health.
-import { createBody3D } from "./body-3d.js";
+import { createBodyScan } from "./body-scan.js";
 import { icon } from "./icon.js";
 import { el } from "../core/utils/dom.js";
 
@@ -17,7 +17,7 @@ function activate(pin) {
 
 export function createContextBodyScan({ id, title, description, pins = [], crop = "full", compact = false, eyebrow = "Interactive body map", note = "Select a numbered point to move to its related information." } = {}) {
   const safePins = Array.isArray(pins) ? pins.filter(Boolean) : [];
-  const scan = createBody3D({ crop, pins: safePins, hotspots: safePins, onPinClick: activate });
+  const scan = createBodyScan({ crop, pins: safePins, hotspots: safePins, onPinClick: activate });
   const key = safePins.length
     ? el("ol", { class: "context-scan__key", role: "list" }, safePins.map((pin) => el("li", { class: "context-scan__key-item" },
         el("button", { class: "context-scan__key-button", type: "button", onClick: () => activate(pin), "aria-label": pin.label }, [

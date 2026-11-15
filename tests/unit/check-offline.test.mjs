@@ -70,11 +70,6 @@ test("comments and the SVG namespace are still ignored", () => {
   assert.equal(r.code, 0, r.out);
 });
 
-test("the XHTML namespace is allowed only as the exact identifier", () => {
-  assert.equal(runOn({ "vendor/x.js": 'const NS = "http://www.w3.org/1999/xhtml";' }).code, 0);
-  assert.equal(runOn({ "vendor/x.js": 'fetch("http://www.w3.org/1999/xhtml/evil.js");' }).code, 1);
-});
-
 test("4. the real repository passes", () => {
   const r = spawnSync(process.execPath, [SCRIPT], { encoding: "utf8" });
   assert.equal(r.status, 0, r.stdout + r.stderr);

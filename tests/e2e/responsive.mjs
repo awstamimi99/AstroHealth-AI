@@ -164,8 +164,7 @@ const AUDIT = `(() => {
     });
     hidden.push((/(auto|scroll)/.test(st.overflowX) ? "scrolls " : "clips ") + desc(el) + " [+" + extra + "px]" + (culprit ? " ← " + desc(culprit) + " (" + Math.round(culprit.getBoundingClientRect().width) + "px wide)" : ""));
   }
-  const bodies = { d3: document.querySelectorAll('[data-body3d="3d"]').length, d2: document.querySelectorAll('[data-body3d="2d"]').length };
-  return { W, docW, offenders: out.slice(0, 12), hidden: hidden.slice(0, 12), bodies };
+  return { W, docW, offenders: out.slice(0, 12), hidden: hidden.slice(0, 12) };
 })()`;
 
 // ---- pages ------------------------------------------------------------------------------
@@ -217,13 +216,12 @@ async function auditPage(label, open) {
     const ok = !pageScroll && a.offenders.length === 0;
     const name = `${label.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "")}_${width}`;
     if (!ok || SHOT_WIDTHS.has(width)) await screenshot(ok ? name : `FAIL_${name}`);
-    results.push({ page: label, width, ok, pageWidth: a.docW, viewport: a.W, offenders: a.offenders, hidden: a.hidden, bodies: a.bodies });
+    results.push({ page: label, width, ok, pageWidth: a.docW, viewport: a.W, offenders: a.offenders, hidden: a.hidden });
     if (!ok) console.log(`FAIL ${label} @ ${width}px — page ${a.docW}px wide${a.offenders.length ? "\n      " + a.offenders.join("\n      ") : ""}`);
     if (a.hidden.length) console.log(`WARN ${label} @ ${width}px — content hidden sideways:\n      ${a.hidden.join("\n      ")}`);
   }
   const bad = results.filter((r) => r.page === label && !r.ok).length;
-  const b = results.filter((r) => r.page === label).at(-1)?.bodies;
-  console.log(`${bad ? "✖" : "✔"} ${label} (${WIDTHS.length - bad}/${WIDTHS.length} widths)${b && (b.d3 || b.d2) ? ` · bodies: ${b.d3} in 3D, ${b.d2} in 2D` : ""}`);
+  console.log(`${bad ? "✖" : "✔"} ${label} (${WIDTHS.length - bad}/${WIDTHS.length} widths)`);
 }
 
 try {

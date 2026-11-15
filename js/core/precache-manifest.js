@@ -49,7 +49,6 @@ self.PRECACHE_URLS = [
   "./js/components/alert-lifecycle.js",
   "./js/components/alert-popup.js",
   "./js/components/alert-zones.js",
-  "./js/components/body-3d.js",
   "./js/components/body-scan.js",
   "./js/components/context-body-scan.js",
   "./js/components/crew-view.js",
@@ -139,6 +138,5 @@ self.PRECACHE_URLS = [
   "./login.html",
   "./manifest.webmanifest",
   "./vendor/chart.js/chart.umd.min.js",
-  "./vendor/lucide/icons.js",
-  "./vendor/three/three.module.min.js"
+  "./vendor/lucide/icons.js"
 ];

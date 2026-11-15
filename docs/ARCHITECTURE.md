@@ -68,20 +68,6 @@ e.g. a new alert appears in all tabs. Suggested event names use
 `noun:verb` — `measurement:added`, `alert:new`, `alert:acknowledged`,
 `simulation:started`, `session:changed`, `sw:status`.
 
-### 3D body (three.js)
-
-`js/components/body-3d.js` draws a rotatable 3D body with alert pins, used by
-the vitals stage (astronaut Overview, Crew Monitor detail) and every context
-body map (Physical, Wellbeing, History, Alerts, Reports). three.js 0.170.0
-(MIT) is a pinned dev dependency, copied to `vendor/three/` by
-`scripts/copy-vendor.mjs` and loaded on demand with a relative
-`import()` — no CDN. The 2D body (`body-scan.js`) is shown first and stays
-when WebGL or the import is unavailable. Pins are real buttons that follow
-their zone; resolved alerts are never pinned. The figure is an original,
-stylised illustration and carries no health meaning. `check:offline`
-allows exactly the XHTML namespace string used inside three.js (an XML
-identifier, never fetched).
-
 ### Service worker
 
 - Cache name `astrohealth-v<version>`; old caches are deleted on activate.
