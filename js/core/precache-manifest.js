@@ -6,7 +6,6 @@
 self.PRECACHE_URLS = [
   "./",
   "./about.html",
-  "./ai8091.log",
   "./app.html",
   "./assets/app-icons/apple-touch-icon.png",
   "./assets/app-icons/favicon.svg",

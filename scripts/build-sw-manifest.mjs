@@ -24,7 +24,7 @@ const EXCLUDE_FILES = new Set([
 ]);
 // File types we never need offline. Video guides (assets/guides/*.mp4, tens of MB) are
 // streamed on demand instead of being downloaded on every install.
-const EXCLUDE_EXT = [".md", ".map", ".gitkeep", ".mp4", ".webm", ".mov"];
+const EXCLUDE_EXT = [".md", ".map", ".gitkeep", ".log", ".mp4", ".webm", ".mov"];
 // Licence files are kept in the repo but are not needed at runtime.
 const EXCLUDE_NAMES = new Set(["LICENSE", "LICENSE.md", ".gitkeep"]);
 
