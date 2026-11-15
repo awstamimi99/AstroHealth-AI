@@ -21,6 +21,8 @@ import { formatDate } from "../core/utils/format.js";
 import { badge, loadingView, section, srOnly, syntheticNotice, utcTime } from "../components/crew-view.js";
 import { refusalView } from "../components/health-view.js";
 import { createContextBodyScan } from "../components/context-body-scan.js";
+import { upgradeToCards } from "../components/crew-body-cards.js";
+import { getCrewSnapshot } from "../services/crew-monitor-service.js";
 
 const BASE = "history";
 const CATEGORY_VIEW = {
@@ -67,7 +69,7 @@ function historyScan(data) {
 }
 
 /** TEST SEAM. Production uses renderHistory. */
-export function createHistoryRenderer({ service, subscribe = onHealthChanged }) {
+export function createHistoryRenderer({ service, loadCards = null, subscribe = onHealthChanged }) {
   return function render(container, session, { signal, hash = "#/history", focus = false } = {}) {
     const route = parseHistoryRoute(hash);
     const live = el("p", { class: "sr-only", role: "status", "aria-live": "polite" });
@@ -112,7 +114,7 @@ export function createHistoryRenderer({ service, subscribe = onHealthChanged }) 
       if (token !== st.generation || aborted()) return;
       if (quiet) {
         if (!(res && res.status === "ready")) return; // keep what is shown
-        if (officer && route.view === "base") return void content.replaceChildren(picker(res.crew));
+        if (officer && route.view === "base") return void showPicker(res.crew, token, true);
         const added = st.data ? Math.max(0, res.totalAvailable - st.data.totalAvailable) : 0;
         st.data = res;
         st.visible = Math.max(st.visible, res.pageSize);
@@ -122,7 +124,7 @@ export function createHistoryRenderer({ service, subscribe = onHealthChanged }) 
       }
       root.setAttribute("aria-busy", "false");
       if (res && res.status === "ready" && officer && route.view === "base") {
-        content.replaceChildren(picker(res.crew));
+        showPicker(res.crew, token, false);
       } else if (res && res.status === "ready") {
         st.data = res;
         st.visible = res.pageSize;
@@ -136,6 +138,12 @@ export function createHistoryRenderer({ service, subscribe = onHealthChanged }) 
         st.focusHeading = false;
         for (const n of content.querySelectorAll("[data-heading]")) n.focus();
       }
+    }
+
+    const PICKER_TEXT = { id: "history-picker-title", title: "Health history · choose a crew member", intro: "Shows recorded activity for one crew member: readings, shared check-in activity, alerts, messages and simulations. Private journal entries and private check-ins are never shown.", action: "Open health history" };
+    function showPicker(crew, token, quiet) {
+      if (!quiet || !content.querySelector?.(".body-cards")) content.replaceChildren(picker(crew));
+      upgradeToCards({ host: content, loadCards, session, isCurrent: () => token === st.generation && !aborted(), base: BASE, text: PICKER_TEXT });
     }
 
     function picker(crew) {
@@ -224,4 +232,5 @@ export const renderHistory = createHistoryRenderer({
     getCrewMemberHistory: (s, c, f) => getCrewMemberHistory(s, c, f),
     listCrewForHistorySelection: (s) => listCrewForHistorySelection(s),
   }),
+  loadCards: (session) => getCrewSnapshot(session),
 });

@@ -101,6 +101,20 @@ const LIST_VITALS = Object.freeze([
   { key: "sleepDuration", label: "Sleep duration", metric: "sleepDuration", staleMs: SLEEP_STALE_MS },
 ]);
 const WELLBEING_FIELDS = Object.freeze(["mood", "stress", "sleepQuality", "fatigue", "isolation", "wellbeing"]);
+/** Days shown in the Crew Monitor 7-day trend charts (UTC days, oldest first). */
+export const TREND_DAYS = 7;
+
+/**
+ * Daily averages for one metric over `dates` (stored dailySummaries; null = no data
+ * that day, never zero). Pure; ERROR → { status: "error" }.
+ */
+export function buildTrend(list, astronautId, metric, dates) {
+  if (list === ERROR) return { status: "error", points: [] };
+  const byDate = new Map((Array.isArray(list) ? list : [])
+    .filter((s) => s && s.astronautId === astronautId && s.metric === metric && typeof s.avg === "number" && Number.isFinite(s.avg))
+    .map((s) => [s.date, s.avg]));
+  return { status: "ok", points: dates.map((date) => ({ date, value: byDate.has(date) ? Math.round(byDate.get(date) * 10) / 10 : null })) };
+}
 
 // ---- Small pure helpers ------------------------------------------------------------
 
@@ -337,16 +351,28 @@ export function createCrewMonitorService({ repos, getMissionContext: loadMission
       .sort((a, b) => a.crewId.localeCompare(b.crewId));
     const crewIds = new Set(crew.map((a) => a.id));
 
-    // Wave 2 — per astronaut (4 crew → 16 small indexed reads, all concurrent).
+    // Wave 2 — per astronaut (4 crew → 28 small indexed reads, all concurrent).
+    const trendDates = lastUtcDates(toDateKey(now), TREND_DAYS);
     const perMember = await Promise.all(
       crew.map(async (a) => {
-        const [hr, spo2, sleep, msgs] = await Promise.allSettled([
+        const [hr, spo2, sleep, msgs, tHr, tSpo2, tSleep] = await Promise.allSettled([
           attempt(() => repos.measurementsRepo.getRecent(a.id, "heartRate", RECENT_READINGS_LIMIT)),
           attempt(() => repos.measurementsRepo.getRecent(a.id, "spo2", RECENT_READINGS_LIMIT)),
           attempt(() => repos.measurementsRepo.getRecent(a.id, "sleepDuration", RECENT_READINGS_LIMIT)),
           attempt(() => repos.messagesRepo.getByAstronaut(a.id)),
+          attempt(() => repos.dailySummariesRepo.getRange(a.id, "heartRate", trendDates[0], trendDates[trendDates.length - 1])),
+          attempt(() => repos.dailySummariesRepo.getRange(a.id, "spo2", trendDates[0], trendDates[trendDates.length - 1])),
+          attempt(() => repos.dailySummariesRepo.getRange(a.id, "sleepDuration", trendDates[0], trendDates[trendDates.length - 1])),
         ]);
-        return { lists: { heartRate: valueOf(hr), spo2: valueOf(spo2), sleepDuration: valueOf(sleep) }, messages: valueOf(msgs) };
+        return {
+          lists: { heartRate: valueOf(hr), spo2: valueOf(spo2), sleepDuration: valueOf(sleep) },
+          messages: valueOf(msgs),
+          trends: {
+            heartRate: buildTrend(valueOf(tHr), a.id, "heartRate", trendDates),
+            spo2: buildTrend(valueOf(tSpo2), a.id, "spo2", trendDates),
+            sleepDuration: buildTrend(valueOf(tSleep), a.id, "sleepDuration", trendDates),
+          },
+        };
       })
     );
 
@@ -370,7 +396,8 @@ export function createCrewMonitorService({ repos, getMissionContext: loadMission
       const open = alertsRaw === ERROR ? null : [...openByMember.get(a.id)].sort(compareAlerts);
       const state = deriveCrewState(open, describeDataIssues(vitals));
       const msgs = checkable[i] === ERROR ? { status: "error" } : classifyMessages(checkable[i], senders);
-      const lastShared = shared ? shared.filter((w) => w.astronautId === a.id).reduce((max, w) => Math.max(max, w.timestamp), 0) : 0;
+      const ownShared = shared ? shared.filter((w) => w.astronautId === a.id) : [];
+      const lastShared = ownShared.reduce((max, w) => Math.max(max, w.timestamp), 0);
       return {
         ...presentProfile(a),
         state,
@@ -384,7 +411,8 @@ export function createCrewMonitorService({ repos, getMissionContext: loadMission
               rules: open.map((x) => ({ ruleId: isText(x.ruleId) ? x.ruleId : "", severity: SEVERITIES.includes(x.severity) ? x.severity : "info" })),
             },
         vitals: { status: sectionStatus(vitals), items: vitals },
-        sharedWellbeing: shared ? { status: "ok", lastSharedAt: lastShared } : { status: "error", lastSharedAt: 0 },
+        sharedWellbeing: shared ? { status: "ok", lastSharedAt: lastShared, count30d: ownShared.length } : { status: "error", lastSharedAt: 0, count30d: null },
+        trends: perMember[i].trends, // 7-day daily averages (dates are public UTC day keys; no record ids)
         messages: msgs.status === "error"
           ? { status: "error", awaitingAcknowledgement: 0, replied: 0 }
           : {
@@ -431,7 +459,13 @@ export function createCrewMonitorService({ repos, getMissionContext: loadMission
         unavailable: count("unavailable"),
         dataNeedsReview: count("review"),
         noOpenAlerts: count("clear"),
+        // Open alerts across the crew by severity (Crew Monitor chart).
+        alertsBySeverity: alertsRaw === ERROR ? null : (() => {
+          const open = [...openByMember.values()].flat();
+          return Object.fromEntries(SEVERITIES.map((s) => [s, open.filter((x) => (SEVERITIES.includes(x.severity) ? x.severity : "info") === s).length]));
+        })(),
       },
+      trendDates,
       crew: members.map(({ sort, ...m }) => m),
       alerts: crewAlerts,
     };

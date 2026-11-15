@@ -22,10 +22,12 @@
 import { getCrewSnapshot, getCrewMemberDetail } from "../services/crew-monitor-service.js";
 import { getAlertDetail } from "../services/alerts-service.js";
 import { createRing } from "../components/body-scan.js";
+import { createAlertLifecycle, lifecycleFromDetail } from "../components/alert-lifecycle.js";
 import { zoneForRule, ZONE_LABELS } from "../components/alert-zones.js";
 import { createVitalsStage, alertPins, ringFraction, centreStages, severityLegend } from "../components/vitals-stage.js";
 import { alertPopupBody, alertTitle, loadAlertDetailSafely } from "../components/alert-popup.js";
 import { openDialog } from "../components/dialog.js";
+import { severityBar, sparkline, barList } from "../components/mini-charts.js";
 import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
 import { onHealthChanged, keepFocus } from "../core/live-updates.js";
@@ -73,6 +75,55 @@ export function parseCrewRoute(hash) {
 
 // ---- List (#/crew) --------------------------------------------------------------------
 
+const TREND_METRICS = Object.freeze([
+  { key: "heartRate", label: "Heart rate", unit: "bpm", decimals: 0 },
+  { key: "spo2", label: "SpO₂", unit: "%", decimals: 0 },
+  { key: "sleepDuration", label: "Sleep", unit: "h", decimals: 1 },
+]);
+
+/** "Crew at a glance": open alerts by severity, 7-day trends, shared check-ins. */
+function glanceSection(data, onRetry) {
+  const sev = data.summary.alertsBySeverity;
+  const baselineOf = (m, key) => {
+    const v = m.vitals && m.vitals.items ? m.vitals.items.find((x) => x.key === key) : null;
+    return v && typeof v.baseline === "number" ? v.baseline : null;
+  };
+  const trendRows = data.crew.map((m) => el("tr", {}, [
+    el("th", { scope: "row" }, el("a", { class: "crew-glance__member", href: `#/crew/${m.crewId}` }, [
+      el("span", { class: "crew-glance__avatar", "aria-hidden": "true" }, m.initials || m.crewId.slice(-2)),
+      el("span", {}, [el("strong", {}, m.name), el("span", { class: "crew__meta" }, ` · ${m.crewId}`)]),
+    ])),
+    ...TREND_METRICS.map((t) => {
+      const trend = m.trends && m.trends[t.key];
+      return el("td", { "data-label": t.label }, !trend || trend.status === "error"
+        ? el("span", { class: "crew__meta" }, "Couldn't load")
+        : sparkline({ points: trend.points, baseline: baselineOf(m, t.key), unit: t.unit, label: `${m.name} ${t.label}`, decimals: t.decimals }));
+    }),
+  ]));
+  return el("section", { class: "crew-glance", "aria-labelledby": "crew-glance-title" }, [
+    el("h2", { class: "crew-glance__title", id: "crew-glance-title" }, "Crew at a glance"),
+    el("div", { class: "crew-glance__grid" }, [
+      section("crew-glance-alerts-title", "Open alerts by severity", [
+        sev === null || sev === undefined ? sectionError(onRetry, "the crew's alerts") : severityBar({ counts: sev, id: "crew-sev-bar" }),
+        el("p", { class: "crew__meta" }, data.summary.withOpenAlerts === null ? "" : `${data.summary.withOpenAlerts} of ${data.summary.crewCount} crew members have an open alert.`),
+        el("p", {}, el("a", { class: "btn btn--secondary btn--sm", href: "#/alerts" }, [icon("bell"), "Review alerts"])),
+      ]),
+      section("crew-glance-shared-title", "Shared check-ins · last 30 days", [
+        barList({ items: data.crew.map((m) => ({ label: m.name, value: m.sharedWellbeing.status === "ok" ? m.sharedWellbeing.count30d : null, href: `#/wellbeing/${m.crewId}` })) }),
+        el("p", { class: "crew__note" }, "Counts only check-ins the astronaut chose to share. Private check-ins are never counted."),
+      ]),
+    ]),
+    section("crew-glance-trends-title", "7-day trends · daily averages", [
+      el("p", { class: "crew__note" }, "Daily averages from stored synthetic readings (UTC days). Dashed line: the crew member's personal baseline. Hover or focus a point to read its value; select a name to open that crew member."),
+      el("div", { class: "table-wrap crew-glance__table-wrap" }, el("table", { class: "table crew-glance__table" }, [
+        el("caption", { class: "sr-only" }, "Seven-day daily averages per crew member"),
+        el("thead", {}, el("tr", {}, [el("th", { scope: "col" }, "Crew member"), ...TREND_METRICS.map((t) => el("th", { scope: "col" }, `${t.label} (${t.unit})`))])),
+        el("tbody", {}, trendRows),
+      ])),
+    ]),
+  ]);
+}
+
 function listView(data, onRetry) {
   const crewSection = section("crew-list-title", "Crew", [
     el("p", { class: "crew__note" }, "Ranked: open critical, watch and info alerts first, then status unavailable, then data needing review. Based on stored open alerts only. This is not a health assessment."),
@@ -113,6 +164,7 @@ function listView(data, onRetry) {
       el("p", { class: "crew__subtitle" }, `${data.crew.length} crew members · ${data.mission.available ? `Mission ${data.mission.name}` : "Mission context not available"}`),
       syntheticNotice(),
     ]),
+    glanceSection(data, onRetry),
     crewSection,
     alertsSection,
     sharedSection,
@@ -341,6 +393,7 @@ export function createCrewMonitorRenderer({ loadSnapshot, loadDetail, loadAlertD
       const a = detail ? detail.alert : alert;
       const body = [
         ...alertPopupBody({ alert, detail, pinNumber, who: `${profile.name} (${profile.crewId})` }),
+        createAlertLifecycle(detail ? lifecycleFromDetail(detail) : lifecycleFromDetail(alert), { viewer: "officer", id: "crew-life-title" }),
         el("p", { class: "alert-pop__note" }, "This view is read-only. Acknowledge and resolve this alert on the Alerts page, where every action is recorded with its note."),
       ];
       const footer = a.number

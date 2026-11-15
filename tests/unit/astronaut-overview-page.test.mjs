@@ -378,7 +378,7 @@ test("body scan: decorative wireframe body on the dark stage; one numbered pin p
   assert.match(stage.textContent, /Illustration only/);
 });
 
-test("body scan maps physical, recently resolved and mental wellbeing alerts as separate numbered pins", async () => {
+test("body scan pins open physical and mental wellbeing alerts; a resolved alert is listed but never marked on the body", async () => {
   const data = structuredClone(READY_REYES);
   data.alerts = {
     status: "ok",
@@ -393,11 +393,14 @@ test("body scan maps physical, recently resolved and mental wellbeing alerts as 
   const container = new FakeElement("div");
   await page.createOverviewRenderer({ loadOverview: async () => data })(container, ASTRONAUT, {});
   const pins = byClass(container, "scan-pin");
-  assert.equal(pins.length, 3);
-  assert.deepEqual(pins.map((p) => byClass(p, "scan-pin__num")[0].textContent), ["1", "2", "3"]);
-  assert.match(pins[1].getAttribute("aria-label"), /Resolved, Warning, Arm/);
-  assert.match(pins[2].getAttribute("aria-label"), /Mental wellbeing.*Info, Head/);
-  assert.match(byClass(container, "ov-alert__mapping")[2].textContent, /Mental wellbeing pin 3 · Head/);
+  assert.equal(pins.length, 2, "the resolved alert has no pin");
+  assert.deepEqual(pins.map((p) => byClass(p, "scan-pin__num")[0].textContent), ["1", "2"]);
+  assert.ok(pins.every((p) => !/Elevated blood pressure/.test(p.getAttribute("aria-label"))));
+  assert.match(pins[1].getAttribute("aria-label"), /Mental wellbeing.*Info, Head/);
+  const mapping = byClass(container, "ov-alert__mapping").map((m) => m.textContent);
+  assert.match(mapping[0], /Body pin 1 · /);
+  assert.match(mapping[1], /^Resolved .* · no longer marked on the body$/);
+  assert.match(mapping[2], /Mental wellbeing pin 2 · Head/, "list numbers match the pins");
 });
 
 test("pin → pop-up with severity, body location, rule, readings and limitation; lifecycle buttons disabled with reasons", async () => {
@@ -446,17 +449,22 @@ test("'View action plan' → drawer with synthetic notice, progress, steps, vide
   assert.match(text, /Placeholder/);
   assert.match(text, /Alert activity/);
   assert.doesNotMatch(text, BANNED);
-  for (const name of ["Escalate", "Mark resolved"]) {
-    const b = byTag(drawer, "button").find((x) => x.textContent === name);
-    assert.ok(b.hasAttribute("disabled"), name);
-    assert.ok(byId(drawer, b.getAttribute("aria-describedby")), `${name} explains why`);
-  }
+  // No dead buttons: the drawer explains how the alert is closed and who does it.
+  for (const name of ["Escalate", "Mark resolved"]) assert.ok(!byTag(drawer, "button").some((x) => x.textContent === name), name);
+  assert.match(text, /How this alert is closed/);
+  assert.match(text, /Only the Medical Officer can resolve an alert/);
+  assert.ok(all(drawer, (e) => e.hasAttribute("data-alert-life")).length === 1);
   const boxes = all(drawer, (e) => e.tagName === "INPUT" && e.getAttribute("type") === "checkbox");
   assert.equal(boxes.length, 4);
   boxes[0].dispatch("change", { target: { checked: true } });
   assert.match(drawer.textContent, /1 of 4 review steps ticked/);
   assert.equal(byClass(drawer, "ov-plan__progress")[0].getAttribute("value"), "1");
   assert.deepEqual(JSON.parse(storage.getItem("astrohealth.actionplan.v1")), { "u-reyes": { "ALT-0190": ["recent"] } });
+  const done = byClass(drawer, "ov-plan__complete")[0];
+  assert.ok(done.hasAttribute("hidden"), "not complete yet");
+  for (const b of boxes.slice(1)) b.dispatch("change", { target: { checked: true } });
+  assert.ok(!done.hasAttribute("hidden"), "all 4 ticked: review complete is shown");
+  for (const b of boxes.slice(1)) b.dispatch("change", { target: { checked: false } });
   // closing returns focus to the pin; reopening shows the stored tick
   byClass(drawer, "dialog__close")[0].click();
   assert.equal(globalThis.document.activeElement, pin);

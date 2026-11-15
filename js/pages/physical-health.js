@@ -16,6 +16,8 @@ import { onHealthChanged, keepFocus } from "../core/live-updates.js";
 import { alertItem, dataBadges, loadingView, provenanceTag, section, sectionError, stamp, syntheticNotice, vitalValueText } from "../components/crew-view.js";
 import { astronautNestedNotFound, baselineSentence, crewPicker, parseHealthRoute, refusalView, trendBlock } from "../components/health-view.js";
 import { createContextBodyScan } from "../components/context-body-scan.js";
+import { upgradeToCards } from "../components/crew-body-cards.js";
+import { getCrewSnapshot } from "../services/crew-monitor-service.js";
 
 const BASE = "physical";
 
@@ -123,7 +125,7 @@ function alertsSection(data, onRetry) {
 }
 
 /** TEST SEAM: tests pass fake loaders. Production uses renderPhysicalHealth. */
-export function createPhysicalHealthRenderer({ loadOwn, loadCrewMember, listCrew, subscribe = onHealthChanged }) {
+export function createPhysicalHealthRenderer({ loadOwn, loadCrewMember, listCrew, loadCards = null, subscribe = onHealthChanged }) {
   return function render(container, session, { signal, hash = `#/${BASE}`, focus = false } = {}) {
     const route = parseHealthRoute(hash, BASE);
     const root = el("div", { class: "health", "aria-busy": "false" });
@@ -174,7 +176,9 @@ export function createPhysicalHealthRenderer({ loadOwn, loadCrewMember, listCrew
       if (quiet && !(result && result.status === "ready")) return; // keep what is shown
       const retry = () => load();
       if (result && result.status === "ready" && officer && route.view === "base") {
-        root.replaceChildren(crewPicker(result.crew, BASE, { title: "Choose a crew member", intro: "Select a crew member to review their physical readings (read-only)." }));
+        const text = { id: "health-picker-title", title: "Choose a crew member", intro: "Select a crew member to review their physical readings (read-only)." };
+        if (!quiet || !root.querySelector?.(".body-cards")) root.replaceChildren(crewPicker(result.crew, BASE, text));
+        upgradeToCards({ host: root, loadCards, session, isCurrent: () => token === generation && !(signal && signal.aborted), base: BASE, text: { ...text, action: "Open physical health" } });
       } else if (result && result.status === "ready") {
         data = result;
         draw();
@@ -192,4 +196,5 @@ export const renderPhysicalHealth = createPhysicalHealthRenderer({
   loadOwn: (session) => getOwnPhysicalHealth(session),
   loadCrewMember: (session, crewId) => getCrewMemberPhysicalHealth(session, crewId),
   listCrew: (session) => listCrewForPhysicalSelection(session),
+  loadCards: (session) => getCrewSnapshot(session),
 });

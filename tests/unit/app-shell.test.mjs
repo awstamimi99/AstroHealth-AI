@@ -13,7 +13,8 @@ globalThis.self = globalThis;
 globalThis.BroadcastChannel = class { postMessage() {} addEventListener() {} close() {} };
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const read = (path) => readFileSync(join(ROOT, path), "utf8");
+// Line endings are normalised so source checks pass on a Windows (CRLF) checkout too.
+const read = (path) => readFileSync(join(ROOT, path), "utf8").replace(/\r\n/g, "\n");
 
 const { ROUTES, DEFAULT_ROUTE } = await import("../../js/core/config.js");
 const routes = await import("../../js/auth/routes.js");

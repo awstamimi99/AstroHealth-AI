@@ -24,6 +24,8 @@ import { formatTime } from "../core/utils/format.js";
 import { alertItem, loadingView, section, sectionError, stamp, syntheticNotice, utcTime, badge } from "../components/crew-view.js";
 import { astronautNestedNotFound, crewPicker, parseHealthRoute, refusalView, sharingBadge } from "../components/health-view.js";
 import { createContextBodyScan } from "../components/context-body-scan.js";
+import { upgradeToCards } from "../components/crew-body-cards.js";
+import { getCrewSnapshot } from "../services/crew-monitor-service.js";
 
 const BASE = "wellbeing";
 export const QUESTIONS = Object.freeze([
@@ -252,7 +254,7 @@ function checkinSection({ onSubmit }) {
 // ---- Renderer -------------------------------------------------------------------------------
 
 /** TEST SEAM: tests pass fake loaders/savers. Production uses renderWellbeing. */
-export function createWellbeingRenderer({ loadOwn, saveCheckin, loadShared, listCrew }) {
+export function createWellbeingRenderer({ loadOwn, saveCheckin, loadShared, listCrew, loadCards = null }) {
   return function render(container, session, { signal, hash = `#/${BASE}`, focus = false } = {}) {
     const route = parseHealthRoute(hash, BASE);
     const root = el("div", { class: "health", "aria-busy": "false" });
@@ -285,7 +287,9 @@ export function createWellbeingRenderer({ loadOwn, saveCheckin, loadShared, list
         if (token !== generation || !alive()) return;
         const retry = () => loadOfficer();
         if (result && result.status === "ready" && route.view === "base") {
-          root.replaceChildren(crewPicker(result.crew, BASE, { title: "Choose a crew member", intro: "Select a crew member to review the wellbeing check-ins they chose to share." }));
+          const text = { id: "health-picker-title", title: "Choose a crew member", intro: "Select a crew member to review the wellbeing check-ins they chose to share." };
+          root.replaceChildren(crewPicker(result.crew, BASE, text));
+          upgradeToCards({ host: root, loadCards, session, isCurrent: () => token === generation && alive(), base: BASE, text: { ...text, action: "Open shared wellbeing" } });
         } else if (result && result.status === "ready") {
           root.replaceChildren(header(result, true), wellbeingScan(result, true), summarySection(result), historySection(result, retry, { officer: true }), extrasSection(result, retry));
           if (focus) root.querySelectorAll("[tabindex]")[0]?.focus();
@@ -451,4 +455,5 @@ export const renderWellbeing = createWellbeingRenderer({
   saveCheckin: (session, answers, options) => createCheckin(session, answers, options),
   loadShared: (session, crewId) => getCrewMemberSharedWellbeing(session, crewId),
   listCrew: (session) => listCrewForWellbeingSelection(session),
+  loadCards: (session) => getCrewSnapshot(session),
 });

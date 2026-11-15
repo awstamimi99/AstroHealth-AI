@@ -77,7 +77,7 @@ function healthReport(r) {
   ];
   const p = r.provenance;
   const reportPins = r.alerts.status === "ok"
-    ? r.alerts.items.slice(0, 4).map((a, index) => ({ number: index + 1, zone: zoneForRule(a.ruleId), severity: a.severity, tag: `${a.number} · ${a.title}`, label: `Go to report alerts: ${a.number} ${a.title}`, targetId: "report-alerts-title" }))
+    ? r.alerts.items.filter((a) => a.status !== "resolved").slice(0, 4).map((a, index) => ({ number: index + 1, zone: zoneForRule(a.ruleId), severity: a.severity, tag: `${a.number} · ${a.title}`, label: `Go to report alerts: ${a.number} ${a.title}`, targetId: "report-alerts-title" }))
     : [];
   return frame(r, [
     el("section", { class: "report__section", "aria-labelledby": "report-subject-title" }, [

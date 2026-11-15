@@ -6,7 +6,7 @@
 // than the screen: page-level horizontal scrolling, or an element that sticks
 // out past the viewport without being inside an intentional scroll container.
 //
-// Run:  node tests/e2e/responsive.mjs [output-dir] [--widths=1400,375,320] [--only=overview]
+// Run:  node tests/e2e/responsive.mjs [output-dir] [--widths=1400,375,320] [--only=overview] [--astronaut=haddad]
 // Needs Chrome (CHROME_BIN, or the default install path for this OS). No Python:
 // a tiny static file server is built in. Screenshots (320, 768, 1400 and every
 // failure) and report.json go to the output dir. Exit code 1 on any failure.
@@ -169,7 +169,7 @@ const AUDIT = `(() => {
 
 // ---- pages ------------------------------------------------------------------------------
 const PUBLIC = ["index.html", "about.html", "login.html"];
-const ASTRONAUT = ["#/overview", "#/physical", "#/wellbeing", "#/history", "#/alerts", "#/alerts/ALT-0190", "#/reports", "#/settings"];
+const ASTRONAUT = ["#/overview", "#/physical", "#/wellbeing", "#/history", "#/alerts", flag("astronaut") === "haddad" ? "#/alerts/ALT-0181" : "#/alerts/ALT-0190", "#/reports", "#/settings"];
 const OFFICER = ["#/overview", "#/crew", "#/crew/AH-04", "#/physical", "#/physical/AH-04", "#/wellbeing", "#/wellbeing/AH-01", "#/history", "#/history/AH-04", "#/simulation", "#/simulation (live)", "#/alerts", "#/alerts/ALT-0190", "#/reports", "#/settings"];
 
 async function signIn(username) {
@@ -212,6 +212,7 @@ async function auditPage(label, open) {
     await setWidth(width);
     await sleep(180);
     const a = await evaluate(AUDIT);
+    if (flag("probe")) console.log(`PROBE ${label} @ ${width}: ${JSON.stringify(await evaluate(decodeURIComponent(flag("probe"))).catch((e) => String(e)))}`);
     const pageScroll = a.docW > a.W + 1;
     const ok = !pageScroll && a.offenders.length === 0;
     const name = `${label.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "")}_${width}`;
@@ -230,7 +231,7 @@ try {
   await cdp("Runtime.enable");
   for (const p of PUBLIC) await auditPage(`public ${p}`, () => go(`${ORIGIN}/${p}`));
 
-  await signIn("reyes");
+  await signIn(flag("astronaut") || "reyes");
   for (const r of ASTRONAUT) await auditPage(`astronaut ${r}`, () => go(`${ORIGIN}/app.html${r}`));
   await signOut();
 
