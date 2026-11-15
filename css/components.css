@@ -1841,3 +1841,93 @@ html[data-motion="reduce"] .review-steps__step { transition: none; }
 html[data-motion="reduce"] .mc-bars__fill,
 html[data-motion="reduce"] .mc-spark__dot,
 html[data-motion="reduce"] .mc-sev__seg { transition: none; }
+
+/* Crew body cards (js/components/crew-body-cards.js): "choose a crew member". */
+.body-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.body-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-card);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+}
+.body-card:hover,
+.body-card:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+.body-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.body-card__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-tint);
+  color: var(--color-primary-dark);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+.body-card__who { min-width: 0; }
+.body-card__name {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+.body-card__role {
+  margin: 0;
+  color: var(--color-text-3);
+  font-size: var(--text-xs);
+}
+.body-card__state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+}
+.body-card__count {
+  color: var(--color-text-2);
+  font-size: var(--text-xs);
+}
+.body-card__scan {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: radial-gradient(120% 90% at 50% 30%, var(--color-scan-bg-2) 0%, var(--color-scan-bg) 70%);
+}
+.body-card__scan .scan-body {
+  width: min(100%, 190px);
+}
+.body-card__scan .scan-pin__tag { display: none; } /* the card text says how many alerts are open */
+.body-card__vitals {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.body-card__vitals dt { color: var(--color-text-3); }
+.body-card__vitals dd { margin: 0; font-variant-numeric: tabular-nums; text-align: right; }
+.body-card__open { align-self: stretch; justify-content: center; }
+html[data-motion="reduce"] .body-card { transition: none; }
+html[data-motion="reduce"] .body-card:hover,
+html[data-motion="reduce"] .body-card:focus-within { transform: none; }

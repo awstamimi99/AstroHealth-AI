@@ -212,6 +212,7 @@ async function auditPage(label, open) {
     await setWidth(width);
     await sleep(180);
     const a = await evaluate(AUDIT);
+    if (flag("probe")) console.log(`PROBE ${label} @ ${width}: ${JSON.stringify(await evaluate(decodeURIComponent(flag("probe"))).catch((e) => String(e)))}`);
     const pageScroll = a.docW > a.W + 1;
     const ok = !pageScroll && a.offenders.length === 0;
     const name = `${label.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "")}_${width}`;

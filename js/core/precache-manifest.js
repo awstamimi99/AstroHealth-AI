@@ -51,6 +51,7 @@ self.PRECACHE_URLS = [
   "./js/components/alert-zones.js",
   "./js/components/body-scan.js",
   "./js/components/context-body-scan.js",
+  "./js/components/crew-body-cards.js",
   "./js/components/crew-view.js",
   "./js/components/dialog.js",
   "./js/components/health-view.js",
