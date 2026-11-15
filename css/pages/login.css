@@ -275,6 +275,11 @@
   color: var(--color-primary);
 }
 
+.login__demo-who {
+  color: var(--color-text-2);
+  font-size: var(--text-xs);
+}
+
 .login__demo-cred {
   color: var(--color-text-3);
   font-family: var(--font-mono);

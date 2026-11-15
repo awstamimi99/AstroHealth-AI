@@ -194,7 +194,9 @@ test("two tabs acknowledging at once: one acknowledgement, one 'unchanged' (no d
 
 test("privacy + structure: no journal / wellbeing / message / password access; imports limited", () => {
   const src = code("js/services/alerts-service.js");
-  for (const bad of ["journalRepo", "wellbeingRepo", "messagesRepo", "passwordHash", "salt", "measurementsRepo", "settingsRepo"]) assert.ok(!src.includes(bad), bad);
+  for (const bad of ["journalRepo", "wellbeingRepo", "passwordHash", "salt", "measurementsRepo", "settingsRepo"]) assert.ok(!src.includes(bad), bad);
+  // Messages are WRITE-only here (the resolve note sent on request); never read.
+  assert.deepEqual([...src.matchAll(/repos\.messagesRepo\.(\w+)/g)].map((m) => m[1]), ["add"]);
   const imports = [...readFileSync(join(ROOT, "js/services/alerts-service.js"), "utf8").matchAll(/^import\s[^;]*?from\s+["']([^"']+)["']/gm)].map((m) => m[1]);
   assert.deepEqual(imports, ["../db/index.js", "./access-control.js", "./crew-monitor-service.js", "../engine/rules/physical-rules.js"]);
 });

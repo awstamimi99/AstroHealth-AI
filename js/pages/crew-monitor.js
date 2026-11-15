@@ -46,7 +46,6 @@ import {
   srOnly,
   stamp,
   stateBadge,
-  syntheticNotice,
   utcTime,
   vitalValueText,
 } from "../components/crew-view.js";
@@ -162,7 +161,6 @@ function listView(data, onRetry) {
     el("section", { class: "crew__header", "aria-labelledby": "crew-heading" }, [
       el("h2", { class: "crew__welcome", id: "crew-heading" }, "Crew Monitor"),
       el("p", { class: "crew__subtitle" }, `${data.crew.length} crew members · ${data.mission.available ? `Mission ${data.mission.name}` : "Mission context not available"}`),
-      syntheticNotice(),
     ]),
     glanceSection(data, onRetry),
     crewSection,
@@ -307,7 +305,6 @@ function detailView(data, onRetry, onOpenAlert) {
     el("section", { class: "crew__header", "aria-labelledby": "crew-detail-title" }, [
       heading,
       el("p", { class: "crew__subtitle" }, `${p.missionRole} · read-only view`),
-      syntheticNotice(),
     ]),
     el("div", { class: "crew-scan-layout" }, [
       el("section", { class: "scan-stage scan-stage--fill crew-scan", "aria-labelledby": "crew-detail-vitals-title" }, [

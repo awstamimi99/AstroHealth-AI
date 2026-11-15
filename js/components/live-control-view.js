@@ -71,10 +71,18 @@ const GROUPS = Object.freeze([
   { id: "sleepDuration", title: "Sleep duration", keys: ["sleepDuration"] },
   { id: "activity", title: "Activity", keys: ["activity"] },
   { id: "fatigue", title: "Fatigue", keys: ["fatigue"] },
+  { id: "bodyTemperature", title: "Body temperature", keys: ["bodyTemperature"] },
+  { id: "cabinCo2", title: "Cabin CO₂ (ppCO₂)", keys: ["cabinCo2"] },
+  { id: "cabinPressure", title: "Cabin pressure", keys: ["cabinPressure"] },
+  { id: "cabinHumidity", title: "Cabin humidity", keys: ["cabinHumidity"] },
 ]);
 const GROUP_NOTES = Object.freeze({
   sleepDuration: "One value per UTC night: a value applied now counts as tonight's reading. The sleep rule needs 3 consecutive UTC nights, and readings are never backdated.",
   activity: "Running total of steps for the current UTC day. It can only stay the same or go up during the day.",
+  bodyTemperature: "Two rules read this measure: PHY-06 (high) and PHY-07 (low). Right after exercise a higher value can be from overheating.",
+  cabinCo2: "Reading from this crew member's personal cabin-environment monitor (ENV-01). Raise it for several crew members together to see the crew-wide air check on Cabin Environment.",
+  cabinPressure: "Reading from this crew member's personal cabin-environment monitor (ENV-02).",
+  cabinHumidity: "Reading from this crew member's personal cabin-environment monitor (ENV-03).",
 });
 
 const initialsOf = (name) => String(name || "").split(/\s+/).filter(Boolean).map((w) => w[0]).filter((c) => /[A-Za-z]/.test(c)).slice(-2).join("").toUpperCase() || "?";
@@ -349,6 +357,9 @@ export function createLiveControl({ session, service, live, reset, notifyReset, 
   }
 
   function ruleText(m) {
+    if (m.rule && m.extraRule && m.rule.available && m.extraRule.available) {
+      return el("p", { class: "sim__note", "data-live-rule": m.rule.id }, [el("strong", {}, `Rules ${m.rule.id} · ${m.rule.title} and ${m.extraRule.id} · ${m.extraRule.title}: `), `${m.rule.limitsText}; ${m.extraRule.limitsText}. Demonstration threshold — not clinically validated.`]);
+    }
     if (!m.rule) return el("p", { class: "sim__note" }, `No demonstration rule reads ${m.label.toLowerCase()}, so no limit is drawn.`);
     if (!m.rule.available) return el("p", { class: "sim__note" }, `Rule ${m.rule.id} (${m.rule.title}): its stored limits are not available, so no limit is drawn.`);
     return el("p", { class: "sim__note", "data-live-rule": m.rule.id }, [el("strong", {}, `Rule ${m.rule.id} · ${m.rule.title}: `), `${m.rule.limitsText}. Demonstration threshold — not clinically validated.`]);
@@ -402,7 +413,7 @@ export function createLiveControl({ session, service, live, reset, notifyReset, 
       step: main.step,
       series: metrics.map((m) => ({ key: m.key, label: m.label, readings: m.readings.items })),
       baseline: main.baseline,
-      rule: main.rule && main.rule.available ? main.rule : null,
+      rules: [main.rule, main.extraRule].filter((r) => r && r.available),
       handles: metrics.map((m) => ({ key: m.key, label: `Next ${m.label.toLowerCase()} for ${s.name}`, value: st.draft[m.key] })),
       disabled: locked,
       onChange: (key, raw) => {
@@ -538,7 +549,6 @@ export function createLiveControl({ session, service, live, reset, notifyReset, 
       el("section", { class: "live__intro", "aria-labelledby": "live-title" }, [
         el("h3", { class: "live__h3", id: "live-title" }, "Live control"),
         el("p", { class: "sim__text" }, "Choose one crew member, set a value on a chart and apply it. The value is saved as a synthetic reading at the current time, the demonstration risk rules are evaluated, and every open screen for that crew member updates."),
-        el("p", { class: "banner" }, [icon("info"), el("span", { class: "banner__text" }, `${d.notes.synthetic}. ${d.notes.disclaimer} ${d.notes.inputs}`)]),
         el("p", { class: "sim__note" }, ["To watch an astronaut's screens update, ", el("a", { href: "login.html?tab=1", target: "_blank", rel: "noopener" }, "open a second window and sign in for that tab only"), " (for example as reyes), and keep it beside this one."]),
       ]),
       st.message ? el("p", { class: ["banner", st.message.tone === "error" ? "banner--critical" : ""], role: st.message.tone === "error" ? "alert" : "status" }, [icon(st.message.tone === "error" ? "circle-alert" : "info"), el("span", { class: "banner__text" }, st.message.text)]) : null,

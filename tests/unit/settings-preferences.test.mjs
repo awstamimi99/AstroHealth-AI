@@ -52,7 +52,7 @@ test("settings view: role-aware; thresholds + simulation never returned to astro
   assert.equal(a.units.find((u) => u.key === "spo2").unit, "%");
   const m = await s.getSettingsView(MO, { now: NOW });
   assert.equal(m.thresholds.label, "Demonstration thresholds — not clinically validated.");
-  assert.deepEqual(m.thresholds.rows.map((r) => [r.rule, r.warning, r.critical]), [["PHY-01", 100, 120], ["PHY-02", 95, 92], ["PHY-03", 140, 160], ["PHY-05", 6.5, 5]]);
+  assert.deepEqual(m.thresholds.rows.map((r) => [r.rule, r.warning, r.critical]), [["PHY-01", 100, 120], ["PHY-02", 93, 90], ["PHY-03", 140, 160], ["PHY-05", 6.5, 5], ["PHY-06", 37.5, 38.5], ["PHY-07", 36.1, 35], ["ENV-01", 4, 6], ["ENV-02", 98, 95], ["ENV-03", 70, 80]]);
   assert.deepEqual(m.simulation, { status: "ok", speed: 1 });
   assert.ok(!calls.includes("set"), "never writes settings");
   for (const r of [a, m]) assert.ok(!/u-[a-z]+|a-0\d|passwordHash|salt|session/.test(JSON.stringify(r)));

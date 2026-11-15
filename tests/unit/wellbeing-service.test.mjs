@@ -24,7 +24,7 @@ const CHEN = Object.freeze({ role: "astronaut", userId: "u-chen", astronautId: "
 const MO = Object.freeze({ role: "medical_officer", userId: "u-medofficer", astronautId: "" });
 const ANSWERS = Object.freeze({ mood: 4, stress: 3, sleepQuality: 4, fatigue: 2, isolation: 1, wellbeing: 4 });
 
-const repos = () => ({ usersRepo: mock.usersRepo, astronautsRepo: mock.astronautsRepo, wellbeingRepo: mock.wellbeingRepo, cognitiveRepo: mock.cognitiveRepo, alertsRepo: mock.alertsRepo, eventsRepo: mock.eventsRepo });
+const repos = () => ({ usersRepo: mock.usersRepo, astronautsRepo: mock.astronautsRepo, wellbeingRepo: mock.wellbeingRepo, cognitiveRepo: mock.cognitiveRepo, alertsRepo: mock.alertsRepo, alertActionsRepo: mock.alertActionsRepo, eventsRepo: mock.eventsRepo });
 function spy(rs) {
   const calls = [];
   const wrapped = {};
@@ -164,7 +164,10 @@ test("31–33 + 39. sharing needs its own confirmation; the record uses document
   assert.deepEqual(first, { status: "confirm_share", reason: "" });
   assert.ok(!calls.some((c) => c.method === "add"), "nothing written before share confirmation");
   const saved = await s.createCheckin(HADDAD, { ...ANSWERS, share: true, extra: "ignored", astronautId: "a-03", source: "seed", createdBy: "u-chen", timestamp: 1 }, { now: NOW + 1000, confirmShare: true, confirmSameDay: true });
-  assert.deepEqual(saved, { status: "saved", reason: "", checkin: { timestamp: NOW + 1000, shared: true } });
+  const { review, ...savedRest } = saved;
+  assert.deepEqual(savedRest, { status: "saved", reason: "", checkin: { timestamp: NOW + 1000, shared: true } });
+  assert.deepEqual(review.concerns, [], "no concerning answers");
+  assert.equal(review.shared, true);
   const record = (await mock.wellbeingRepo.getRange("a-01")).at(-1);
   const { id, createdAt, updatedAt, ...rest } = record;
   assert.match(id, /^wba_/);
@@ -250,6 +253,37 @@ test("40. inputs are not mutated", async () => {
   assert.deepEqual(answers, { ...ANSWERS, share: false });
 });
 
+test("shared daily check-in atomically opens and later clears WB-01; private check-ins never affect it", async () => {
+  await reset();
+  const s = service().service;
+  const concern = { ...ANSWERS, mood: 1, stress: 9, wellbeing: 1, share: true };
+  const opened = await s.createCheckin(HADDAD, concern, { now: NOW + 1000, confirmShare: true, confirmSameDay: true });
+  assert.equal(opened.status, "saved");
+  let alert = await mock.alertsRepo.getOpenByDedupeKey("a-01:WB-01");
+  assert.ok(alert);
+  assert.deepEqual([alert.category, alert.severity, alert.status, alert.conditionCleared], ["wellbeing", "warning", "new", 0]);
+  assert.equal(alert.rule.version, 3);
+  assert.equal(opened.review.alert.change, "opened");
+  assert.equal(opened.review.alert.number, alert.number);
+  assert.equal(opened.review.alert.severity, "warning");
+  assert.ok(opened.review.concerns.includes("low mood (1/5)"));
+  assert.match(alert.explanation, /not a diagnosis/i);
+  assert.equal((await mock.alertActionsRepo.getByAlert(alert.id)).at(-1).action, "created");
+
+  const before = JSON.stringify(alert);
+  await s.createCheckin(HADDAD, { ...concern, share: false }, { now: NOW + 2000, confirmSameDay: true });
+  alert = await mock.alertsRepo.getOpenByDedupeKey("a-01:WB-01");
+  assert.equal(JSON.stringify(alert), before, "private score cannot change the shared alert");
+
+  await s.createCheckin(HADDAD, { ...ANSWERS, share: true }, { now: NOW + 3000, confirmShare: true, confirmSameDay: true });
+  alert = await mock.alertsRepo.getOpenByDedupeKey("a-01:WB-01");
+  assert.equal(alert.conditionCleared, 0, "one stable check-in is not enough");
+  await s.createCheckin(HADDAD, { ...ANSWERS, share: true }, { now: NOW + 4000, confirmShare: true, confirmSameDay: true });
+  alert = await mock.alertsRepo.getOpenByDedupeKey("a-01:WB-01");
+  assert.equal(alert.conditionCleared, 1);
+  assert.equal((await mock.alertActionsRepo.getByAlert(alert.id)).at(-1).action, "condition_cleared");
+});
+
 test("forbidden sessions can't write", async () => {
   await reset();
   for (const s of [null, MO, { ...HADDAD, astronautId: "a-03" }, { ...HADDAD, userId: "u-chen" }]) {
@@ -267,7 +301,17 @@ test("54 + regression guards: DB_VERSION is 1; services import only the public D
     const imports = [...read(`js/services/${f}`).matchAll(/^import\s[^;]*?from\s+["']([^"']+)["']/gm)].map((m) => m[1]);
     // Sprint 7: a service may also import the pure scenario catalog in js/simulation/.
     // Sprint 8: …and the pure risk engine modules in js/engine/.
-    const PURE = ["../simulation/scenarios.js", "../engine/risk-engine.js", "../engine/rules/physical-rules.js"];
+    const PURE = ["../simulation/scenarios.js", "../engine/risk-engine.js", "../engine/rules/physical-rules.js", "../engine/rules/wellbeing-rules.js", "../engine/rules/exercise-rules.js", "../core/api.js"];
     for (const p of imports) assert.ok(p === "../db/index.js" || /^\.\/[a-z-]+\.js$/.test(p) || PURE.includes(p), `${f}: ${p}`);
   }
+});
+
+test("check-in review: a private check-in with concerns lists them for the astronaut but creates no alert", async () => {
+  await reset();
+  const s = service().service;
+  const before = (await mock.alertsRepo.query({})).length;
+  const r = await s.createCheckin(HADDAD, { ...ANSWERS, mood: 2, stress: 8, share: false }, { now: NOW + 1000, confirmSameDay: true });
+  assert.equal(r.status, "saved");
+  assert.deepEqual(r.review, { concerns: ["low mood (2/5)", "high stress (8/10)"], shared: false, alert: null });
+  assert.equal((await mock.alertsRepo.query({})).length, before, "no Medical Officer-visible alert from a private check-in");
 });

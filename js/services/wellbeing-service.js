@@ -17,10 +17,12 @@
 //   3. sharing needs explicit confirmation (confirmShare: true)
 //   4. per-astronaut in-memory lock (double clicks / concurrent saves)
 //   5. a second check-in on the same UTC day needs confirmSameDay: true
-//   6. ONE transaction: wellbeingAssessments + missionEvents
-//      ("checkin_completed", data { shared: 0|1 }, NO scores anywhere)
+//   6. ONE transaction: wellbeingAssessments + missionEvents and, only when
+//      shared, WB-01 alert evaluation + alert action/events. The
+//      "checkin_completed" event contains { shared: 0|1 }, NO scores.
 //   7. lock released in `finally`
-//   Identity, timestamp, source and createdBy come from the service — never
+//   Private check-ins never enter the alert evaluator. Identity, timestamp,
+//   source and createdBy come from the service — never
 //   from page input. A failed transaction rolls back both writes.
 //
 // Test seam: createWellbeingService({ repos, withTransaction }).
@@ -31,6 +33,7 @@ import {
   wellbeingRepo,
   cognitiveRepo,
   alertsRepo,
+  alertActionsRepo,
   eventsRepo,
   withTransaction,
   WELLBEING_SCALES,
@@ -42,13 +45,16 @@ import {
 import { verifyAstronaut, verifyMedicalOfficer, resolveCrewMember, listCrewForSelection } from "./access-control.js";
 import { describeCognitive } from "./astronaut-overview-service.js";
 import { compareAlerts } from "./crew-monitor-service.js";
+import { planAlertChange } from "../engine/risk-engine.js";
+import { WELLBEING_RULE, evaluateWellbeingRule, checkinConcerns } from "../engine/rules/wellbeing-rules.js";
 
 export const SCORE_FIELDS = Object.freeze(["mood", "stress", "sleepQuality", "fatigue", "isolation", "wellbeing"]);
 export const HISTORY_WINDOW_MS = 30 * DAY_MS;
 export const SUMMARY_SIZE = 7;
 export const SHARED_SUMMARY_LABEL = "Based only on check-ins shared by the astronaut.";
 export const OWN_SUMMARY_LABEL = "Based on your own check-ins (private and shared).";
-export const NO_ALERTS_NOTE = "Saving a check-in does not create alerts in this version.";
+export const NO_ALERTS_NOTE = "Shared check-ins update the demonstration wellbeing alert. Private check-ins remain private and never create a Medical Officer-visible alert.";
+export const CHECKIN_STORES = Object.freeze(["wellbeingAssessments", "alerts", "meta", "alertActions", "missionEvents"]);
 
 const SCORE_LABELS = { mood: "Mood", stress: "Stress", sleepQuality: "Sleep quality", fatigue: "Fatigue", isolation: "Isolation", wellbeing: "Overall wellbeing" };
 const ERROR = Symbol("error");
@@ -214,8 +220,10 @@ export function createWellbeingService({ repos, withTransaction: runTransaction 
           source: "manual",
           createdBy: who.user.id,
         };
+        let outcome = null;
         try {
-          await runTransaction(["wellbeingAssessments", "missionEvents"], "readwrite", async (tx) => {
+          await runTransaction(CHECKIN_STORES, "readwrite", async (tx) => {
+            outcome = null;
             const saved = await repos.wellbeingRepo.add(record, { tx });
             await repos.eventsRepo.add(
               {
@@ -230,11 +238,54 @@ export function createWellbeingService({ repos, withTransaction: runTransaction 
               },
               { tx }
             );
+
+            // Privacy boundary: only an explicitly shared check-in may affect
+            // the Medical Officer-visible wellbeing alert.
+            if (share) {
+              const history = (await repos.wellbeingRepo.getRange(aid, now - HISTORY_WINDOW_MS, now, { tx }))
+                .filter((w) => w && w.astronautId === aid && w.sharedWithMedical === 1);
+              const evaluation = evaluateWellbeingRule(history, now);
+              const openRaw = await repos.alertsRepo.getOpenByDedupeKey(`${aid}:${WELLBEING_RULE.id}`, { tx });
+              const open = openRaw && openRaw.astronautId === aid ? openRaw : null;
+              const plan = planAlertChange({ rule: WELLBEING_RULE, result: evaluation, openAlert: open, astronautId: aid, now, trigger: "daily_checkin" });
+              outcome = { kind: plan.kind, number: open ? open.number : "", severity: open ? open.severity : null, explanation: evaluation.explanation, evaluation: evaluation.outcome };
+              if (plan.kind === "open") {
+                const created = await repos.alertsRepo.add({ ...plan.record }, { tx });
+                outcome.number = created.number;
+                outcome.severity = created.severity;
+                await repos.alertActionsRepo.add({ alertId: created.id, action: "created", userId: "system", timestamp: now, note: "" }, { tx });
+                for (const e of plan.events) await repos.eventsRepo.add({ type: e.type, timestamp: now, astronautId: aid, actorUserId: "system", refStore: "alerts", refId: created.id, summary: e.summary.replace("{number}", created.number), data: { ...e.data } }, { tx });
+              } else if (plan.kind !== "none") {
+                await repos.alertsRepo.update(open.id, {
+                  ...plan.changes,
+                  rule: {
+                    id: WELLBEING_RULE.id,
+                    version: WELLBEING_RULE.version,
+                    description: WELLBEING_RULE.description,
+                    thresholdUsed: evaluation.thresholdUsed,
+                    thresholdSource: WELLBEING_RULE.thresholdSource,
+                  },
+                  suggestedAction: WELLBEING_RULE.suggestedAction,
+                }, { tx }).then((u) => { if (u && u.severity) outcome.severity = u.severity; });
+                if (plan.action) await repos.alertActionsRepo.add({ alertId: open.id, action: plan.action.action, userId: "system", timestamp: now, note: plan.action.note }, { tx });
+                for (const e of plan.events) await repos.eventsRepo.add({ type: e.type, timestamp: now, astronautId: aid, actorUserId: "system", refStore: "alerts", refId: open.id, summary: e.summary.replace("{number}", open.number), data: { ...e.data } }, { tx });
+              }
+            }
           });
         } catch {
           return { status: "unavailable", reason: "database_error" };
         }
-        return { status: "saved", reason: "", checkin: { timestamp: now, shared: share } };
+        // What the astronaut sees right after saving: concerns in THIS check-in (their own
+        // answers) and, only for a shared check-in, what happened to the WB-01 alert.
+        const CHANGE = { open: "opened", escalate: "escalated", retrigger: "updated", clear: "condition_cleared", none: "none" };
+        const review = {
+          concerns: checkinConcerns(record),
+          shared: share,
+          alert: share && outcome
+            ? { change: CHANGE[outcome.kind] || "none", number: outcome.number || "", severity: outcome.severity || null, explanation: outcome.explanation || "" }
+            : null,
+        };
+        return { status: "saved", reason: "", checkin: { timestamp: now, shared: share }, review };
       } finally {
         saving.delete(aid);
       }
@@ -278,7 +329,7 @@ export function createWellbeingService({ repos, withTransaction: runTransaction 
 }
 
 const production = createWellbeingService({
-  repos: Object.freeze({ usersRepo, astronautsRepo, wellbeingRepo, cognitiveRepo, alertsRepo, eventsRepo }),
+  repos: Object.freeze({ usersRepo, astronautsRepo, wellbeingRepo, cognitiveRepo, alertsRepo, alertActionsRepo, eventsRepo }),
   withTransaction,
 });
 export const getOwnWellbeing = (session, options) => production.getOwnWellbeing(session, options);

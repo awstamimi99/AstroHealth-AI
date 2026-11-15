@@ -19,7 +19,7 @@ import { createBodyScan, createRing } from "../components/body-scan.js";
 import { alertPins, ringFraction, severityLegend } from "../components/vitals-stage.js";
 import { zoneForRule, ZONE_LABELS, vitalSeverities } from "../components/alert-zones.js";
 import { formatNumber } from "../core/utils/format.js";
-import { dataBadges, loadingView, refusalView, section, sectionError, stateBadge, syntheticNotice, srOnly } from "../components/crew-view.js";
+import { dataBadges, loadingView, refusalView, section, sectionError, stateBadge, srOnly } from "../components/crew-view.js";
 
 const MINI_RINGS = ["heartRate", "spo2", "sleepDuration"];
 const SPOKEN_UNIT = { heartRate: "beats per minute", spo2: "percent", sleepDuration: "hours" };
@@ -41,7 +41,6 @@ function headerSection(data) {
   return el("section", { class: "crew__header", "aria-labelledby": "mo-welcome-title" }, [
     el("h2", { class: "crew__welcome", id: "mo-welcome-title" }, `Welcome, ${data.officer.displayName}`),
     el("p", { class: "crew__subtitle" }, `Medical Officer · ${missionText}`),
-    syntheticNotice(),
   ]);
 }
 

@@ -13,7 +13,7 @@ import { getOwnPhysicalHealth, getCrewMemberPhysicalHealth, listCrewForPhysicalS
 import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
 import { onHealthChanged, keepFocus } from "../core/live-updates.js";
-import { alertItem, dataBadges, loadingView, provenanceTag, section, sectionError, stamp, syntheticNotice, vitalValueText } from "../components/crew-view.js";
+import { alertItem, dataBadges, loadingView, provenanceTag, section, sectionError, stamp, vitalValueText } from "../components/crew-view.js";
 import { astronautNestedNotFound, baselineSentence, crewPicker, parseHealthRoute, refusalView, trendBlock } from "../components/health-view.js";
 import { createContextBodyScan } from "../components/context-body-scan.js";
 import { upgradeToCards } from "../components/crew-body-cards.js";
@@ -34,7 +34,6 @@ function header(data) {
           el("a", { class: "btn btn--secondary btn--sm", href: "#/physical" }, [icon("arrow-right"), "Choose another crew member"]),
         ])
       : null,
-    syntheticNotice(),
   ]);
 }
 
@@ -45,7 +44,7 @@ function readingSentence(item) {
     if (!item.baseline) return "No stored personal baseline to compare with.";
     return `Systolic: ${baselineSentence(d.systolic, item.baseline.systolic, item.unit)} Diastolic: ${baselineSentence(d.diastolic, item.baseline.diastolic, item.unit)}`;
   }
-  return baselineSentence(item.differenceFromBaseline, item.baseline, item.unit, item.key === "sleepDuration" ? 1 : 0);
+  return baselineSentence(item.differenceFromBaseline, item.baseline, item.unit, item.key === "sleepDuration" || item.key === "bodyTemperature" ? 1 : 0);
 }
 
 function latestSection(data, onRetry) {
@@ -65,7 +64,7 @@ function latestSection(data, onRetry) {
   ]);
 }
 
-const PHYSICAL_ZONES = Object.freeze({ heartRate: "heart", spo2: "lungs", bloodPressure: "arm", sleepDuration: "head" });
+const PHYSICAL_ZONES = Object.freeze({ heartRate: "heart", spo2: "lungs", bloodPressure: "arm", sleepDuration: "head", bodyTemperature: "head" });
 function physicalScan(data) {
   const pins = data.latest.items.map((item, index) => ({
     number: index + 1,
@@ -178,7 +177,7 @@ export function createPhysicalHealthRenderer({ loadOwn, loadCrewMember, listCrew
       if (result && result.status === "ready" && officer && route.view === "base") {
         const text = { id: "health-picker-title", title: "Choose a crew member", intro: "Select a crew member to review their physical readings (read-only)." };
         if (!quiet || !root.querySelector?.(".body-cards")) root.replaceChildren(crewPicker(result.crew, BASE, text));
-        upgradeToCards({ host: root, loadCards, session, isCurrent: () => token === generation && !(signal && signal.aborted), base: BASE, text: { ...text, action: "Open physical health" } });
+        upgradeToCards({ host: root, loadCards, session, isCurrent: () => token === generation && !(signal && signal.aborted), base: BASE, text: { ...text, action: "Open physical health", alertCategory: "physical" } });
       } else if (result && result.status === "ready") {
         data = result;
         draw();

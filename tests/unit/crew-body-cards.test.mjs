@@ -46,6 +46,28 @@ test("cardPins ignores members whose alerts failed to load", () => {
   assert.deepEqual(pins.map((p) => [p.number, p.zone, p.severity]), [[1, "lungs", "critical"]]);
 });
 
+test("cards can isolate physical and wellbeing alerts without duplicating the alert store", () => {
+  const member = {
+    crewId: "AH-01", name: "Sami Haddad", missionRole: "Commander", initials: "SH",
+    state: { tone: "critical", icon: "circle-alert", label: "Critical alert" },
+    alerts: { status: "ok", openCount: 3, rules: [
+      { ruleId: "PHY-02", severity: "critical", category: "physical" },
+      { ruleId: "WB-01", severity: "info", category: "wellbeing" },
+      { ruleId: "PHY-05", severity: "warning", category: "physical" },
+    ] },
+    vitals: { items: [] },
+  };
+  assert.equal(cards.cardPins(member, "physical").length, 2);
+  assert.equal(cards.cardPins(member, "wellbeing").length, 1);
+
+  const physical = cards.crewBodyCards([member], "physical", { id: "p", title: "Physical", intro: "", action: "Open", alertCategory: "physical" });
+  const wellbeing = cards.crewBodyCards([member], "wellbeing", { id: "w", title: "Wellbeing", intro: "", action: "Open", alertCategory: "wellbeing" });
+  assert.equal(byClass(physical, "scan-pin").length, 2);
+  assert.match(byClass(physical, "body-card__state")[0].textContent, /Critical alert2 open alerts/);
+  assert.equal(byClass(wellbeing, "scan-pin").length, 1);
+  assert.match(byClass(wellbeing, "body-card__state")[0].textContent, /Info1 open alert/);
+});
+
 test("the history picker shows the plain list first, then the cards; a failed snapshot keeps the plain list", async () => {
   await snapshot();
   const repos = Object.fromEntries(Object.entries(mock).filter(([k]) => k.endsWith("Repo")));

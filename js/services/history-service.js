@@ -114,6 +114,16 @@ export function describeEvent(e, ctx) {
     }
     case "cognitive_check_completed":
       return base("wellbeing", "Cognitive check completed");
+    case "exercise_logged": {
+      // Fixed wording from allow-listed values only (never stored text such as stop reasons).
+      const TYPE = { aerobic: "Aerobic", resistance: "Resistance", mobility: "Mobility" };
+      const type = TYPE[d.sessionType];
+      if (!type) return base("readings", "Exercise session logged", { provenance: "not_recorded" });
+      if (d.completion === "skipped") return base("readings", `Exercise: ${type} session skipped`, { provenance: d.source === "seed" ? "simulation" : "not_recorded" });
+      const mins = Number.isInteger(d.minutes) && d.minutes >= 0 && d.minutes <= 300 ? `${d.minutes} min` : "";
+      const done = d.completion === "partial" ? "partial" : d.completion === "completed" ? "completed" : "logged";
+      return base("readings", `Exercise: ${type} session ${done}${mins ? ` · ${mins}` : ""}`, { provenance: d.source === "seed" ? "simulation" : "not_recorded" });
+    }
     case "risk_detected":
     case "alert_generated":
     case "alert_escalated":

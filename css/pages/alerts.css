@@ -146,6 +146,32 @@
   box-shadow: var(--focus-ring);
 }
 
+/* ---- Messages from the Medical Officer ("Today's notifications") -------------------- */
+.notice-msgs { display: flex; flex-direction: column; gap: var(--space-2); }
+.notice-msgs__title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-2);
+}
+.notice-msgs__list { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.notice-msg {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-info-tint);
+}
+.notice-msg p { margin: 0; }
+.notice-msg__head { display: flex; align-items: center; gap: var(--space-2); }
+.notice-msg__icon { display: inline-flex; color: var(--color-info); }
+.notice-msg__from { font-size: var(--text-sm); color: var(--color-text-2); }
+.notice-msg__title { font-weight: var(--weight-semibold); }
+.notice-msg__body { white-space: pre-line; overflow-wrap: anywhere; }
+
 /* ---- Responsive -------------------------------------------------------------------- */
 @media (max-width: 767px) {
   .alerts-filters,

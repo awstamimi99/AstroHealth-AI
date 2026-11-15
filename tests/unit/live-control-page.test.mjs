@@ -75,7 +75,7 @@ test("live control: nothing is editable until a crew member is chosen; the picke
   assert.equal(options.length, 5);
   assert.match(options[4], /^Jonas Reyes · AH-04 · Payload Specialist · /);
   assert.equal(all(h.node, (e) => e.hasAttribute("data-live-chip")).length, 4, "crew overview strip: one chip per member");
-  assert.match(h.node.textContent, /Synthetic demonstration data/);
+  assert.doesNotMatch(h.node.textContent, /Handles and number fields accept/); // banner removed; the footer disclaimer stays
   assert.match(h.node.textContent, /not a medical device|not clinically validated|demonstration/i);
   assert.doesNotMatch(dump(h.node), LEAKS);
 });

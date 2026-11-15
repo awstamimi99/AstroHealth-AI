@@ -12,7 +12,7 @@
 // This is a classic (non-module) worker for maximum browser support, so it
 // uses importScripts() instead of import.
 
-const CACHE_VERSION = "0.11.0";
+const CACHE_VERSION = "0.14.0";
 const CACHE_NAME = `astrohealth-v${CACHE_VERSION}`;
 
 // Defines self.PRECACHE_URLS (relative to this file).
@@ -50,9 +50,16 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
+  // API responses are private, online-only and must never enter cache-first.
+  if (url.origin === self.location.origin && url.pathname.startsWith("/api/")) return;
+
   // Only handle our own files. We NEVER fetch anything cross-origin: those
   // requests are left alone (and check:offline makes sure none exist).
   if (request.method !== "GET" || url.origin !== self.location.origin) return;
+
+  // Video guides are streamed with Range requests (206 responses can't be cached):
+  // the browser fetches them directly; they need the app server (not precached).
+  if (request.headers.has("range") || /\.(mp4|webm|mov)$/i.test(url.pathname)) return;
 
   event.respondWith(cacheFirst(request));
 });

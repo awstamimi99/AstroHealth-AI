@@ -21,11 +21,13 @@ import { getOwnWellbeing, createCheckin, getCrewMemberSharedWellbeing, listCrewF
 import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
 import { formatTime } from "../core/utils/format.js";
-import { alertItem, loadingView, section, sectionError, stamp, syntheticNotice, utcTime, badge } from "../components/crew-view.js";
+import { alertItem, loadingView, section, sectionError, stamp, utcTime, badge } from "../components/crew-view.js";
 import { astronautNestedNotFound, crewPicker, parseHealthRoute, refusalView, sharingBadge } from "../components/health-view.js";
 import { createContextBodyScan } from "../components/context-body-scan.js";
 import { upgradeToCards } from "../components/crew-body-cards.js";
 import { getCrewSnapshot } from "../services/crew-monitor-service.js";
+import { onHealthChanged, keepFocus, HEALTH_EVENT } from "../core/live-updates.js";
+import { bus } from "../core/event-bus.js";
 
 const BASE = "wellbeing";
 export const QUESTIONS = Object.freeze([
@@ -132,7 +134,6 @@ function header(data, officer) {
           el("a", { class: "btn btn--secondary btn--sm", href: "#/wellbeing" }, [icon("arrow-right"), "Choose another crew member"]),
         ])
       : null,
-    syntheticNotice(),
   ]);
 }
 
@@ -239,22 +240,24 @@ function buildForm({ onSubmit }) {
 function checkinSection({ onSubmit }) {
   const formApi = buildForm({ onSubmit });
   const status = el("p", { class: "health-status", role: "status", tabindex: "-1" });
+  const reviewBox = el("div", { class: "health-review", "data-checkin-review": "", hidden: true });
   const confirmBox = el("div", { class: "health-confirm", hidden: true, role: "group", "aria-labelledby": "checkin-confirm-title" });
   const today = el("p", { class: "health__note" });
   const node = section("checkin-title", "Daily check-in", [
-    el("p", { class: "health__note" }, "Self-reported, for your own awareness. Every question is required. Saving a check-in does not create alerts in this version."),
+    el("p", { class: "health__note" }, "Self-reported, for your own awareness. Every question is required. A shared check-in updates the demonstration wellbeing alert; a private check-in stays private and is never used for that alert."),
     today,
     formApi.form,
     confirmBox,
     status,
+    reviewBox,
   ]);
-  return { node, formApi, status, confirmBox, today };
+  return { node, formApi, status, confirmBox, today, reviewBox };
 }
 
 // ---- Renderer -------------------------------------------------------------------------------
 
 /** TEST SEAM: tests pass fake loaders/savers. Production uses renderWellbeing. */
-export function createWellbeingRenderer({ loadOwn, saveCheckin, loadShared, listCrew, loadCards = null }) {
+export function createWellbeingRenderer({ loadOwn, saveCheckin, loadShared, listCrew, loadCards = null, subscribe = onHealthChanged, publish = (name, data) => bus.emit(name, data) }) {
   return function render(container, session, { signal, hash = `#/${BASE}`, focus = false } = {}) {
     const route = parseHealthRoute(hash, BASE);
     const root = el("div", { class: "health", "aria-busy": "false" });
@@ -274,9 +277,14 @@ export function createWellbeingRenderer({ loadOwn, saveCheckin, loadShared, list
     // ---- Medical Officer -------------------------------------------------------------
     if (officer) {
       let generation = 0;
-      async function loadOfficer() {
+      subscribe({
+        signal,
+        crewId: () => (route.view === "base" ? "" : route.crewId),
+        reload: () => keepFocus(root, () => loadOfficer(true)),
+      });
+      async function loadOfficer(quiet = false) {
         const token = ++generation;
-        root.setAttribute("aria-busy", "true");
+        if (!quiet) root.setAttribute("aria-busy", "true");
         if (!root.childNodes.length) root.replaceChildren(...loadingView("Loading shared wellbeing…"));
         let result;
         try {
@@ -289,7 +297,7 @@ export function createWellbeingRenderer({ loadOwn, saveCheckin, loadShared, list
         if (result && result.status === "ready" && route.view === "base") {
           const text = { id: "health-picker-title", title: "Choose a crew member", intro: "Select a crew member to review the wellbeing check-ins they chose to share." };
           root.replaceChildren(crewPicker(result.crew, BASE, text));
-          upgradeToCards({ host: root, loadCards, session, isCurrent: () => token === generation && alive(), base: BASE, text: { ...text, action: "Open shared wellbeing" } });
+          upgradeToCards({ host: root, loadCards, session, isCurrent: () => token === generation && alive(), base: BASE, text: { ...text, action: "Open shared wellbeing", alertCategory: "wellbeing" } });
         } else if (result && result.status === "ready") {
           root.replaceChildren(header(result, true), wellbeingScan(result, true), summarySection(result), historySection(result, retry, { officer: true }), extrasSection(result, retry));
           if (focus) root.querySelectorAll("[tabindex]")[0]?.focus();
@@ -308,8 +316,41 @@ export function createWellbeingRenderer({ loadOwn, saveCheckin, loadShared, list
     const scanHost = el("div", { class: "health__scan" });
     const dataHost = el("div", { class: "health__data" });
     const checkin = checkinSection({ onSubmit: () => startSave() });
-    const { formApi, status, confirmBox, today } = checkin;
+    const { formApi, status, confirmBox, today, reviewBox } = checkin;
+
+    /** What THIS check-in shows right after saving (own answers; alert only when shared). */
+    function showReview(review) {
+      if (!review) { reviewBox.setAttribute("hidden", ""); reviewBox.replaceChildren(); return; }
+      const a = review.alert;
+      const SEV = { critical: ["badge--critical", "circle-alert", "Critical"], warning: ["badge--warning", "triangle-alert", "Warning"], info: ["badge--info", "info", "Info"] };
+      const CHANGE = { opened: "was opened", escalated: "was escalated", updated: "was updated with this check-in", condition_cleared: "is marked condition cleared (the Medical Officer still reviews it)" };
+      const parts = [el("h3", { class: "health-review__title", id: "checkin-review-title" }, "Check-in review")];
+      if (review.concerns.length) {
+        parts.push(el("p", { class: "health__text" }, "Some answers in this check-in may need attention:"));
+        parts.push(el("ul", { class: "health-review__list" }, review.concerns.map((c) => el("li", {}, c))));
+      } else {
+        parts.push(el("p", { class: "health__text" }, [icon("circle-check"), " No concerning answers in this check-in."]));
+      }
+      if (review.shared && a && a.change && a.change !== "none") {
+        const [cls, ic, word] = SEV[a.severity] || SEV.info;
+        parts.push(el("p", { class: "health__text health-review__alert" }, [
+          badge(cls, ic, word), ` Mental-wellbeing alert ${a.number} ${CHANGE[a.change] || a.change}. The Medical Officer can see it. `,
+          a.number ? el("a", { href: `#/alerts/${a.number}` }, "Open the alert") : null,
+        ]));
+        if (a.explanation) parts.push(el("p", { class: "health__note" }, a.explanation));
+      } else if (review.shared && review.concerns.length) {
+        parts.push(el("p", { class: "health__note" }, "The existing mental-wellbeing alert already reflects this pattern, so it was not changed."));
+      } else if (!review.shared && review.concerns.length) {
+        parts.push(el("p", { class: "health__note" }, "This check-in is private, so no alert was created and the Medical Officer was not told. If you would like support, share your next check-in or message the Medical Officer."));
+      }
+      parts.push(el("p", { class: "health__note" }, "Based only on your self-reported answers and a demonstration rule (WB-01) — not a diagnosis."));
+      reviewBox.replaceChildren(...parts);
+      reviewBox.removeAttribute("hidden");
+    }
     let headerNode = null;
+    let shownCrewId = null;
+
+    subscribe({ signal, crewId: () => shownCrewId, reload: () => keepFocus(root, () => refresh()) });
 
     // Any change to an answer starts a fresh attempt (confirmations don't carry over).
     for (const list of Object.values(formApi.radios)) for (const input of list) {
@@ -398,7 +439,15 @@ export function createWellbeingRenderer({ loadOwn, saveCheckin, loadShared, list
         attempt = { confirmShare: false, confirmSameDay: false };
         formApi.clear();
         setStatus("ok", result.checkin.shared ? "Check-in saved and shared with the Medical Officer." : "Check-in saved. It is private (only you can see it).");
+        showReview(result.review || null);
         await refresh();
+        if (shownCrewId) {
+          try {
+            const changed = Boolean(result.checkin.shared && result.review && result.review.alert && result.review.alert.change !== "none");
+            publish(HEALTH_EVENT, { crewId: shownCrewId, metric: "wellbeing", alertsChanged: changed });
+            if (changed) publish("alert:changed", {});
+          } catch { /* notification failure never changes a committed check-in */ }
+        }
         status.focus();
         return;
       }
@@ -421,6 +470,7 @@ export function createWellbeingRenderer({ loadOwn, saveCheckin, loadShared, list
       }
       if (token !== generation || !alive()) return result;
       if (result && result.status === "ready") {
+        shownCrewId = result.profile && result.profile.crewId;
         today.textContent = result.todayCheckin && result.todayCheckin.exists
           ? `You already checked in today (UTC) at ${formatTime(result.todayCheckin.at, { timeZone: "UTC" })} UTC. You can add another; you'll be asked to confirm.`
           : "No check-in yet today (UTC).";

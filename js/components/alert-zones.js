@@ -8,6 +8,12 @@ const RULE_ZONES = Object.freeze({
   "PHY-03": "arm",     // systolic blood pressure (cuff on the arm)
   "PHY-05": "head",    // sleep duration
   "WB-01": "head",     // wellbeing check-ins
+  "PHY-06": "head",    // body temperature (forehead / skin sensor)
+  "PHY-07": "head",
+  "ENV-01": "lungs",   // cabin CO₂ — what the crew member breathes
+  "ENV-02": "chest",   // cabin pressure
+  "ENV-03": "chest",   // cabin humidity
+  "EX-01": "legs",     // exercise countermeasure
 });
 
 /** Zone for a rule id; unknown rules use the chest so the pin is still visible. */

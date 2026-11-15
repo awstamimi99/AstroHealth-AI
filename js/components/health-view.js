@@ -18,7 +18,7 @@ const UTC = Object.freeze({ timeZone: "UTC" });
  */
 export function parseHealthRoute(hash, base) {
   const text = String(hash || "");
-  const match = /^#\/(physical|wellbeing)\/(AH-\d{2})$/.exec(text);
+  const match = /^#\/(physical|wellbeing|exercise|environment)\/(AH-\d{2})$/.exec(text);
   if (match && match[1] === base) return { view: "detail", crewId: match[2] };
   if (text === `#/${base}` || text.startsWith(`#/${base}?`)) return { view: "base" };
   return { view: "invalid" };
@@ -68,7 +68,7 @@ export function astronautNestedNotFound(base) {
   return refusalView({ status: "not_found", reason: "invalid_crew_id" }, null, base);
 }
 
-const UNIT_WORDS = { bpm: "bpm", "%": "percentage points", mmHg: "mmHg", h: "h" };
+const UNIT_WORDS = { bpm: "bpm", "%": "percentage points", mmHg: "mmHg", h: "h", "°C": "°C" };
 const fmt = (v, decimals) => formatNumber(Math.abs(v), decimals);
 
 /** "4 bpm above the stored personal baseline of 72 bpm." — descriptive only. */
@@ -100,7 +100,7 @@ export function longDate(dateKey) {
  * narrow screens via CSS) and decorative CSS bars (aria-hidden).
  */
 export function trendBlock(metric, windowDays) {
-  const decimals = metric.key === "sleepDuration" ? 1 : 0;
+  const decimals = metric.key === "sleepDuration" || metric.key === "bodyTemperature" ? 1 : 0;
   const id = `health-trend-${metric.key}`;
   if (metric.status !== "ok") {
     return el("article", { class: "health-trend", "aria-labelledby": id }, [

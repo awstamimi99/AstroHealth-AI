@@ -124,6 +124,10 @@ The database stores **only** these units. Convert in the UI only.
 | `sleepDuration` | `h` (hours, decimals ok) | — |
 | `activity` | `steps` — **cumulative steps since 00:00 UTC that day** | ≥ 0 |
 | `fatigue` (measurement & check-in) | `0-10` | 0–10 |
+| `bodyTemperature` | `°C` | — |
+| `cabinCo2` (personal cabin monitor) | `mmHg` (partial pressure) | ≥ 0 |
+| `cabinPressure` | `kPa` | — |
+| `cabinHumidity` | `%RH` | 0–100 |
 | `stress`, `isolation` | 0–10 | 0–10 |
 | `mood`, `sleepQuality`, `wellbeing` | 1–5 | 1–5 |
 | `meanReactionMs` | ms | — |
@@ -242,7 +246,7 @@ Notation: **PK** = primary key (keyPath). Index names are exact.
 | --- | --- | --- | --- | --- |
 | `id` | string | yes | **PK** | `msr_…` |
 | `astronautId` | string | yes | in `by_astronaut_metric_time`, `by_astronaut_time` | |
-| `metric` | `"heartRate"` \| `"spo2"` \| `"bpSystolic"` \| `"bpDiastolic"` \| `"sleepDuration"` \| `"activity"` \| `"fatigue"` | yes | in `by_astronaut_metric_time` | |
+| `metric` | `"heartRate"` \| `"spo2"` \| `"bpSystolic"` \| `"bpDiastolic"` \| `"sleepDuration"` \| `"activity"` \| `"fatigue"` \| `"bodyTemperature"` \| `"cabinCo2"` \| `"cabinPressure"` \| `"cabinHumidity"` | yes | in `by_astronaut_metric_time` | |
 | `value` | number | yes | | canonical unit |
 | `unit` | string | yes | | must equal the canonical unit |
 | `timestamp` | number | yes | in all three time indexes, `by_time` | when the reading was taken |
@@ -391,7 +395,7 @@ written to `missionEvents`.
 | `ruleId` | string | yes | | `"PHY-02"` |
 | `dedupeKey` | string | yes | in `by_dedupe_status` | default `${astronautId}:${ruleId}` |
 | `type` | string | yes | | short machine name, e.g. `"low_spo2"` |
-| `category` | `"physical"` \| `"wellbeing"` | yes | | |
+| `category` | `"physical"` \| `"wellbeing"` \| `"environment"` | yes | | |
 | `severity` | `"info"` \| `"warning"` \| `"critical"` | yes | `by_severity` | |
 | `status` | `"new"` \| `"acknowledged"` \| `"resolved"` | yes | `by_status`, in `by_astronaut_status`, `by_dedupe_status` | default `"new"`. **Open** = new or acknowledged |
 | `detectedAt` | number | yes | `by_detected` | default now |
@@ -464,6 +468,11 @@ any other internal id.
 
 ### 3.11 `messages` (medical officer ↔ astronaut)
 
+Written by `alerts-service.resolveAlert(…, { notifyAstronaut: true })` (the
+resolve note, `templateId: ""`, `relatedAlertId` = the resolved alert, same
+transaction as the resolve) and read by `notifications-service` (the
+astronaut's own unread messages; `acknowledgedAt` set by "Mark as read").
+
 | Field | Type | Required | Key/index | Notes |
 | --- | --- | --- | --- | --- |
 | `id` | string | yes | **PK** | `msg_…` |
@@ -505,8 +514,15 @@ Types: `measurement_recorded`, `risk_detected`, `alert_generated`,
 `alert_resolved`, `message_sent`, `message_acknowledged`,
 `astronaut_response`, `checkin_completed`, `cognitive_check_completed`,
 `simulation_started`, `simulation_paused`, `simulation_stopped`,
-`settings_changed`, `report_generated`, `data_reset`, `data_imported`
-(`EVENT_TYPES` in `constants.js`).
+`settings_changed`, `report_generated`, `data_reset`, `data_imported`,
+`exercise_logged` (`EVENT_TYPES` in `constants.js`).
+
+`exercise_logged` (one per logged session, `astronautId` = the astronaut,
+`actorUserId` = their user): `data` = `{ sessionType ∈ EXERCISE_TYPES,
+device, plannedMin, minutes (0–240), intensity ∈ EXERCISE_INTENSITIES,
+completion ∈ EXERCISE_COMPLETIONS, rpe, stopReason, peakHeartRate,
+recoveryHeartRate, postFatigue, symptoms[], source }` — allow-listed values
+only, never free text.
 
 > **Privacy:** a `checkin_completed` event for a check-in with
 > `sharedWithMedical: 0` must not contain scores in `summary` or `data`. The
@@ -581,7 +597,7 @@ Seeded thresholds (demonstration only, **not clinically validated**):
 | --- | --- |
 | `schemaVersion` | written by the migration (`1`) |
 | `seededAt` | ms when demo data was written (absent = never seeded) |
-| `seedVersion` | version of the seed data set (`1`) |
+| `seedVersion` | version of the seed data set (`2`; a browser at `1` is upgraded once) |
 | `alertCounter` | last used alert number (seed leaves it at `190` → next alert is `ALT-0191`) |
 | `lastCompactedAt` | ms of the last `compactMeasurements()` run, `0` = never |
 
@@ -713,7 +729,7 @@ stores your transaction must include when you pass `{ tx }`.
 
 | Function | → | Notes |
 | --- | --- | --- |
-| `seedDemoData({ now? } = {})` | `{ seeded: boolean, counts? }` | idempotent — does nothing if `meta.seedVersion` exists |
+| `seedDemoData({ now? } = {})` | `{ seeded: boolean, counts?, seedVersion?, upgraded? }` | idempotent — when `meta.seedVersion` exists only a version-1 set is upgraded once (`upgradeDemoData`: seed-v2 supplement added in one transaction; existing records untouched) |
 | `exportAll()` | `BackupFile` (section 11) | one read-only transaction |
 | `importAll(json, { userId? } = {})` | `{ counts }` | `json` = object or JSON string. Validated first; then replaces **all** data in one transaction, logs `data_imported` |
 | `validateBackup(json)` | `{ file, stores }` | checks a backup without touching the database (e.g. before asking the user to confirm an import); throws `INCOMPATIBLE_BACKUP` |

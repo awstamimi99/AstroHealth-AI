@@ -18,9 +18,11 @@ import { evaluateCrew } from "../services/risk-service.js";
 import { bus } from "../core/event-bus.js";
 import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
+import { getExerciseReminder } from "../services/exercise-service.js";
+import { getNotifications, markMessageRead } from "../services/notifications-service.js";
 import { onHealthChanged, keepFocus, HEALTH_EVENT } from "../core/live-updates.js";
 import { formatNumber } from "../core/utils/format.js";
-import { SEVERITY_VIEW, badge, loadingView, retryButton, section, sectionError, srOnly, syntheticNotice, utcTime } from "../components/crew-view.js";
+import { SEVERITY_VIEW, badge, loadingView, retryButton, section, sectionError, srOnly, utcTime } from "../components/crew-view.js";
 import { createContextBodyScan } from "../components/context-body-scan.js";
 import { zoneForRule, ZONE_LABELS } from "../components/alert-zones.js";
 import { createReviewSteps } from "../components/review-steps.js";
@@ -104,7 +106,7 @@ const defaultChannel = Object.freeze({
 });
 
 /** TEST SEAM. Production uses renderAlerts. */
-export function createAlertsRenderer({ service, channel = defaultChannel, subscribe = onHealthChanged }) {
+export function createAlertsRenderer({ service, channel = defaultChannel, subscribe = onHealthChanged, loadReminder = null, notifications = null }) {
   return function render(container, session, { signal, hash = "#/alerts", focus = false } = {}) {
     const route = parseAlertsRoute(hash);
     const live = el("p", { class: "sr-only", role: "status", "aria-live": "polite" });
@@ -112,7 +114,7 @@ export function createAlertsRenderer({ service, channel = defaultChannel, subscr
     const root = el("div", { class: "alerts", "aria-busy": "false" }, [live, content]);
     container.replaceChildren(root);
     const officer = Boolean(session && session.role === "medical_officer");
-    const st = { generation: 0, busy: false, data: null, filters: { status: "open", severity: "all", crewId: "" }, message: null, evaluation: null, note: "", confirm: false, focusHeading: focus };
+    const st = { generation: 0, busy: false, data: null, filters: { status: "open", severity: "all", crewId: "" }, message: null, evaluation: null, note: "", confirm: false, notify: true, inbox: null, focusHeading: focus };
     const aborted = () => Boolean(signal && signal.aborted);
     const announce = (text) => { live.textContent = text; };
     const unsubscribe = channel.subscribe(() => { if (!aborted() && !st.busy) load(); });
@@ -151,6 +153,24 @@ export function createAlertsRenderer({ service, channel = defaultChannel, subscr
       } catch {
         res = { status: "unavailable", reason: "unexpected_error" };
       }
+      // The daily exercise notification (list view only). A failure only hides the card.
+      if (route.view !== "detail" && typeof loadReminder === "function") {
+        try {
+          const r = await loadReminder(session);
+          st.reminder = r && r.status === "ready" ? r : null;
+        } catch {
+          st.reminder = null;
+        }
+      }
+      // Messages from the Medical Officer (astronaut, list view only). A failure only hides them.
+      if (route.view !== "detail" && !officer && notifications && typeof notifications.load === "function") {
+        try {
+          const r = await notifications.load(session);
+          st.inbox = r && r.status === "ready" ? r.messages : null;
+        } catch {
+          st.inbox = null;
+        }
+      }
       if (token !== st.generation || aborted()) return;
       root.setAttribute("aria-busy", "false");
       if (!res || res.status !== "ready") {
@@ -184,7 +204,6 @@ export function createAlertsRenderer({ service, channel = defaultChannel, subscr
       return el("section", { class: "alerts__header", "aria-labelledby": "alerts-title" }, [
         el("h2", { class: "alerts__title", id: "alerts-title", tabindex: "-1", "data-heading": "" }, "Alerts"),
         el("p", { class: "alerts__subtitle" }, d.viewer === "officer" ? "Crew-wide alerts from the demonstration risk rules and the stored history." : "Your open alerts and alerts resolved in the last 30 days. Read-only."),
-        syntheticNotice(),
         demoLabel(`${d.thresholdLabel} Alerts describe synthetic readings against stored demonstration rules. They are not a diagnosis.`),
       ]);
     }
@@ -257,8 +276,60 @@ export function createAlertsRenderer({ service, channel = defaultChannel, subscr
       ]);
     }
 
+    /** One message from the Medical Officer, with "Mark as read". */
+    function messageItem(m) {
+      return el("li", { class: "notice-msg", "data-message": m.ref }, [
+        el("div", { class: "notice-msg__head" }, [
+          el("span", { class: "notice-msg__icon", "aria-hidden": "true" }, icon("message-circle")),
+          el("p", { class: "notice-msg__from" }, [el("strong", {}, m.from), " · Medical Officer · ", utcTime(m.sentAt)]),
+        ]),
+        el("p", { class: "notice-msg__title" }, m.alertNumber ? el("a", { href: `#/alerts/${m.alertNumber}` }, m.title) : m.title),
+        m.body ? el("p", { class: "notice-msg__body" }, m.body) : null,
+        el("button", { class: "btn btn--secondary btn--sm", type: "button", "data-action": "read-message", onClick: () => markRead(m) }, [icon("check"), "Mark as read"]),
+      ]);
+    }
+
+    /** "Today's notifications": messages from the Medical Officer and the daily exercise reminder. */
+    function todayNotifications() {
+      const r = st.reminder;
+      const inbox = Array.isArray(st.inbox) ? st.inbox : [];
+      if (!r && !inbox.length) return null;
+      const due = Boolean(r && r.due === true);
+      const attention = due || inbox.length > 0;
+      return el("section", { class: ["card", "ex-notice", attention ? "ex-notice--due" : "ex-notice--done"], "aria-labelledby": "alerts-today-title", "data-daily-notification": due ? "due" : "done" }, [
+        el("div", { class: "ex-notice__head" }, [
+          el("span", { class: "ex-notice__icon", "aria-hidden": "true" }, icon(attention ? "bell" : "circle-check")),
+          el("h2", { class: "ex-notice__title", id: "alerts-today-title" }, "Today's notifications"),
+          inbox.length ? badge("badge--info", "message-circle", `${inbox.length} new message${inbox.length === 1 ? "" : "s"}`) : null,
+          r ? badge(due ? "badge--info" : "badge--ok", due ? "activity" : "circle-check", due ? "Daily exercise" : "Exercise done") : null,
+        ]),
+        inbox.length
+          ? el("div", { class: "notice-msgs", "data-officer-messages": String(inbox.length) }, [
+              el("h3", { class: "notice-msgs__title" }, "From the Medical Officer"),
+              el("ul", { class: "notice-msgs__list", role: "list" }, inbox.map(messageItem)),
+            ])
+          : null,
+        r ? el("p", { class: "alerts__text" }, r.text) : null,
+        r ? el("p", {}, el("a", { class: "btn btn--primary btn--sm", href: "#/exercise", id: "alerts-open-exercise" }, [icon("arrow-right"), d0(r)])) : null,
+        r ? el("p", { class: "alerts__note" }, "A daily reminder from the demonstration exercise plan (aerobic + resistance, about 120 min on a standard day). It is not an alert and is never sent anywhere.") : null,
+      ]);
+    }
+
+    async function markRead(m) {
+      if (st.busy || !notifications || typeof notifications.markRead !== "function") return;
+      const res = await act(() => notifications.markRead(session, m.ref));
+      if (!res) return;
+      const ok = res.status === "read" || res.status === "unchanged";
+      const text = ok ? "Message marked as read." : "The message couldn't be marked as read. Try again.";
+      st.message = { tone: ok ? "info" : "error", text };
+      announce(text);
+      if (ok) channel.notify();
+      await load();
+    }
+    const d0 = (r) => (r.viewer === "officer" ? "Open crew exercise" : r.due ? "Open today's plan and log a session" : "Open the exercise log");
+
     function listView(d) {
-      const parts = [header(d), messageBox()];
+      const parts = [header(d), todayNotifications(), messageBox()];
       if (d.viewer === "officer") parts.push(toolbar(d));
       const mapped = d.items.filter((a) => a.status !== "resolved").slice(0, 4).map((a, index) => ({
         number: index + 1, zone: zoneForRule(a.ruleId), severity: a.severity,
@@ -302,7 +373,6 @@ export function createAlertsRenderer({ service, channel = defaultChannel, subscr
         el("section", { class: "alerts__header", "aria-labelledby": "alert-title" }, [
           el("h2", { class: "alerts__title", id: "alert-title", tabindex: "-1", "data-heading": "" }, `${a.number} · ${a.title}`),
           el("p", { class: "alerts__tags" }, [severityBadge(a.severity), statusBadge(a.status), clearedBadge(a.conditionCleared, a.status), el("span", { class: "sim-tag" }, a.fromSimulation ? "Simulated" : "Synthetic")]),
-          syntheticNotice(),
         ]),
         createContextBodyScan({
           id: "alert-body-map-title",
@@ -396,6 +466,12 @@ export function createAlertsRenderer({ service, channel = defaultChannel, subscr
             el("span", {}, "The condition has not cleared. I confirm I want to resolve this alert anyway."),
           ]));
         }
+        const who = a.name ? `${a.name}${a.crewId ? ` (${a.crewId})` : ""}` : "the crew member";
+        children.push(el("label", { class: "alerts-check", for: "alert-notify" }, [
+          el("input", { type: "checkbox", id: "alert-notify", checked: st.notify, onChange: (e) => { st.notify = e.target.checked === true; } }),
+          el("span", {}, `Send this note to ${who} as a notification`),
+        ]));
+        children.push(el("p", { class: "alerts__note" }, "When ticked, the note appears in the crew member's notifications and on their bell. When not ticked, it stays an internal Medical Officer note."));
         children.push(el("button", { class: "btn btn--primary btn--sm", type: "button", id: "alert-resolve", "data-action": "resolve", disabled: !ready, "aria-describedby": "alert-resolve-help", onClick: () => resolve() }, [icon("circle-check"), "Resolve"]));
         children.push(el("p", { class: "alerts__note", id: "alert-resolve-help" }, ac.needsConfirmation ? "A note and the confirmation are required because the condition is still present." : "A note is required."));
       }
@@ -424,10 +500,15 @@ export function createAlertsRenderer({ service, channel = defaultChannel, subscr
     async function resolve() {
       if (st.busy) return;
       const ac = st.data.actions;
-      const res = await act(() => service.resolveAlert(session, route.number, { note: st.note, confirmConditionPresent: ac.needsConfirmation ? st.confirm === true : false }));
+      const res = await act(() => service.resolveAlert(session, route.number, { note: st.note, confirmConditionPresent: ac.needsConfirmation ? st.confirm === true : false, notifyAstronaut: st.notify === true }));
       if (!res) return;
-      if (res.status === "resolved") { st.note = ""; st.confirm = false; }
+      if (res.status === "resolved") { st.note = ""; st.confirm = false; st.notify = true; }
       finishAction(res);
+      if (res.status === "resolved" && res.notified) {
+        const name = st.data && st.data.alert && st.data.alert.name ? st.data.alert.name : "the crew member";
+        st.message = { tone: "info", text: `Alert resolved. The note was sent to ${name} as a notification.` };
+        announce(st.message.text);
+      }
       await load();
     }
 
@@ -451,6 +532,8 @@ export const renderAlerts = createAlertsRenderer({
     resolveAlert: (session, number, input) => resolveAlert(session, number, input),
     evaluateCrew: (session) => evaluateCrew(session),
   }),
+  loadReminder: (session) => getExerciseReminder(session),
+  notifications: Object.freeze({ load: (session) => getNotifications(session), markRead: (session, ref) => markMessageRead(session, ref) }),
 });
 
 export { DEMO_THRESHOLD_LABEL };

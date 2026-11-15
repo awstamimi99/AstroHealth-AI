@@ -121,10 +121,11 @@ export function createSettingsRenderer({ service, prefs = preferences, notifyRes
           t.status === "ok"
             ? el("div", { class: "table-wrap" }, el("table", { class: "table settings-table" }, [
                 el("caption", { class: "sr-only" }, "Stored demonstration thresholds used by the risk rules"),
-                el("thead", {}, el("tr", {}, ["Rule", "Measure", "Warning", "Critical"].map((h) => el("th", { scope: "col" }, h)))),
+                el("thead", {}, el("tr", {}, ["Rule", "Measure", "Watch (info)", "Warning", "Critical"].map((h) => el("th", { scope: "col" }, h)))),
                 el("tbody", {}, t.rows.map((r) => el("tr", {}, [
                   el("th", { scope: "row" }, r.rule),
                   el("td", { "data-label": "Measure" }, r.label),
+                  el("td", { "data-label": "Watch (info)" }, r.watch === null || r.watch === undefined ? "—" : `${r.direction === "high" ? "above" : "below"} ${formatNumber(r.watch, r.watch % 1 ? 1 : 0)} ${r.unit}`),
                   el("td", { "data-label": "Warning" }, r.warning === null ? "Not set" : `${r.direction === "high" ? "above" : "below"} ${formatNumber(r.warning, r.warning % 1 ? 1 : 0)} ${r.unit}`),
                   el("td", { "data-label": "Critical" }, r.critical === null ? "Not set" : `${r.direction === "high" ? "above" : "below"} ${formatNumber(r.critical, r.critical % 1 ? 1 : 0)} ${r.unit}`),
                 ]))),

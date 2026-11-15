@@ -25,7 +25,7 @@ const BANNED = /\b(healthy|unhealthy|normal health|diagnosed|medically cleared|f
 const flush = async () => { for (let i = 0; i < 20; i += 1) await new Promise((r) => setTimeout(r, 0)); };
 
 function harness() {
-  const repos = { usersRepo: mock.usersRepo, astronautsRepo: mock.astronautsRepo, measurementsRepo: mock.measurementsRepo, settingsRepo: mock.settingsRepo, alertsRepo: mock.alertsRepo, alertActionsRepo: mock.alertActionsRepo, eventsRepo: mock.eventsRepo };
+  const repos = { usersRepo: mock.usersRepo, astronautsRepo: mock.astronautsRepo, measurementsRepo: mock.measurementsRepo, settingsRepo: mock.settingsRepo, alertsRepo: mock.alertsRepo, alertActionsRepo: mock.alertActionsRepo, eventsRepo: mock.eventsRepo, messagesRepo: mock.messagesRepo };
   const a = alertsSvc.createAlertsService({ repos, withTransaction: mock.withTransaction });
   const r = riskSvc.createRiskService({ repos, withTransaction: mock.withTransaction });
   const calls = [];
@@ -141,7 +141,7 @@ test("officer detail: acknowledge, then resolve with a note and the required con
   assert.ok(!btn().hasAttribute("disabled"));
   btn().click();
   await flush();
-  assert.deepEqual(h.calls.find((c) => c[0] === "resolve").slice(1), ["ALT-0189", { note: "Supportive conversation held.", confirmConditionPresent: true }]);
+  assert.deepEqual(h.calls.find((c) => c[0] === "resolve").slice(1), ["ALT-0189", { note: "Supportive conversation held.", confirmConditionPresent: true, notifyAstronaut: true }]);
   assert.match(text(root), /Alert resolved\./);
   assert.match(text(root), /Resolved alerts are kept as history/);
   assert.match(text(root), /Supportive conversation held\./);

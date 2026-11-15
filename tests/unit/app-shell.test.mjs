@@ -22,8 +22,8 @@ const { checkRoute } = await import("../../js/auth/guard.js");
 const { ROLES } = await import("../../js/db/index.js");
 const { describeMission, getMissionContext, MISSION_UNAVAILABLE } = await import("../../js/services/mission-service.js");
 
-const REQUIRED = ["#/overview", "#/physical", "#/wellbeing", "#/crew", "#/history", "#/simulation", "#/alerts", "#/reports", "#/settings"];
-const ASTRONAUT_ROUTES = ["#/overview", "#/physical", "#/wellbeing", "#/history", "#/alerts", "#/reports", "#/settings"];
+const REQUIRED = ["#/overview", "#/physical", "#/wellbeing", "#/crew", "#/history", "#/simulation", "#/ai", "#/alerts", "#/exercise", "#/environment", "#/reports", "#/settings"];
+const ASTRONAUT_ROUTES = ["#/overview", "#/physical", "#/wellbeing", "#/history", "#/ai", "#/alerts", "#/exercise", "#/environment", "#/reports", "#/settings"];
 const CANONICAL = [ROLES.ASTRONAUT, ROLES.MEDICAL_OFFICER];
 const paths = (list) => list.map((r) => r.path);
 const astronaut = { role: "astronaut", userId: "u-haddad" };
@@ -228,6 +228,9 @@ test("app-shell route views are chosen by route AND role; every other route keep
     ["#/alerts", { astronaut: "renderAlerts", medical_officer: "renderAlerts" }],
     ["#/history", { astronaut: "renderHistory", medical_officer: "renderHistory" }],
     ["#/reports", { astronaut: "renderReports", medical_officer: "renderReports" }],
+    ["#/ai", { astronaut: "renderAiAssistant", medical_officer: "renderAiAssistant" }],
+    ["#/exercise", { astronaut: "renderExercise", medical_officer: "renderExercise" }],
+    ["#/environment", { astronaut: "renderEnvironment", medical_officer: "renderEnvironment" }],
     ["#/settings", { astronaut: "renderSettings", medical_officer: "renderSettings" }],
   ]);
   // Sprint 4 astronaut Overview unchanged; no astronaut view for #/crew.
@@ -237,7 +240,7 @@ test("app-shell route views are chosen by route AND role; every other route keep
   // Unmapped routes still render placeholderView, and route guards run before any view.
   assert.match(shell, /const renderView = ROUTE_VIEWS\[route\.path\]\?\.\[current\.role\];[\s\S]*?else \{\s*clear\(view\)\.append\(placeholderView\(route\)\);/);
   assert.ok(shell.indexOf("if (!allowed)") < shell.indexOf("const renderView = ROUTE_VIEWS"), "guard runs before any view");
-  for (const r of ROUTES.filter((x) => !["#/overview", "#/crew", "#/physical", "#/wellbeing", "#/simulation", "#/alerts", "#/history", "#/reports", "#/settings"].includes(x.path))) assert.ok(!entries.some(([p]) => p === r.path), r.path);
+  for (const r of ROUTES.filter((x) => !["#/overview", "#/crew", "#/physical", "#/wellbeing", "#/simulation", "#/alerts", "#/history", "#/reports", "#/settings", "#/ai", "#/exercise", "#/environment"].includes(x.path))) assert.ok(!entries.some(([p]) => p === r.path), r.path);
 });
 
 test("30. astronauts can't reach #/crew or any nested crew-detail route (Access denied before any view)", () => {

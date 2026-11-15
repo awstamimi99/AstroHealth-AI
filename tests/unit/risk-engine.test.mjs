@@ -18,7 +18,10 @@ const { METRICS } = await import("../../js/db/constants.js");
 
 const H = 3600e3;
 const NOW = Date.UTC(2026, 10, 14, 15, 30);
-const TH = DEMO_THRESHOLDS;
+// The two-tier engine behaviour is tested with the original SpO₂ demo values
+// (warning < 95, critical < 92). The current three-tier SpO₂ bands (PHY-02 v2:
+// watch < 95, warning < 93, critical < 90) are tested separately below.
+const TH = { ...DEMO_THRESHOLDS, metrics: { ...DEMO_THRESHOLDS.metrics, spo2: { warningLow: 95, criticalLow: 92 } } };
 const R = (id) => rules.getRule(id);
 let seq = 0;
 const m = (metric, value, agoMs, quality = "ok", source = "simulation", unit) => ({
@@ -30,16 +33,17 @@ const series = (metric, values, quality) => values.map((v, i) => m(metric, v, (v
 const ev = (id, list) => eng.evaluateRule(R(id), list, TH, NOW);
 
 test("catalog: exactly the approved rules, versions, documented metrics, stored threshold keys only", () => {
-  assert.deepEqual(rules.PHYSICAL_RULES.map((r) => [r.id, r.version, r.metric]), [["PHY-01", 2, "heartRate"], ["PHY-02", 1, "spo2"], ["PHY-03", 1, "bpSystolic"], ["PHY-05", 1, "sleepDuration"]]);
+  assert.deepEqual(rules.PHYSICAL_RULES.map((r) => [r.id, r.version, r.metric]), [["PHY-01", 2, "heartRate"], ["PHY-02", 2, "spo2"], ["PHY-03", 1, "bpSystolic"], ["PHY-05", 1, "sleepDuration"],
+    ["PHY-06", 1, "bodyTemperature"], ["PHY-07", 1, "bodyTemperature"], ["ENV-01", 1, "cabinCo2"], ["ENV-02", 1, "cabinPressure"], ["ENV-03", 1, "cabinHumidity"]]);
   for (const r of rules.PHYSICAL_RULES) {
     assert.ok(METRICS.includes(r.metric));
     assert.ok(Object.isFrozen(r) && Object.isFrozen(r.keys));
     assert.ok(r.keys.warning in TH.metrics[r.metric] && r.keys.critical in TH.metrics[r.metric], `${r.id} uses stored keys`);
-    assert.equal(r.category, "physical");
+    assert.equal(r.category, r.id.startsWith("ENV-") ? "environment" : "physical");
   }
   // No threshold VALUES in the catalog: only key names.
   const src = code("js/engine/rules/physical-rules.js");
-  for (const v of ["95", "92", "100", "120", "140", "160", "6.5"]) assert.ok(!new RegExp(`[^\\d.]${v.replace(".", "\\.")}[^\\d]`).test(src), `no hard-coded threshold ${v}`);
+  for (const v of ["95", "92", "100", "120", "140", "160", "6.5", "37.5", "38.5", "36.1"]) assert.ok(!new RegExp(`[^\\d.]${v.replace(".", "\\.")}[^\\d]`).test(src), `no hard-coded threshold ${v}`);
   assert.equal(rules.DEMO_THRESHOLD_LABEL, "Demonstration threshold — not clinically validated.");
 });
 
@@ -145,7 +149,7 @@ test("engine purity: js/engine imports only js/engine files; no clock, random, D
   const files = [];
   const walk = (dir) => { for (const f of readdirSync(join(ROOT, dir))) { const p = `${dir}/${f}`; if (statSync(join(ROOT, p)).isDirectory()) walk(p); else if (f.endsWith(".js")) files.push(p); } };
   walk("js/engine");
-  assert.deepEqual(files.sort(), ["js/engine/risk-engine.js", "js/engine/rules/physical-rules.js"]);
+  assert.deepEqual(files.sort(), ["js/engine/risk-engine.js", "js/engine/rules/exercise-rules.js", "js/engine/rules/physical-rules.js", "js/engine/rules/wellbeing-rules.js"]);
   for (const f of files) {
     const src = code(f);
     const imports = [...src.matchAll(/^import\s[^;]*?from\s+["']([^"']+)["']/gm)].map((x) => x[1]);
@@ -219,4 +223,37 @@ test("evidence merge keeps documented fields, dedupes by measurement, oldest fir
   assert.ok(merged.every((e, i) => i === 0 || e.timestamp >= merged[i - 1].timestamp));
   const many = Array.from({ length: 70 }, (_, i) => eng.evidenceOf(m("spo2", 90, (70 - i) * 1000)));
   assert.equal(eng.mergeEvidence([], many).length, eng.EVIDENCE_LIMIT);
+});
+
+test("PHY-02 v2 SpO₂ bands (seeded): 95–100 none · 93–94 info · 90–92 warning · < 90 critical; clear at ≥ 95", () => {
+  const ev3 = (vals) => eng.evaluateRule(R("PHY-02"), series("spo2", vals), DEMO_THRESHOLDS, NOW);
+  assert.deepEqual(DEMO_THRESHOLDS.metrics.spo2, { infoLow: 95, warningLow: 93, criticalLow: 90 });
+  assert.equal(ev3([95, 96]).outcome, "clear");
+  assert.deepEqual([ev3([94, 93]).outcome, ev3([94, 93]).severity], ["triggered", "info"]);
+  assert.match(ev3([94, 93]).explanation, /watch threshold of 95 %/);
+  assert.equal(ev3([92, 90]).severity, "warning", "90–92 % is low oxygen (warning)");
+  assert.equal(ev3([93, 92]).severity, "info", "93 is not below 93: both readings share the watch tier");
+  assert.equal(ev3([89, 85]).severity, "critical");
+  assert.equal(ev3([90, 89]).severity, "warning", "90 is not below 90");
+  assert.equal(ev3([96, 94]).reason, "mixed");
+  assert.match(ev3([94, 94]).thresholdUsed, /^watch < 95 %, warning < 93 %, critical < 90 % · 2 consecutive usable readings$/);
+  assert.deepEqual(eng.thresholdsFor(R("PHY-02"), DEMO_THRESHOLDS), { info: 95, warning: 93, critical: 90 });
+  assert.deepEqual(eng.thresholdsFor(R("PHY-01"), DEMO_THRESHOLDS).info, null, "rules without a watch tier");
+});
+
+test("seed v2 rules: body temperature high/low and cabin environment use the stored KPI bands", () => {
+  const evm = (id, metric, vals) => eng.evaluateRule(R(id), series(metric, vals).map((r) => ({ ...r, unit: { bodyTemperature: "°C", cabinCo2: "mmHg", cabinPressure: "kPa", cabinHumidity: "%RH" }[metric] })), DEMO_THRESHOLDS, NOW);
+  assert.equal(evm("PHY-06", "bodyTemperature", [37.5, 37.6]).severity, "warning", "37.5 °C is at the warning limit");
+  assert.equal(evm("PHY-06", "bodyTemperature", [38.5, 38.9]).severity, "critical");
+  assert.equal(evm("PHY-06", "bodyTemperature", [36.8, 37.2]).outcome, "clear");
+  assert.equal(evm("PHY-07", "bodyTemperature", [36.0, 35.8]).severity, "warning", "below the 36.1 °C normal range");
+  assert.equal(evm("PHY-07", "bodyTemperature", [34.9, 34.6]).severity, "critical");
+  assert.equal(evm("ENV-01", "cabinCo2", [4.0, 4.4]).severity, "warning");
+  assert.equal(evm("ENV-01", "cabinCo2", [6.1, 6.3]).severity, "critical");
+  assert.equal(evm("ENV-02", "cabinPressure", [97.5, 97.8]).severity, "warning");
+  assert.equal(evm("ENV-02", "cabinPressure", [94.8, 94]).severity, "critical");
+  assert.equal(evm("ENV-03", "cabinHumidity", [72, 75]).severity, "warning");
+  assert.equal(evm("ENV-03", "cabinHumidity", [81, 85]).severity, "critical");
+  assert.equal(evm("ENV-03", "cabinHumidity", [70, 75]).reason, "mixed", "70 is not above 70");
+  assert.equal(R("ENV-01").category, "environment");
 });

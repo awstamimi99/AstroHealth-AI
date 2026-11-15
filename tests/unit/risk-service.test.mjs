@@ -51,7 +51,7 @@ function serialTx() {
 }
 function service(overrides = {}, tx = serialTx()) {
   const s = spy({ ...baseRepos(), ...overrides });
-  return { ...s, tx, service: risk.createRiskService({ repos: s.repos, withTransaction: tx.run }) };
+  return { ...s, tx, service: risk.createRiskService({ repos: s.repos, withTransaction: tx.run, exercise: false }) };
 }
 const reset = () => mock.resetMock({ now: NOW });
 const allAlerts = () => mock.alertsRepo.query({});
@@ -94,14 +94,14 @@ test("seed dry run (mock): evaluating the untouched seed writes nothing; ALT-019
 test("open: alert + created action + 2 events + new number, atomically; repeat evaluation is unchanged", async () => {
   await reset();
   const { service: s, tx } = service();
-  await addReadings("a-03", "spo2", [93, 92], NOW + SEC);
+  await addReadings("a-03", "spo2", [92, 91], NOW + SEC); // PHY-02 v2: 90–92 % = warning
   const r = await s.evaluateAstronaut(MO, "AH-03", { now: NOW + 10 * SEC });
   const phy2 = r.rules.find((x) => x.ruleId === "PHY-02");
   assert.deepEqual([phy2.change, phy2.alertNumber, phy2.alertSeverity], ["opened", "ALT-0191", "warning"]);
   assert.deepEqual(tx.stores, [["measurements", "alerts", "meta", "alertActions", "missionEvents"]]);
   const a = (await allAlerts()).find((x) => x.number === "ALT-0191");
-  assert.deepEqual([a.astronautId, a.ruleId, a.severity, a.status, a.occurrenceCount, a.detectedAt, a.createdBy, a.rule.version], ["a-03", "PHY-02", "warning", "new", 1, NOW + 10 * SEC, "system", 1]);
-  assert.deepEqual(a.triggeringMeasurements.map((e) => [e.value, e.source, e.quality]), [[93, "simulation", "ok"], [92, "simulation", "ok"]]);
+  assert.deepEqual([a.astronautId, a.ruleId, a.severity, a.status, a.occurrenceCount, a.detectedAt, a.createdBy, a.rule.version], ["a-03", "PHY-02", "warning", "new", 1, NOW + 10 * SEC, "system", 2]);
+  assert.deepEqual(a.triggeringMeasurements.map((e) => [e.value, e.source, e.quality]), [[92, "simulation", "ok"], [91, "simulation", "ok"]]);
   assert.ok(a.triggeringMeasurements.every((e) => Object.keys(e).sort().join() === "measurementId,metric,quality,source,timestamp,unit,value"));
   assert.deepEqual((await mock.alertActionsRepo.getByAlert(a.id)).map((x) => [x.action, x.userId]), [["created", "system"]]);
   assert.deepEqual((await mock.eventsRepo.getRange({ astronautId: "a-03" })).filter((e) => e.refId === a.id).map((e) => e.type).sort(), ["alert_generated", "risk_detected"]);
@@ -159,10 +159,10 @@ test("escalation of an acknowledged alert: back to new, acknowledgement cleared 
   await reset();
   const s = service().service;
   const a = alertsSvc.createAlertsService({ repos: baseRepos(), withTransaction: mock.withTransaction });
-  await addReadings("a-03", "spo2", [93, 92], NOW + SEC);
+  await addReadings("a-03", "spo2", [92, 91], NOW + SEC);
   await s.evaluateAstronaut(MO, "AH-03", { now: NOW + 10 * SEC });
   assert.equal((await a.acknowledgeAlert(MO, "ALT-0191", {}, { now: NOW + 11 * SEC })).status, "acknowledged");
-  await addReadings("a-03", "spo2", [90, 88], NOW + 20 * SEC);
+  await addReadings("a-03", "spo2", [88, 87], NOW + 20 * SEC);
   const r = await s.evaluateAstronaut(MO, "AH-03", { now: NOW + 30 * SEC });
   assert.equal(r.rules.find((x) => x.ruleId === "PHY-02").change, "escalated");
   const alert = (await allAlerts()).find((x) => x.number === "ALT-0191");
@@ -241,7 +241,7 @@ test("privacy: the risk service never touches journal, wellbeing, messages or pa
   const src = code("js/services/risk-service.js");
   for (const bad of ["journalRepo", "wellbeingRepo", "messagesRepo", "cognitiveRepo", "passwordHash", "salt", "verifyPassword", "localStorage"]) assert.ok(!src.includes(bad), bad);
   const imports = [...readFileSync(join(ROOT, "js/services/risk-service.js"), "utf8").matchAll(/^import\s[^;]*?from\s+["']([^"']+)["']/gm)].map((m) => m[1]);
-  assert.deepEqual(imports, ["../db/index.js", "./access-control.js", "../engine/rules/physical-rules.js", "../engine/risk-engine.js"]);
+  assert.deepEqual(imports, ["../db/index.js", "./access-control.js", "../engine/rules/physical-rules.js", "../engine/risk-engine.js", "../engine/rules/exercise-rules.js"]);
 });
 
 // =====================================================================================
@@ -254,7 +254,7 @@ function simulation(evaluator) {
   return { risk: r, sim: sim.createSimulationService({ repos: baseRepos(), withTransaction: tx.run, evaluateRisk: evaluator || r.evaluateAstronaut }) };
 }
 
-test("AH-03 low oxygen: warning after 2 readings < 95 (step 3), critical after 2 < 92 (step 5), cleared after 2 ≥ 95 (step 12); stays open", async () => {
+test("AH-03 low oxygen (PHY-02 v2): info after 2 readings < 95 (step 3), warning after 2 < 93 (step 4), critical after 2 < 90 (step 6), cleared after 2 ≥ 95 (step 12); stays open", async () => {
   await reset();
   const { sim: s } = simulation();
   const start = await s.startSimulation(MO, { crewId: "AH-03", scenarioId: "low_oxygen", speed: 8, confirm: true }, { now: NOW + SEC });
@@ -268,14 +268,14 @@ test("AH-03 low oxygen: warning after 2 readings < 95 (step 3), critical after 2
   }
   assert.deepEqual(values, [95, 93, 92, 90, 88, 88, 88, 90, 92, 93, 95, 97], "Sprint 7 sequence unchanged");
   assert.deepEqual(changes, [
-    "-", "-", "ALT-0191:opened:warning", "ALT-0191:updated:warning", "ALT-0191:escalated:critical",
-    "ALT-0191:updated:critical", "ALT-0191:updated:critical", "ALT-0191:updated:critical", "ALT-0191:updated:critical", "ALT-0191:updated:critical",
+    "-", "-", "ALT-0191:opened:info", "ALT-0191:escalated:warning", "ALT-0191:updated:warning",
+    "ALT-0191:escalated:critical", "ALT-0191:updated:critical", "ALT-0191:updated:critical", "ALT-0191:updated:critical", "ALT-0191:updated:critical",
     "-", "ALT-0191:condition_cleared:critical",
   ]);
   const a = (await allAlerts()).find((x) => x.number === "ALT-0191");
   assert.deepEqual([a.status, a.severity, a.conditionCleared], ["new", "critical", 1], "open until the Medical Officer resolves it");
-  assert.match(a.explanation, /below the demonstration critical threshold of 92 % \(88 %, 90 %\)/, "the explanation still explains the critical severity (last critical-tier pair: steps 7–8)");
-  assert.deepEqual((await mock.alertActionsRepo.getByAlert(a.id)).map((x) => x.action), ["created", "escalated", "condition_cleared"]);
+  assert.match(a.explanation, /below the demonstration critical threshold of 90 % \(88 %, 88 %\)/, "the explanation still explains the critical severity (last critical-tier pair: steps 6–7)");
+  assert.deepEqual((await mock.alertActionsRepo.getByAlert(a.id)).map((x) => x.action), ["created", "escalated", "escalated", "condition_cleared"]);
   assert.ok(a.triggeringMeasurements.every((e) => e.source === "simulation" && e.quality === "ok"));
   // The run still completed normally (Sprint 7 state machine unchanged).
   const run = await mock.simulationRunsRepo.getById(start.runRef);
@@ -307,7 +307,7 @@ test("cross-dashboard: the same stored alert appears in Overview, officer queue,
   await reset();
   const { sim: s } = simulation();
   const start = await s.startSimulation(MO, { crewId: "AH-03", scenarioId: "low_oxygen", speed: 8, confirm: true }, { now: NOW + SEC });
-  for (let i = 0; i < 5; i += 1) await s.advanceSimulation(MO, start.runRef, { expectedStep: i }, { now: NOW + 10 * SEC + i * SEC });
+  for (let i = 0; i < 6; i += 1) await s.advanceSimulation(MO, start.runRef, { expectedStep: i }, { now: NOW + 10 * SEC + i * SEC }); // step 6: 88, 88 → critical
   const at = NOW + 20 * SEC;
   const mission = async () => ({ available: true, name: "TEST-1", missionDay: 3 });
   const repos = { ...baseRepos(), dailySummariesRepo: mock.dailySummariesRepo, messagesRepo: mock.messagesRepo, cognitiveRepo: mock.cognitiveRepo, wellbeingRepo: mock.wellbeingRepo };
@@ -330,4 +330,26 @@ test("cross-dashboard: the same stored alert appears in Overview, officer queue,
   const list = await al.listAlerts(MO, {}, { now: at });
   assert.equal(list.items[0].number, "ALT-0191", "Alerts page: critical first");
   assert.equal(list.items[0].severity, "critical");
+});
+
+test("EX-01 through the risk service: missed exercise days open a warning (1–2 days) then escalate to critical (3+); a logged day clears", async () => {
+  await reset();
+  const DAY = 24 * 3600 * 1000;
+  const s = risk.createRiskService({ repos: baseRepos(), withTransaction: mock.withTransaction });
+  const ex = (r) => r.rules.find((x) => x.ruleId === "EX-01");
+  // The seed logged every day up to NOW, so evaluating now changes nothing.
+  assert.equal(ex(await s.evaluateAstronaut(MO, "AH-01", { now: NOW + 1000 })).change, "none");
+  // Two days later with nothing logged: one full UTC day (yesterday) was missed → warning.
+  const one = ex(await s.evaluateAstronaut(MO, "AH-01", { now: NOW + 2 * DAY }));
+  assert.deepEqual([one.change, one.alertSeverity], ["opened", "warning"]);
+  assert.match(one.explanation, /Less than 30 min of aerobic \+ resistance exercise on 1 UTC day in a row/);
+  const two = ex(await s.evaluateAstronaut(MO, "AH-01", { now: NOW + 3 * DAY }));
+  assert.deepEqual([two.outcome, two.severity, two.alertSeverity], ["triggered", "warning", "warning"], "2 missed days: still warning");
+  const three = ex(await s.evaluateAstronaut(MO, "AH-01", { now: NOW + 4 * DAY }));
+  assert.deepEqual([three.change, three.alertSeverity], ["escalated", "critical"], "3 missed days: critical");
+  await mock.eventsRepo.add({ type: "exercise_logged", timestamp: NOW + 4 * DAY + 1000, astronautId: "a-01", actorUserId: "u-haddad", refStore: "", refId: "", summary: "x", data: { sessionType: "aerobic", minutes: 45, completion: "completed" } });
+  const cleared = ex(await s.evaluateAstronaut(MO, "AH-01", { now: NOW + 4 * DAY + 2000 }));
+  assert.equal(cleared.change, "condition_cleared");
+  const a = (await allAlerts()).find((x) => x.ruleId === "EX-01");
+  assert.deepEqual([a.severity, a.status, a.conditionCleared, a.category], ["critical", "new", 1, "physical"], "stays open until the Medical Officer resolves it");
 });

@@ -40,6 +40,7 @@ import {
 import { verifyMedicalOfficer, resolveCrewMember, CREW_ID_PATTERN } from "./access-control.js";
 import { PHYSICAL_RULES, DEMO_THRESHOLD_LABEL } from "../engine/rules/physical-rules.js";
 import { evaluateRule, planAlertChange } from "../engine/risk-engine.js";
+import { EXERCISE_RULE, evaluateExerciseRule } from "../engine/rules/exercise-rules.js";
 
 export { DEMO_THRESHOLD_LABEL };
 export const EVALUATION_STORES = Object.freeze(["measurements", "alerts", "meta", "alertActions", "missionEvents"]);
@@ -56,7 +57,7 @@ function usableThresholds(value) {
 }
 
 /** TEST SEAM. Pages use the exported functions below. */
-export function createRiskService({ repos, withTransaction: runTransaction, rules = PHYSICAL_RULES }) {
+export function createRiskService({ repos, withTransaction: runTransaction, rules = PHYSICAL_RULES, exercise = true }) {
   const locks = new Set();
   const nowOf = (options) => (options && options.now !== undefined ? options.now : Date.now());
   const triggerOf = (options) => (options && TRIGGERS.includes(options.trigger) ? options.trigger : "evaluation");
@@ -102,6 +103,29 @@ export function createRiskService({ repos, withTransaction: runTransaction, rule
               for (const e of plan.events) {
                 await repos.eventsRepo.add({ type: e.type, timestamp: now, astronautId: aid, actorUserId: "system", refStore: "alerts", refId: open.id, summary: e.summary.replace("{number}", open.number), data: { ...e.data } }, { tx });
               }
+              entry.alertSeverity = updated.severity;
+            }
+            out.push(entry);
+          }
+          // EX-01 (missed exercise days) from the logged sessions — same transaction, same planner.
+          if (exercise) {
+            const raw = await repos.eventsRepo.getRange({ astronautId: aid, fromTs: now - 30 * 24 * 3600000, toTs: now, types: ["exercise_logged"] }, { tx });
+            const sessions = (Array.isArray(raw) ? raw : []).filter((e) => e && e.astronautId === aid && e.data).map((e) => ({ timestamp: e.timestamp, sessionType: e.data.sessionType, minutes: e.data.minutes, completion: e.data.completion }));
+            const evaluation = evaluateExerciseRule(sessions, now);
+            const openRaw = await repos.alertsRepo.getOpenByDedupeKey(`${aid}:${EXERCISE_RULE.id}`, { tx });
+            const open = openRaw && openRaw.astronautId === aid ? openRaw : null;
+            const plan = planAlertChange({ rule: EXERCISE_RULE, result: evaluation, openAlert: open, astronautId: aid, now, trigger });
+            const entry = { ruleId: EXERCISE_RULE.id, ruleVersion: EXERCISE_RULE.version, metric: "exercise", title: EXERCISE_RULE.title, outcome: evaluation.outcome, severity: evaluation.severity, reason: evaluation.reason || plan.reason || "", change: CHANGE_LABEL[plan.kind], alertNumber: open ? open.number : "", alertSeverity: open ? open.severity : null, explanation: evaluation.explanation, thresholdUsed: evaluation.thresholdUsed };
+            if (plan.kind === "open") {
+              const created = await repos.alertsRepo.add({ ...plan.record }, { tx });
+              await repos.alertActionsRepo.add({ alertId: created.id, action: "created", userId: "system", timestamp: now, note: "" }, { tx });
+              for (const e of plan.events) await repos.eventsRepo.add({ type: e.type, timestamp: now, astronautId: aid, actorUserId: "system", refStore: "alerts", refId: created.id, summary: e.summary.replace("{number}", created.number), data: { ...e.data } }, { tx });
+              entry.alertNumber = created.number;
+              entry.alertSeverity = created.severity;
+            } else if (plan.kind !== "none") {
+              const updated = await repos.alertsRepo.update(open.id, { ...plan.changes }, { tx });
+              if (plan.action) await repos.alertActionsRepo.add({ alertId: open.id, action: plan.action.action, userId: "system", timestamp: now, note: plan.action.note }, { tx });
+              for (const e of plan.events) await repos.eventsRepo.add({ type: e.type, timestamp: now, astronautId: aid, actorUserId: "system", refStore: "alerts", refId: open.id, summary: e.summary.replace("{number}", open.number), data: { ...e.data } }, { tx });
               entry.alertSeverity = updated.severity;
             }
             out.push(entry);

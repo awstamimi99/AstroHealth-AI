@@ -570,3 +570,30 @@ Automated: `npm run test:responsive` (needs Chrome; no Python). It opens every p
 - [ ] Physical, Alerts, History, Reports body scans on phones: no pin label cut off at the panel edge
 - [ ] Reports below 720 px: table rows become labelled blocks; printing still prints tables
 - [ ] Settings on a 320 px phone: the thresholds table becomes labelled blocks; nothing scrolls sideways
+
+## 24. AI Assistant, check-in review and SpO₂ bands (app version 0.13.0)
+
+Start with `npm run serve:ai` (not `npm run serve`) and open http://localhost:8080.
+
+- [ ] Sidebar shows **AI Assistant** for both roles; Overview pages have no AI card
+- [ ] AI page shows "AI server ready · model …"; with `npm run serve` instead it shows "AI server not running" with the start command (no HTML error text)
+- [ ] Astronaut (`reyes`): "Analyze my history" answers with numbers from the data (sleep 7-day vs previous 7-day, baseline deviation); a follow-up question works
+- [ ] "Build my routine + workout": a draft table with aerobic + resistance (≈ 2 h) and mobility blocks, times in order from morning to sleep; Accept saves it under "My accepted routine draft"; Reject / Request changes work
+- [ ] Medical Officer: "Summarize crew trends" and "Analyze one crew member" answer; wellbeing figures come from shared check-ins only
+- [ ] Offline (DevTools → Offline): the AI page says so; other pages keep working
+- [ ] Wellbeing → bad PRIVATE check-in (e.g. mood 2, stress 8): "Check-in review" lists the concerns and says no alert was created; bell unchanged
+- [ ] Wellbeing → bad SHARED check-in (mood 1, wellbeing 1, stress 9): review says "Mental-wellbeing alert ALT-… was opened" (Warning); bell +1; Medical Officer sees it on Alerts
+- [ ] Settings (Medical Officer) thresholds table: PHY-02 watch below 95 %, warning below 93 %, critical below 90 %
+- [ ] Live control (the Simulation Center now has no Scenarios tab): SpO₂ chart shows 3 labelled lines; 94 → info, 92 → warning, 88 → critical after applying twice
+
+## 25. Exercise, cabin environment and notifications (app version 0.14.0)
+
+- [ ] Reload once after updating: the demo data is upgraded (body temperature on Physical Health, Cabin Environment shows CO₂ / pressure / humidity)
+- [ ] Astronaut → Daily Exercise: readiness, today's plan, log a session (type, duration, intensity, completion); history updates
+- [ ] Alerts → "Today's notifications" shows the daily exercise reminder; the bell counts it
+- [ ] Medical Officer resolves an alert with "Send this note to <name>" ticked → banner says the note was sent
+- [ ] Astronaut window (signed in tab-only, `login.html?tab=1`): pop-up notice with the note appears without reload; bell +1
+- [ ] Astronaut → Alerts → "From the Medical Officer" → Mark as read: the message leaves the list; bell −1
+- [ ] Resolve with the box UNticked: the astronaut gets nothing and the note stays internal
+- [ ] AI Assistant: no "null" text; answers are short and end with a highlighted "Recommendation:" line
+- [ ] No in-page synthetic banners; the footer disclaimer is on every page

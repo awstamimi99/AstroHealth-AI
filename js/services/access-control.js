@@ -42,6 +42,7 @@ function pickAstronaut(a) {
       bpSystolic: num(b.bpSystolic),
       bpDiastolic: num(b.bpDiastolic),
       sleepDuration: num(b.sleepDuration),
+      bodyTemperature: num(b.bodyTemperature),
     }),
   });
 }

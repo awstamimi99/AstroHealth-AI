@@ -170,7 +170,7 @@ test("14–15. trends: scoped, 30 UTC days oldest first, missing days marked, de
   assert.deepEqual(hr.windows[30], { days: 30, daysWithData: 3, missingDays: 27, average: 68, differenceFromBaseline: -4 });
   const again = await fake({ summaries: [...summaries].reverse() }).getOwnPhysicalHealth(SESSION, { now: NOW });
   assert.deepEqual(again.trends.metrics[0], hr);
-  assert.deepEqual(r.trends.metrics.map((m) => m.key), ["heartRate", "spo2", "bpSystolic", "bpDiastolic", "sleepDuration"]);
+  assert.deepEqual(r.trends.metrics.map((m) => m.key), ["heartRate", "spo2", "bpSystolic", "bpDiastolic", "sleepDuration", "bodyTemperature"]);
   assert.match(r.trends.note, /include readings marked suspect; invalid readings are excluded/);
 });
 

@@ -16,14 +16,15 @@ const OUT = join(ROOT, "js/core/precache-manifest.js");
 
 // Top-level folders/files that are NOT part of the running app.
 const EXCLUDE_DIRS = new Set([
-  "node_modules", "scripts", "tests", "docs", ".git", ".github", ".vscode", ".claude",
+  "node_modules", "scripts", "tests", "docs", "server", "videos", ".git", ".github", ".vscode", ".claude",
 ]);
 const EXCLUDE_FILES = new Set([
   "package.json", "package-lock.json", ".gitignore", ".DS_Store", "sw.js",
   "README.md", "CONTRIBUTING.md", "LICENSE",
 ]);
-// File types we never need offline.
-const EXCLUDE_EXT = [".md", ".map", ".gitkeep"];
+// File types we never need offline. Video guides (assets/guides/*.mp4, tens of MB) are
+// streamed on demand instead of being downloaded on every install.
+const EXCLUDE_EXT = [".md", ".map", ".gitkeep", ".mp4", ".webm", ".mov"];
 // Licence files are kept in the repo but are not needed at runtime.
 const EXCLUDE_NAMES = new Set(["LICENSE", "LICENSE.md", ".gitkeep"]);
 

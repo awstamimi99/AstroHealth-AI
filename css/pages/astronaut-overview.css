@@ -507,3 +507,23 @@
   background: var(--color-primary-tint);
   color: var(--color-primary);
 }
+
+/* Local video guide in the action-plan drawer. */
+.ov-plan__media {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-card);
+}
+.ov-plan__media-title { display: flex; align-items: center; gap: var(--space-2); margin: 0; }
+.ov-plan__media-title .icon { color: var(--color-primary); }
+.ov-plan__media video {
+  width: 100%;
+  max-height: 320px;
+  border-radius: var(--radius-sm);
+}
+.ov-plan__media figcaption { margin: 0; }

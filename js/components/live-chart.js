@@ -68,7 +68,7 @@ export function keyStep(key, shiftKey, value, { min, max, step }) {
   return snapValue(value + delta, { min, max, step });
 }
 
-export function createLiveChart({ id, label, unit, min, max, step = 1, series = [], baseline = null, rule = null, handles = [], onChange = null, onCurveChange = null, disabled = false }) {
+export function createLiveChart({ id, label, unit, min, max, step = 1, series = [], baseline = null, rule = null, rules = null, handles = [], onChange = null, onCurveChange = null, disabled = false }) {
   const range = { min, max, step };
   const yOf = (v) => PLOT.bottom - ((Math.min(max, Math.max(min, v)) - min) / (max - min)) * (PLOT.bottom - PLOT.top);
   const valueAt = (y) => min + ((PLOT.bottom - y) / (PLOT.bottom - PLOT.top)) * (max - min);
@@ -91,7 +91,8 @@ export function createLiveChart({ id, label, unit, min, max, step = 1, series = 
 
   // Rule limits (labelled with the rule id) — values come from the caller.
   const limits = svg("g", { class: "live-chart__limits", "aria-hidden": "true" });
-  if (rule && typeof rule.warning === "number") {
+  for (const r of (Array.isArray(rules) ? rules : [rule]).filter((x) => x && typeof x.warning === "number")) {
+    const rule = r; // one block per rule (e.g. body temperature high + low)
     const sym = COMPARE_SYMBOL[rule.compare] || "";
     const below = rule.compare === "below";
     const edge = below ? PLOT.bottom : PLOT.top;
@@ -99,6 +100,7 @@ export function createLiveChart({ id, label, unit, min, max, step = 1, series = 
       const y1 = yOf(from);
       limits.append(svg("rect", { class: `live-chart__band ${cls}`, x: PLOT.left, y: r1(Math.min(y1, edge)), width: PLOT.right - PLOT.left, height: r1(Math.abs(edge - y1)) }));
     };
+    if (typeof rule.info === "number") band(rule.info, "live-chart__band--watch");
     band(rule.warning, "live-chart__band--warning");
     if (typeof rule.critical === "number") band(rule.critical, "live-chart__band--critical");
     const line = (value, tier) => {
@@ -108,6 +110,7 @@ export function createLiveChart({ id, label, unit, min, max, step = 1, series = 
       t.textContent = `${rule.id} ${tier} ${sym} ${text(value)}`;
       limits.append(t);
     };
+    if (typeof rule.info === "number") line(rule.info, "watch");
     line(rule.warning, "warning");
     if (typeof rule.critical === "number") line(rule.critical, "critical");
   }
