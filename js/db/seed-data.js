@@ -16,8 +16,10 @@ import { createRng, clamp, round } from "./random.js";
 import { seedId } from "./ids.js";
 import { summarize, applyToLatest, startOfUtcDay, toDateKey } from "./summaries.js";
 import { DAY_MS, HOUR_MS, METRIC_UNITS, MINUTE_MS, ROLES, SYSTEM_USER } from "./constants.js";
+import { buildSeedSupplement } from "./seed-supplement.js";
 
-export const SEED_VERSION = 1;
+/** 2 = body temperature, cabin environment and exercise sessions (js/db/seed-supplement.js). */
+export const SEED_VERSION = 2;
 export const DEMO_SEED = 147;
 export const DEMO_PASSWORD = "demo";
 export const SEED_ALERT_COUNTER = 190;
@@ -55,11 +57,16 @@ export const DEMO_THRESHOLDS = {
   label: "Demonstration thresholds — not clinically validated",
   metrics: {
     heartRate: { warningLow: 50, criticalLow: 40, warningHigh: 100, criticalHigh: 120 },
-    spo2: { warningLow: 95, criticalLow: 92 },
+    spo2: { infoLow: 95, warningLow: 93, criticalLow: 90 }, // 95–100 % none · 93–94 info · 90–92 warning · < 90 critical
     bpSystolic: { warningLow: 90, criticalLow: 80, warningHigh: 140, criticalHigh: 160 },
     bpDiastolic: { warningLow: 60, criticalLow: 50, warningHigh: 90, criticalHigh: 100 },
     sleepDuration: { warningLow: 6.5, criticalLow: 5 },
     fatigue: { warningHigh: 7, criticalHigh: 9 },
+    // Seed version 2 (project KPI bands; demonstration values, not clinically validated):
+    bodyTemperature: { warningHigh: 37.5, criticalHigh: 38.5, warningLow: 36.1, criticalLow: 35 },
+    cabinCo2: { warningHigh: 4, criticalHigh: 6 },        // ppCO₂ mmHg
+    cabinPressure: { warningLow: 98, criticalLow: 95 },   // kPa
+    cabinHumidity: { warningHigh: 70, criticalHigh: 80 }, // %RH
   },
 };
 
@@ -429,6 +436,18 @@ export function buildSeedData({ now = Date.now(), seed = DEMO_SEED } = {}) {
     };
     data.messages.push(m2);
     event("message_sent", sent2, "a-01", MO, "messages", m2.id, "Message sent: Check vital signs", { templateId: m2.templateId });
+  }
+
+  // ---- Seed version 2: body temperature, cabin environment, exercise sessions ----
+  {
+    const sup = buildSeedSupplement({ now, astronauts: SEED_ASTRONAUTS });
+    data.measurements.push(...sup.measurements);
+    data.dailySummaries = [...data.dailySummaries, ...sup.dailySummaries].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    data.missionEvents.push(...sup.missionEvents);
+    for (const a of data.astronauts) {
+      a.latest = { ...a.latest, ...(sup.latest[a.id] || {}) };
+      a.baseline = { ...a.baseline, ...(sup.baselines[a.id] || {}) };
+    }
   }
 
   // ---- Settings & meta ------------------------------------------------------

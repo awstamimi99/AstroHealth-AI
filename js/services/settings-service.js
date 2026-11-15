@@ -23,13 +23,19 @@ export const ALLOWED_SPEEDS = Object.freeze([1, 2, 4, 8]);
 const UNIT_ROWS = Object.freeze([
   ["heartRate", "Heart rate"], ["spo2", "SpO₂"], ["bpSystolic", "Blood pressure (systolic)"], ["bpDiastolic", "Blood pressure (diastolic)"],
   ["sleepDuration", "Sleep duration"], ["activity", "Activity (steps since 00:00 UTC)"], ["fatigue", "Fatigue"],
+  ["bodyTemperature", "Body temperature"], ["cabinCo2", "Cabin CO₂ (ppCO₂)"], ["cabinPressure", "Cabin pressure"], ["cabinHumidity", "Cabin humidity"],
 ]);
 // Demonstration rule → stored threshold keys (presentation only; values come from settings).
 const THRESHOLD_ROWS = Object.freeze([
   { metric: "heartRate", label: "Heart rate", rule: "PHY-01", keys: ["warningHigh", "criticalHigh"] },
-  { metric: "spo2", label: "SpO₂", rule: "PHY-02", keys: ["warningLow", "criticalLow"] },
+  { metric: "spo2", label: "SpO₂", rule: "PHY-02", keys: ["warningLow", "criticalLow"], watchKey: "infoLow" },
   { metric: "bpSystolic", label: "Systolic blood pressure", rule: "PHY-03", keys: ["warningHigh", "criticalHigh"] },
   { metric: "sleepDuration", label: "Sleep duration", rule: "PHY-05", keys: ["warningLow", "criticalLow"] },
+  { metric: "bodyTemperature", label: "Body temperature (high)", rule: "PHY-06", keys: ["warningHigh", "criticalHigh"] },
+  { metric: "bodyTemperature", label: "Body temperature (low)", rule: "PHY-07", keys: ["warningLow", "criticalLow"] },
+  { metric: "cabinCo2", label: "Cabin CO₂ (ppCO₂)", rule: "ENV-01", keys: ["warningHigh", "criticalHigh"] },
+  { metric: "cabinPressure", label: "Cabin pressure", rule: "ENV-02", keys: ["warningLow", "criticalLow"] },
+  { metric: "cabinHumidity", label: "Cabin humidity", rule: "ENV-03", keys: ["warningHigh", "criticalHigh"] },
 ]);
 export const PRIVACY_NOTES = Object.freeze([
   "All data in this prototype is synthetic and stored in this browser's IndexedDB on this device.",
@@ -80,7 +86,7 @@ export function createSettingsService({ repos }) {
                 label: THRESHOLDS_LABEL,
                 rows: THRESHOLD_ROWS.map((r) => {
                   const m = metrics[r.metric] && typeof metrics[r.metric] === "object" ? metrics[r.metric] : {};
-                  return { rule: r.rule, label: r.label, unit: METRIC_UNITS[r.metric], warning: isNum(m[r.keys[0]]) ? m[r.keys[0]] : null, critical: isNum(m[r.keys[1]]) ? m[r.keys[1]] : null, direction: r.keys[0].endsWith("High") ? "high" : "low" };
+                  return { rule: r.rule, label: r.label, unit: METRIC_UNITS[r.metric], watch: r.watchKey && isNum(m[r.watchKey]) ? m[r.watchKey] : null, warning: isNum(m[r.keys[0]]) ? m[r.keys[0]] : null, critical: isNum(m[r.keys[1]]) ? m[r.keys[1]] : null, direction: r.keys[0].endsWith("High") ? "high" : "low" };
                 }),
               }
             : { status: "unavailable", label: THRESHOLDS_LABEL };

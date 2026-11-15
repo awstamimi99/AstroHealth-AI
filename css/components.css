@@ -607,6 +607,9 @@
 .toast--warning > .icon { color: var(--color-warning); }
 .toast--critical { border-left-color: var(--color-critical); }
 .toast--critical > .icon { color: var(--color-critical); }
+.toast__close { flex: none; margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-2)) 0 0; }
+.toast__quote { color: var(--color-text); font-size: var(--text-sm); white-space: pre-line; }
+.toast p { margin: 0; }
 
 @keyframes fade-in {
   from { opacity: 0; }
@@ -1523,6 +1526,9 @@ html[data-motion="reduce"] .drawer { animation: none; }
   stroke-width: 1.5;
   stroke-dasharray: 2 4;
 }
+.live-chart__band--watch { fill: var(--color-scan-info); opacity: 0.05; }
+.live-chart__limit--watch { stroke: var(--color-scan-info); }
+.live-chart__limit-label--watch { fill: var(--color-scan-info); }
 .live-chart__limit--warning { stroke: var(--color-scan-watch); }
 .live-chart__limit--critical { stroke: var(--color-scan-critical); }
 .live-chart__limit-label--warning { fill: var(--color-scan-watch); }

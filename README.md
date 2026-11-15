@@ -6,8 +6,9 @@ AstroHealth AI is a web app for monitoring astronaut health when the crew
 can't count on a live link to Earth. The frontend runs in the browser and
 keeps its data on the device in IndexedDB. It is **online-capable**, so
 specific features may call an approved API, and it has **optional offline
-support** through a service worker. Today every feature runs locally; a small
-Python (FastAPI) API may be added later for specific jobs.
+support** through a service worker. Core monitoring features run locally; the
+optional Gemini assistant uses the small Node proxy documented below. A Python
+(FastAPI) API may be added later for other specific jobs.
 
 A student project for the NASA Space Apps Challenge, by team **RSS AstroMinds**.
 
@@ -26,7 +27,7 @@ clearly attributed. Citations are never invented.
 | --- | --- |
 | git | getting the code |
 | python3 | running the local web server (any static server works) |
-| Node.js 24 and npm | **only** for setup scripts and tests — never at runtime |
+| Node.js 24 and npm | setup/tests, and runtime only for the optional AI proxy |
 
 No Python packages are needed yet. If a Python API is added, its setup will
 be documented here together with that feature.
@@ -137,3 +138,17 @@ policy*, *Python policy*, *Offline policy*, *check:offline scope*).
 New sources start with `"verified": false` and stay unverified until their
 details have been checked against the real source (by the owner, while the
 project is solo).
+
+# Gemini AI Assistant (optional)
+
+The dashboards work without an AI service. To enable the **AI Assistant**
+(sidebar → AI Assistant), copy `.env.example` to `.env`, set
+`GEMINI_API_KEY`, then run — instead of `npm run serve`:
+
+```bash
+npm run serve:ai
+```
+
+Open `http://localhost:8080` (stop any other server on port 8080 first, or
+set `PORT`). With the Python server the AI page shows "AI server not
+running". Never commit `.env` or place an API key in frontend JavaScript.

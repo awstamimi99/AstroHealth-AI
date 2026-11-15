@@ -3,7 +3,7 @@
 //   import { APP_NAME, SESSION_KEY } from "./core/config.js";
 
 export const APP_NAME = "AstroHealth AI";
-export const APP_VERSION = "0.11.0";
+export const APP_VERSION = "0.14.0";
 
 // IndexedDB database name (stores are listed in docs/ARCHITECTURE.md).
 export const DB_NAME = "astrohealth";
@@ -33,7 +33,10 @@ export const ROUTES = [
   { path: "#/crew", label: "Crew Monitor", title: "Crew Monitor", icon: "users", roles: ["medical_officer"], moOnly: true },
   { path: "#/history", label: "Health History", title: "Health History", icon: "history", roles: ["astronaut", "medical_officer"] },
   { path: "#/simulation", label: "Simulation Center", title: "Simulation Center", icon: "flask-conical", roles: ["medical_officer"], moOnly: true },
+  { path: "#/ai", label: "AI Assistant", title: "AI Assistant", icon: "message-circle", roles: ["astronaut", "medical_officer"] },
   { path: "#/alerts", label: "Alerts", title: "Alerts", icon: "bell", roles: ["astronaut", "medical_officer"] },
+  { path: "#/exercise", label: "Daily Exercise", title: "Daily Exercise", icon: "activity", roles: ["astronaut", "medical_officer"] },
+  { path: "#/environment", label: "Cabin Environment", title: "Cabin Environment", icon: "gauge", roles: ["astronaut", "medical_officer"] },
   { path: "#/reports", label: "Reports", title: "Reports", icon: "file-text", roles: ["astronaut", "medical_officer"] },
   { path: "#/settings", label: "Settings", title: "Settings", icon: "settings", roles: ["astronaut", "medical_officer"] },
 ];

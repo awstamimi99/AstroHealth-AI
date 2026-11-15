@@ -33,7 +33,7 @@ import { createRing } from "../components/body-scan.js";
 import { zoneForRule, ZONE_LABELS } from "../components/alert-zones.js";
 import { createVitalsStage, alertPins, pinNumbers, ringFraction, centreStages, severityLegend } from "../components/vitals-stage.js";
 import { alertPopupBody, alertTitle, loadAlertDetailSafely } from "../components/alert-popup.js";
-import { planForRule, PLAN_NOTICE, VIDEO_PLACEHOLDER } from "../components/action-plans.js";
+import { planForRule, mediaForRule, PLAN_NOTICE, VIDEO_PLACEHOLDER } from "../components/action-plans.js";
 import { createAlertLifecycle, lifecycleFromDetail } from "../components/alert-lifecycle.js";
 import { openDialog } from "../components/dialog.js";
 import { planProgress } from "../core/action-plan-progress.js";
@@ -294,7 +294,7 @@ function messageSection(messages, data, onRetry) {
         ]),
       ]),
       messages.moreCount ? el("p", { class: "overview__meta" }, `and ${messages.moreCount} more unacknowledged message${messages.moreCount === 1 ? "" : "s"} from the Medical Officer`) : null,
-      el("p", { class: "overview__note" }, "Read-only here. Medical Officer alert actions are handled on the Alerts page."),
+      el("p", { class: "overview__note" }, ["Read-only here. ", el("a", { href: "#/alerts", "data-open-notifications": "" }, "Open notifications"), " to mark it as read."]),
     ];
   }
   return section("ov-message-title", "Message from the Medical Officer", body);
@@ -449,7 +449,7 @@ export function medicalOfficerPlaceholder() {
   ]);
 }
 
-function readyView(data, onRetry, onOpenAlert) {
+function readyView(data, onRetry, onOpenAlert, signal) {
   return [
     headerSection(data),
     // Stage on the left; status and its matching open-alert list beside it.
@@ -516,6 +516,17 @@ export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, p
     // ---- Action-plan drawer ---------------------------------------------------------
     function openPlan(a, detail, trigger) {
       const plan = planForRule(a.ruleId);
+      /** The local video guide for this alert's rule (or the labelled placeholder when none). */
+      const videoGuide = (media) => media
+        ? el("figure", { class: "ov-plan__media", "data-video-guide": media.src }, [
+            el("p", { class: "ov-plan__media-title" }, [icon("play"), el("strong", {}, `Video guide · ${media.title}`)]),
+            el("video", { src: media.src, controls: true, preload: "metadata", playsinline: true, "aria-label": `Video guide: ${media.title}` }),
+            el("figcaption", { class: "overview__note" }, media.caption),
+          ])
+        : el("div", { class: "ov-plan__video" }, [
+            el("span", { class: "ov-plan__video-icon", "aria-hidden": "true" }, icon("play")),
+            el("div", {}, [el("p", {}, [el("strong", {}, VIDEO_PLACEHOLDER.title), " ", el("span", { class: "badge badge--neutral" }, "Placeholder")]), el("p", { class: "overview__note" }, VIDEO_PLACEHOLDER.text)]),
+          ]);
       const ids = plan.steps.map((st) => st.id);
       const prog = el("progress", { class: "ov-plan__progress", max: String(ids.length), value: "0", "aria-labelledby": "ov-plan-count" });
       const count = el("p", { class: "overview__meta", id: "ov-plan-count" });
@@ -544,10 +555,7 @@ export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, p
         el("p", { class: "banner" }, [icon("info"), el("span", { class: "banner__text" }, PLAN_NOTICE)]),
         el("h3", { class: "alert-pop__h3" }, plan.title),
         prog, count, notice, steps, complete,
-        el("div", { class: "ov-plan__video" }, [
-          el("span", { class: "ov-plan__video-icon", "aria-hidden": "true" }, icon("play")),
-          el("div", {}, [el("p", {}, [el("strong", {}, VIDEO_PLACEHOLDER.title), " ", el("span", { class: "badge badge--neutral" }, "Placeholder")]), el("p", { class: "overview__note" }, VIDEO_PLACEHOLDER.text)]),
-        ]),
+        videoGuide(mediaForRule(a.ruleId)),
         createAlertLifecycle(detail ? lifecycleFromDetail(detail) : lifecycleFromDetail(a), { viewer: "astronaut", id: "ov-life-title" }),
         el("h3", { class: "alert-pop__h3" }, "Alert activity"),
         timeline,
@@ -585,7 +593,7 @@ export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, p
       if (quiet && !(result && result.status === "ready")) return; // keep what is shown; the next event or Retry tries again
       if (result && result.status === "ready") {
         shownCrewId = result.astronaut && typeof result.astronaut.crewId === "string" ? result.astronaut.crewId : null;
-        root.replaceChildren(live, ...readyView(result, retry, openAlert));
+        root.replaceChildren(live, ...readyView(result, retry, openAlert, signal));
         centreStages(root);
       } else root.replaceChildren(refusalView(result || {}, retry));
       root.setAttribute("aria-busy", "false");

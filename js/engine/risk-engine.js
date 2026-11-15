@@ -50,17 +50,27 @@ function excludedNote(ex) {
   return parts.length ? ` Not used as evidence: ${parts.join(", ")} reading${ex.suspect + ex.invalid + ex.stale === 1 ? "" : "s"}.` : "";
 }
 
-/** The stored thresholds for a rule: { warning, critical } (null when missing / not a finite number). */
+/**
+ * The stored thresholds for a rule: { info, warning, critical } (null when the
+ * rule has no such tier, or the value is missing / not a finite number).
+ * `info` is an optional first ("watch") tier, e.g. SpO₂ 93–94 %.
+ */
 export function thresholdsFor(rule, thresholds) {
   const metrics = thresholds && typeof thresholds === "object" ? thresholds.metrics : null;
   const t = metrics && typeof metrics === "object" ? metrics[rule.metric] : null;
-  const pick = (key) => (t && isNum(t[key]) ? t[key] : null);
-  return { warning: pick(rule.keys.warning), critical: pick(rule.keys.critical) };
+  const pick = (key) => (key && t && isNum(t[key]) ? t[key] : null);
+  return { info: pick(rule.keys.info), warning: pick(rule.keys.warning), critical: pick(rule.keys.critical) };
 }
 
-/** "warning < 95 %, critical < 92 % · 2 consecutive usable readings" */
+/** The bound that ends the clear range: the first tier (info when the rule has it, else warning). */
+const clearBoundOf = (bounds) => (bounds.info !== null && bounds.info !== undefined ? bounds.info : bounds.warning);
+const CLEAR_TIER = (bounds) => (bounds.info !== null && bounds.info !== undefined ? "watch" : "warning");
+
+/** "watch < 95 %, warning < 93 %, critical < 90 % · 2 consecutive usable readings" */
 export function thresholdUsedText(rule, bounds, unit) {
-  const tiers = [`warning ${boundText(rule.compare, bounds.warning, unit)}`];
+  const tiers = [];
+  if (bounds.info !== null && bounds.info !== undefined) tiers.push(`watch ${boundText(rule.compare, bounds.info, unit)}`);
+  tiers.push(`warning ${boundText(rule.compare, bounds.warning, unit)}`);
   if (bounds.critical !== null) tiers.push(`critical ${boundText(rule.compare, bounds.critical, unit)}`);
   const span = rule.kind === "nightly" ? `${rule.count} consecutive UTC nights` : `${rule.count} consecutive usable readings`;
   return `${tiers.join(", ")} · ${span}`;
@@ -99,7 +109,7 @@ export function evaluateRule(rule, readings, thresholds, now) {
       evidence: freeze([]),
       excluded: freeze({ ...excluded }),
       considered: list.length,
-      threshold: freeze({ warning: bounds.warning, critical: bounds.critical, compare: rule.compare, source: THRESHOLD_SOURCE }),
+      threshold: freeze({ info: bounds.info, warning: bounds.warning, critical: bounds.critical, compare: rule.compare, source: THRESHOLD_SOURCE }),
       thresholdUsed: bounds.warning === null ? "" : thresholdUsedText(rule, bounds, unit || "?"),
       limitation: DEMO_LIMITATION,
       evaluatedAt: now,
@@ -135,12 +145,19 @@ export function evaluateRule(rule, readings, thresholds, now) {
       explanation: `${rule.count} consecutive ${rule.label} readings ${words} the demonstration warning threshold of ${valueText(bounds.warning, unit)} (${values}).${excludedNote(excluded)}`,
     });
   }
+  if (bounds.info !== null && tier(bounds.info)) {
+    return base({
+      outcome: "triggered", severity: "info", evidence,
+      explanation: `${rule.count} consecutive ${rule.label} readings ${words} the demonstration watch threshold of ${valueText(bounds.info, unit)} (${values}).${excludedNote(excluded)}`,
+    });
+  }
   const clearWindow = usable.slice(0, rule.clearCount);
-  if (clearWindow.length === rule.clearCount && clearWindow.every((r) => inClearRange(rule.compare, r.value, bounds.warning))) {
+  const clearBound = clearBoundOf(bounds);
+  if (clearWindow.length === rule.clearCount && clearWindow.every((r) => inClearRange(rule.compare, r.value, clearBound))) {
     const cv = [...clearWindow].reverse().map((r) => valueText(r.value, unit)).join(", ");
     return base({
       outcome: "clear", evidence: freeze([...clearWindow].reverse().map(evidenceOf)),
-      explanation: `${rule.clearCount} consecutive ${rule.label} readings ${CLEAR_WORDS[rule.compare]} the demonstration warning threshold of ${valueText(bounds.warning, unit)} (${cv}).${excludedNote(excluded)}`,
+      explanation: `${rule.clearCount} consecutive ${rule.label} readings ${CLEAR_WORDS[rule.compare]} the demonstration ${CLEAR_TIER(bounds)} threshold of ${valueText(clearBound, unit)} (${cv}).${excludedNote(excluded)}`,
     });
   }
   if (recentWindow.length < rule.count) {
@@ -180,11 +197,15 @@ function evaluateNightly(rule, ok, bounds, now, excluded, unit, base, insufficie
     if (all(bounds.warning)) {
       return base({ outcome: "triggered", severity: "warning", evidence, explanation: `${rule.label} ${words} the demonstration warning threshold of ${valueText(bounds.warning, unit)} on ${rule.count} consecutive UTC nights (${values}).${excludedNote(excluded)}` });
     }
+    if (bounds.info !== null && all(bounds.info)) {
+      return base({ outcome: "triggered", severity: "info", evidence, explanation: `${rule.label} ${words} the demonstration watch threshold of ${valueText(bounds.info, unit)} on ${rule.count} consecutive UTC nights (${values}).${excludedNote(excluded)}` });
+    }
   }
-  if (inClearRange(rule.compare, newest.value, bounds.warning)) {
+  const nightClear = clearBoundOf(bounds);
+  if (inClearRange(rule.compare, newest.value, nightClear)) {
     return base({
       outcome: "clear", evidence: freeze([evidenceOf(newest)]),
-      explanation: `The latest night's ${rule.label.toLowerCase()} (${valueText(newest.value, unit)}) is ${CLEAR_WORDS[rule.compare]} the demonstration warning threshold of ${valueText(bounds.warning, unit)}.${excludedNote(excluded)}`,
+      explanation: `The latest night's ${rule.label.toLowerCase()} (${valueText(newest.value, unit)}) is ${CLEAR_WORDS[rule.compare]} the demonstration ${CLEAR_TIER(bounds)} threshold of ${valueText(nightClear, unit)}.${excludedNote(excluded)}`,
     });
   }
   if (consecutive.length < rule.count) {
@@ -243,9 +264,9 @@ export function planAlertChange({ rule, result, openAlert, astronautId, now, tri
       lastTriggeredAt: now,
       occurrenceCount: 1,
       triggeringMeasurements: mergeEvidence([], result.evidence),
-      rule: freeze({ id: rule.id, version: rule.version, description: rule.description, thresholdUsed: result.thresholdUsed, thresholdSource: THRESHOLD_SOURCE }),
+      rule: freeze({ id: rule.id, version: rule.version, description: rule.description, thresholdUsed: result.thresholdUsed, thresholdSource: rule.thresholdSource || THRESHOLD_SOURCE }),
       explanation: result.explanation,
-      suggestedAction: SUGGESTED_ACTION,
+      suggestedAction: rule.suggestedAction || SUGGESTED_ACTION,
       conditionCleared: 0,
       acknowledgedAt: 0,
       acknowledgedBy: "",

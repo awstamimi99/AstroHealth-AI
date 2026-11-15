@@ -8,8 +8,9 @@ API (for example a small Python/FastAPI service) when there is a real need;
 see [API policy](#api-policy), [Python policy](#python-policy) and
 [Offline policy](#offline-policy) below.
 
-There is **no Python backend and no Python dependency yet**. Today every
-feature runs in the browser.
+There is **no Python backend and no Python dependency yet**. Most features
+run in the browser. The optional Gemini assistant uses the small Node proxy
+in `server/ai-server.mjs`; all existing dashboards remain available without it.
 
 > Research & educational prototype · Not a medical device · Not affiliated
 > with or endorsed by NASA · All health data synthetic.
@@ -52,13 +53,70 @@ test suite.
 | Pages / UI | `*.html`, `js/pages/`, `css/pages/` | | Build DOM with `el()` — never `innerHTML` with data |
 | Shared components | `js/components/`, `css/components.css` | core | Showcased in `tests/browser/styleguide.html` |
 | Core | `js/core/` | core | config, event bus, environment check, utils, `preferences.js` (Sprint 9: browser-only personal display preferences) |
-| Services | `js/services/` | | The only layer pages call for data. Current: `mission-service.js` (mission name/day), `astronaut-overview-service.js` (read-only astronaut Overview: own data only, status from open alerts only, never a health assessment), `crew-monitor-service.js` (read-only Medical Officer crew snapshot and crew-member detail: verified officer only, shared wellbeing only, no journal or mission events, ranked by open alerts), `access-control.js` (Sprint 6 identity checks: verified astronaut / Medical Officer, strict crew-ID resolution), `physical-health-service.js` (read-only physical readings, 7/30-day daily-summary trends, numeric baseline differences, open physical alerts), `wellbeing-service.js` (own check-ins; shared-only officer view; the check-in write: validated, explicitly shared or private, saved atomically with a score-free `checkin_completed` event), `simulation-service.js` (Sprint 7 Simulation Center: verified Medical Officer only; start / advance / pause / resume / stop of one synthetic run at a time; no risk evaluation, no alerts — see [Simulation Center](#simulation-center-sprint-7)), `risk-service.js` (Sprint 8: evaluates the demonstration risk rules for a crew member — Medical Officer only, after a committed simulation step or an explicit "Evaluate crew now"; one atomic transaction per astronaut), `alerts-service.js` (Sprint 8: role-scoped alert list, detail by public alert number, acknowledge / resolve — see [Risk Engine and Alerts](#risk-engine-and-alerts-sprint-8)), `history-service.js`, `reports-service.js`, `settings-service.js` (Sprint 9: read-only history timeline, dynamic printable reports, read-only settings — see [Health History, Reports and Settings](#health-history-reports-and-settings-sprint-9)) |
+| Services | `js/services/` | | The only layer pages call for data. Current: `mission-service.js` (mission name/day), `astronaut-overview-service.js` (read-only astronaut Overview: own data only, status from open alerts only, never a health assessment), `crew-monitor-service.js` (read-only Medical Officer crew snapshot and crew-member detail: verified officer only, shared wellbeing only, no journal or mission events, ranked by open alerts), `access-control.js` (Sprint 6 identity checks: verified astronaut / Medical Officer, strict crew-ID resolution), `physical-health-service.js` (read-only physical readings, 7/30-day daily-summary trends, numeric baseline differences, open physical alerts), `wellbeing-service.js` (own check-ins; shared-only officer view; the check-in write: validated, explicitly shared or private, saved atomically with a score-free `checkin_completed` event; a shared check-in also evaluates WB-01 in that transaction, while a private check-in never enters the alert evaluator), `simulation-service.js` (Sprint 7 Simulation Center: verified Medical Officer only; start / advance / pause / resume / stop of one synthetic run at a time; no risk evaluation, no alerts — see [Simulation Center](#simulation-center-sprint-7)), `risk-service.js` (Sprint 8: evaluates the demonstration physical risk rules for a crew member — Medical Officer only, after a committed simulation step or an explicit "Evaluate crew now"; one atomic transaction per astronaut), `alerts-service.js` (Sprint 8: role-scoped alert list, detail by public alert number, acknowledge / resolve — see [Risk Engine and Alerts](#risk-engine-and-alerts-sprint-8)), `history-service.js`, `reports-service.js`, `settings-service.js` (Sprint 9: read-only history timeline, dynamic printable reports, read-only settings — see [Health History, Reports and Settings](#health-history-reports-and-settings-sprint-9)) |
 | Risk engine | `js/engine/`, `js/engine/rules/` | | Deterministic, explainable rules; unit-testable. Pure: imports only other `js/engine/` files (a unit test enforces this). Sprint 8: `rules/physical-rules.js` (catalog) and `risk-engine.js` (evaluate + plan) |
 | Simulation | `js/simulation/` | | Generates **synthetic** data; tag UI with `.sim-tag`. `scenarios.js` is the pure, import-free scenario catalog (Sprint 7) |
 | Database | `js/db/`, `js/db/repositories/` | contract | IndexedDB wrapper + storage-only repositories; contract in `docs/DATA-MODEL.md` |
 | Offline (optional support) | `sw.js`, `js/sw-register.js` | core | Precache list generated by `npm run build:sw` |
 | API client | `js/core/api.js` | core | `postJson()` — HTTPS or localhost only, timeout, `ApiError` |
+| AI proxy | `server/ai-server.mjs` | | Optional same-origin Node server for Gemini; no health-data persistence |
 | Python API (future) | not created yet | | Only when a feature needs it — see [Python policy](#python-policy) |
+
+### Gemini AI Assistant (`#/ai`)
+
+The AI Assistant is its own sidebar section, **AI Assistant** (`#/ai`), for
+both canonical roles: "AstroHealth AI Companion" (astronaut) and
+"AstroHealth Medical AI" (Medical Officer). It is optional and online-only;
+every other page works without it. Run it with `npm run serve:ai`: one local
+Node process (`server/ai-server.mjs`, no npm dependencies) serves the static
+app AND `POST /api/ai/chat` + `GET /api/ai/status`, so there is no
+cross-origin request. `npm run serve` (Python static server) has no AI: the
+page then shows "AI server not running" with the start command.
+
+- **Key:** `GEMINI_API_KEY` exists only in the git-ignored `.env` (or the
+  server environment). It is sent to Google only as the `x-goog-api-key`
+  header, never to the browser. The static file server refuses dotfiles,
+  `server/`, `node_modules/`, `scripts/` and `tests/`.
+- **Provider:** Google's Gemini **Interactions API**
+  (`POST /v1beta/interactions`, `store: false`, system instruction separate
+  from the data). Model from `GEMINI_MODEL` (default
+  `gemini-3.5-flash-lite`). AI Studio keys of the newer format are rejected
+  by the older `generateContent` endpoint, which is why that endpoint is no
+  longer used. 30-second timeout.
+- **Limits:** request ≤ 64 KB, question ≤ 1000 characters, ≤ 8 earlier turns,
+  answer ≤ 12 KB, 12 requests per minute per client, local-only binding
+  (`AI_HOST`, default `127.0.0.1`).
+- **Context:** built in the browser by `js/services/ai-context-service.js`
+  from IndexedDB through services: for 24 h / 7 d / 30 d, deterministic
+  count, average, min, max, previous-period average, change %, baseline
+  deviation %, days without data; invalid and suspect readings excluded;
+  check-in averages; open alerts with their rule explanation. Astronaut: own
+  data (own private + shared check-ins). Medical Officer: every crew member,
+  **shared check-ins only**. Never: journal text, passwords, hashes, salts,
+  the session, internal ids or raw records. Gemini explains the numbers; it
+  does not compute them.
+- **Routine drafts:** the astronaut can ask for a personalised daily routine
+  that must include the exercise countermeasure (aerobic + resistance,
+  ~120 min on a normal day, lower intensity with short sleep / high fatigue /
+  open alerts) and a mobility block. The server validates the JSON (times,
+  durations, categories). Accept / reject / request changes; an accepted
+  draft is kept in this browser only (`js/core/routine-drafts.js`,
+  `localStorage["astrohealth.routine.v1"]`), never in IndexedDB and never a
+  mission schedule.
+- **Security limitation (local-only authentication):** sign-in and health
+  data live in the browser. The server cannot verify who is asking — `role`
+  and `context` are client claims. It only enforces self-consistency (an
+  astronaut context holds exactly one crew member; actions per role; no
+  journal field) and listens on localhost. No password is ever sent to it
+  (the earlier password-for-cookie exchange was removed because it violated
+  the API policy). A real deployment needs server-side identity.
+- **Safety:** the system instruction forbids diagnosis, treatment, fitness-
+  for-duty decisions, new thresholds, overriding the deterministic alerts,
+  NASA endorsement claims and invented data; user text and context are
+  marked as untrusted data. AI answers are labelled "AI-generated" and never
+  create, change, acknowledge or resolve alerts or records.
+- `sw.js` bypasses same-origin `/api/` requests; AI responses are never
+  cached. Offline → the page says so; nothing is fabricated.
 
 ### Event bus
 
@@ -437,8 +495,12 @@ screens say: "Demonstration threshold — not clinically validated."
   Threshold **values** come only from `settings.thresholds` (seeded
   demonstration values) and are passed in; a missing value gives
   "insufficient". Historical alerts (e.g. the seeded PHY-01 v1 alert) keep
-  their own rule snapshot. WB-01 is not evaluated (deferred); the seeded
-  WB-01 alert stays readable and actionable.
+  their own rule snapshot. WB-01 is evaluated immediately after an astronaut
+  saves an explicitly shared daily check-in. The check-in and any WB-01
+  open/update/clear operation, alert action and mission events commit in one
+  transaction. Private check-ins never enter the evaluator and never create a
+  Medical Officer-visible alert. The seeded WB-01 alert stays readable and
+  actionable.
 - **Readings** — only quality `"ok"` readings that are fresh (vital signs
   ≤ 24 h old; for sleep the newest night ≤ 36 h old) are evidence.
   `invalid` is ignored; `suspect` and stale readings never trigger, escalate
@@ -635,3 +697,64 @@ because a browser is not part of the repository's CI contract.
 Before a release is tagged, follow `docs/DEMO.md` and Section 14 of the manual
 checklist. Record unavailable platform checks honestly; never convert an
 unperformed Firefox, Safari, screen-reader or physical-print check into a pass.
+
+## Alert rule thresholds (current demonstration values)
+
+All values are demonstration thresholds — not clinically validated. Physical
+rules read `settings.thresholds`; WB-01 reads shared check-ins only.
+
+| Rule | Measure | Info (watch) | Warning | Critical | Needs | Clears when |
+| --- | --- | --- | --- | --- | --- | --- |
+| PHY-01 v2 | Heart rate | — | > 100 bpm | > 120 bpm | 2 consecutive usable readings | 2 readings ≤ 100 |
+| PHY-02 v2 | SpO₂ | < 95 % (93–94) | < 93 % (90–92, "low oxygen") | < 90 % | 2 consecutive usable readings | 2 readings ≥ 95 |
+| PHY-03 v1 | Systolic BP | — | ≥ 140 mmHg | ≥ 160 mmHg | 2 consecutive usable readings | 2 readings < 140 |
+| PHY-05 v1 | Sleep | — | < 6.5 h | < 5 h | 3 consecutive UTC nights | latest night ≥ 6.5 h |
+| PHY-06 v1 | Body temperature (high) | — | ≥ 37.5 °C | ≥ 38.5 °C | 2 consecutive usable readings | 2 readings < 37.5 |
+| PHY-07 v1 | Body temperature (low) | — | < 36.1 °C | < 35 °C | 2 consecutive usable readings | 2 readings ≥ 36.1 |
+| ENV-01 v1 | Cabin CO₂ (personal monitor) | — | ≥ 4 mmHg | ≥ 6 mmHg | 2 consecutive usable readings | 2 readings < 4 |
+| ENV-02 v1 | Cabin pressure | — | < 98 kPa | < 95 kPa | 2 consecutive usable readings | 2 readings ≥ 98 |
+| ENV-03 v1 | Cabin humidity | — | > 70 %RH | > 80 %RH | 2 consecutive usable readings | 2 readings ≤ 70 |
+| EX-01 v1 | Exercise (logged sessions) | — | 1–2 missed days in a row | 3+ missed days in a row | a missed day = < 30 min aerobic + resistance; counted from the first logged day | yesterday or today ≥ 30 min |
+| WB-01 v3 | Shared check-in | 1 concern, or mood falling 3× | 2+ concerns, severe combination, or concerns in 3 check-ins in a row | mood 1–2/5 in 3 check-ins on 3 days | latest shared check-in | 2 stable shared check-ins |
+
+WB-01 concerns: mood ≤ 2/5, wellbeing ≤ 2/5, sleep quality ≤ 2/5, stress ≥
+7/10, isolation ≥ 7/10, fatigue ≥ 8/10. Severity only rises automatically;
+"clears" marks `conditionCleared` and the Medical Officer still resolves the
+alert. PHY-02 v2 adds an optional first tier (`keys.info` → `infoLow`) to the
+engine; a browser seeded with the old SpO₂ values (95/92) is upgraded once by
+`upgradeDemoThresholds()` in `js/db/seed.js` (other values never touched).
+The Simulation Center now shows **Live control only**; the scenario catalog
+stays in the service (and its tests) but has no UI.
+
+### Demo data v2, exercise, cabin environment and notifications (0.14.0)
+
+- **Seed version 2** (`js/db/seed-supplement.js`) adds body temperature and
+  cabin CO₂ / pressure / humidity readings (every 2 h; 7 days raw, 30 days of
+  summaries) and 14 days of logged exercise. A browser seeded with v1 is
+  upgraded once at start-up (`ensureDemoDataCurrent()` →
+  `upgradeDemoData()`, one IndexedDB transaction); seed-v1 records are left
+  unchanged. `DB_VERSION` stays 1.
+- **Exercise log**: one `missionEvents` record per session, type
+  `exercise_logged` (allow-listed fields only, no free text). EX-01 is
+  evaluated in the same transaction. Daily Exercise (`#/exercise`) shows the
+  readiness check, the plan, the log form and 14-day history; the Medical
+  Officer sees the crew table.
+- **Cabin Environment** (`#/environment`): crew-wide figures, ENV-01/02/03
+  alerts (category `environment`) and the crew-wide SpO₂ "air check".
+- **Notifications**: the daily exercise reminder, plus messages from the
+  Medical Officer. When resolving an alert the Medical Officer may tick
+  "Send this note to <crew member>" (`resolveAlert(…, { notifyAstronaut:
+  true })`): the note is written to the existing `messages` store (and a
+  `message_sent` event) in the SAME transaction as the resolve. Unticked,
+  the note stays an internal Medical Officer note exactly as before.
+  `js/services/notifications-service.js` lists the astronaut's own unread
+  messages (verified Medical Officer senders only; no internal ids) and
+  marks one as read (`acknowledgedAt` + `message_acknowledged`). The bell
+  counts open alerts + the due exercise reminder + unread messages, and a
+  pop-up notice (`.toast`) appears when a new message arrives in any tab.
+- **AI answers** are short (≈ 90 words: one sentence, 2–4 bullets) and
+  always end with one `Recommendation:` line; the server appends a fixed,
+  neutral line when the model leaves it out (`withRecommendation`).
+- In-page synthetic-data banners were removed from the app pages; the
+  footer disclaimer (prototype · not a medical device · not affiliated
+  with or endorsed by NASA · synthetic data) remains on every page.

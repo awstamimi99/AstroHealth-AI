@@ -408,7 +408,11 @@ export function createCrewMonitorService({ repos, getMissionContext: loadMission
               openCount: open.length,
               top: open.length ? presentAlert(open[0]) : null,
               // Rule + severity of every open alert, so cards can colour each vital ring.
-              rules: open.map((x) => ({ ruleId: isText(x.ruleId) ? x.ruleId : "", severity: SEVERITIES.includes(x.severity) ? x.severity : "info" })),
+              rules: open.map((x) => ({
+                ruleId: isText(x.ruleId) ? x.ruleId : "",
+                severity: SEVERITIES.includes(x.severity) ? x.severity : "info",
+                category: isText(x.category) ? x.category : "",
+              })),
             },
         vitals: { status: sectionStatus(vitals), items: vitals },
         sharedWellbeing: shared ? { status: "ok", lastSharedAt: lastShared, count30d: ownShared.length } : { status: "error", lastSharedAt: 0, count30d: null },

@@ -77,7 +77,7 @@ test("MO overview: welcome, crew summary counts and the priority queue as an ord
   assert.deepEqual(byTag(queue, "a").map((a) => a.getAttribute("href")), ["#/crew/AH-04", "#/crew/AH-03"]);
   assert.ok(byTag(root, "a").some((a) => a.getAttribute("href") === "#/crew"), "link to Crew Monitor");
   assert.doesNotMatch(root.textContent, BANNED);
-  assert.match(root.textContent, /synthetic demo data/);
+  assert.doesNotMatch(root.textContent, /All astronaut health, medical, mission and simulation records shown here/); // banner removed; the footer disclaimer stays
 });
 
 test("MO overview: empty queue wording and status-unavailable retry", async () => {

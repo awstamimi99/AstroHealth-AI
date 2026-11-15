@@ -17,14 +17,31 @@ import { zoneForRule, ZONE_LABELS } from "./alert-zones.js";
 
 const SEVERITY_WORD = { critical: "critical", warning: "warning", info: "info" };
 
-/** Pins for a member's open alerts (from snapshot alerts.rules). */
-export function cardPins(member) {
+/** Open rules for this page. No category means the combined/history view. */
+export function cardRules(member, category = "") {
   const rules = member && member.alerts && member.alerts.status === "ok" && Array.isArray(member.alerts.rules) ? member.alerts.rules : [];
-  return rules.map((r, i) => {
+  return category ? rules.filter((r) => r.category === category) : rules;
+}
+
+/** Pins for a member's open alerts (from snapshot alerts.rules). */
+export function cardPins(member, category = "") {
+  return cardRules(member, category).map((r, i) => {
     const zone = zoneForRule(r.ruleId);
     const severity = SEVERITY_WORD[r.severity] ? r.severity : "info";
     return { number: i + 1, zone, severity, label: `${member.name}: open ${severity} alert ${i + 1}, ${ZONE_LABELS[zone] || "body"}. Opens this crew member.` };
   });
+}
+
+function categoryState(member, rules, category) {
+  if (!category) return member.state;
+  if (!member.alerts || member.alerts.status !== "ok") return { tone: "neutral", icon: "eye-off", label: "Status unavailable" };
+  if (!rules.length) return { tone: "ok", icon: "circle-check", label: "No open alerts" };
+  const severity = rules.some((r) => r.severity === "critical") ? "critical" : rules.some((r) => r.severity === "warning") ? "warning" : "info";
+  return severity === "critical"
+    ? { tone: "critical", icon: "circle-alert", label: "Critical alert" }
+    : severity === "warning"
+      ? { tone: "warning", icon: "triangle-alert", label: "Watch" }
+      : { tone: "info", icon: "info", label: "Info" };
 }
 
 function vitalText(v) {
@@ -35,17 +52,19 @@ function vitalText(v) {
 /**
  * @param {Array} crew       getCrewSnapshot().crew
  * @param {string} base      route base, e.g. "history" → "#/history/AH-04"
- * @param {{ id: string, title: string, intro: string, action: string }} text
+ * @param {{ id: string, title: string, intro: string, action: string, alertCategory?: "physical"|"wellbeing" }} text
  * @param {{ navigate?: (hash: string) => void }} [options]
  */
-export function crewBodyCards(crew, base, { id, title, intro, action }, { navigate = (hash) => { globalThis.location.hash = hash; } } = {}) {
+export function crewBodyCards(crew, base, { id, title, intro, action, alertCategory = "" }, { navigate = (hash) => { globalThis.location.hash = hash; } } = {}) {
   const list = Array.isArray(crew) ? crew : [];
   return section(id, title, [
     el("p", { class: "health__note" }, intro),
     list.length
       ? el("ul", { class: "body-cards", role: "list" }, list.map((m) => {
           const href = `#/${base}/${m.crewId}`;
-          const pins = cardPins(m);
+          const rules = cardRules(m, alertCategory);
+          const pins = cardPins(m, alertCategory);
+          const state = categoryState(m, rules, alertCategory);
           const vitals = m.vitals && Array.isArray(m.vitals.items) ? m.vitals.items : [];
           return el("li", { class: "body-card", "data-crew-card": m.crewId }, [
             el("div", { class: "body-card__head" }, [
@@ -55,7 +74,7 @@ export function crewBodyCards(crew, base, { id, title, intro, action }, { naviga
                 el("p", { class: "body-card__role" }, m.missionRole || "Crew member"),
               ]),
             ]),
-            el("p", { class: "body-card__state" }, [stateBadge(m.state), el("span", { class: "body-card__count" }, m.alerts && m.alerts.status === "ok" ? `${m.alerts.openCount} open alert${m.alerts.openCount === 1 ? "" : "s"}` : "Alerts unavailable")]),
+            el("p", { class: "body-card__state" }, [stateBadge(state), el("span", { class: "body-card__count" }, m.alerts && m.alerts.status === "ok" ? `${rules.length} open alert${rules.length === 1 ? "" : "s"}` : "Alerts unavailable")]),
             el("div", { class: "body-card__scan" }, createBodyScan({ pins, hotspots: pins, onPinClick: () => navigate(href) })),
             el("dl", { class: "body-card__vitals" }, vitals.flatMap((v) => [el("dt", {}, v.label), el("dd", {}, vitalText(v))])),
             el("a", { class: "btn btn--primary btn--sm body-card__open", href }, [icon("arrow-right"), `${action}`, el("span", { class: "sr-only" }, ` for ${m.name}`)]),

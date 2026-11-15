@@ -432,7 +432,7 @@ test("pin → pop-up with severity, body location, rule, readings and limitation
   assert.equal(globalThis.document.activeElement, pin);
 });
 
-test("'View action plan' → drawer with synthetic notice, progress, steps, video placeholder, timeline; ticks are stored per user and alert", async () => {
+test("'View action plan' → drawer with synthetic notice, progress, steps, video guide, timeline; ticks are stored per user and alert", async () => {
   const { host, container, storage } = await renderScan();
   const pin = byClass(container, "scan-pin")[0];
   pin.click();
@@ -446,7 +446,7 @@ test("'View action plan' → drawer with synthetic notice, progress, steps, vide
   assert.match(text, /Sleep alert review/);
   assert.match(text, /0 of 4 review steps ticked/);
   assert.match(text, /Video guide/);
-  assert.match(text, /Placeholder/);
+  assert.match(text, /Video guide · Hydration and daily routine/); // the local video guide for the sleep alert (PHY-05)
   assert.match(text, /Alert activity/);
   assert.doesNotMatch(text, BANNED);
   // No dead buttons: the drawer explains how the alert is closed and who does it.

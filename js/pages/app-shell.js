@@ -31,6 +31,8 @@ import { getSession, clearSession, onSessionChange, roleLabel, initialsOf } from
 import { routesForRole, homeRouteFor, findRoute } from "../auth/routes.js";
 import { getMissionContext } from "../services/mission-service.js";
 import { countOpenAlerts } from "../services/alerts-service.js";
+import { getExerciseReminder } from "../services/exercise-service.js";
+import { getNotifications } from "../services/notifications-service.js";
 import { onHealthChanged } from "../core/live-updates.js";
 import { renderAstronautOverview } from "./astronaut-overview.js";
 import { renderMedicalOfficerOverview } from "./officer-overview.js";
@@ -41,6 +43,10 @@ import { renderSimulationCenter } from "./simulation-center.js";
 import { renderAlerts } from "./alerts.js";
 import { renderHistory } from "./history.js";
 import { renderReports } from "./reports.js";
+import { renderAiAssistant } from "./ai-assistant.js";
+import { renderExercise } from "./exercise.js";
+import { renderEnvironment } from "./environment.js";
+import { ensureDemoDataCurrent } from "../services/demo-reset-service.js";
 import { renderSettings } from "./settings.js";
 import { preferences } from "../core/preferences.js";
 import { bus } from "../core/event-bus.js";
@@ -63,6 +69,9 @@ const ROUTE_VIEWS = Object.freeze({
   "#/alerts": Object.freeze({ astronaut: renderAlerts, medical_officer: renderAlerts }),
   "#/history": Object.freeze({ astronaut: renderHistory, medical_officer: renderHistory }),
   "#/reports": Object.freeze({ astronaut: renderReports, medical_officer: renderReports }),
+  "#/ai": Object.freeze({ astronaut: renderAiAssistant, medical_officer: renderAiAssistant }),
+  "#/exercise": Object.freeze({ astronaut: renderExercise, medical_officer: renderExercise }),
+  "#/environment": Object.freeze({ astronaut: renderEnvironment, medical_officer: renderEnvironment }),
   "#/settings": Object.freeze({ astronaut: renderSettings, medical_officer: renderSettings }),
 });
 
@@ -232,20 +241,35 @@ function startShell(current) {
 
   // ---- Alert count on the bell (open alerts this user may see) ----------------------------------
   let bellToken = 0;
+  let unreadSeen = 0; // unread Medical Officer messages at the last refresh (a rise → pop-up notice)
   async function showAlertCount() {
     const bell = $("[data-alert-bell]");
     const badge = $("[data-alert-count]");
     if (!bell || !badge) return;
     const token = ++bellToken;
     let res;
+    let reminder;
+    let inbox;
     try {
-      res = await countOpenAlerts(current);
+      [res, reminder, inbox] = await Promise.all([
+        countOpenAlerts(current),
+        getExerciseReminder(current).catch(() => null),
+        current.role === "astronaut" ? getNotifications(current).catch(() => null) : null,
+      ]);
     } catch {
       res = null;
     }
     if (token !== bellToken) return;
+    const messages = inbox && inbox.status === "ready" && Array.isArray(inbox.messages) ? inbox.messages : [];
+    if (messages.length > unreadSeen) showMessageNotice(messages[0], messages.length);
+    unreadSeen = messages.length;
     const n = res && res.status === "ready" && Number.isInteger(res.open) ? res.open : null;
-    if (!n) {
+    // The daily exercise notification counts as one more item on the bell (and says so).
+    const due = Boolean(reminder && reminder.status === "ready" && reminder.due);
+    const total = (n || 0) + (due ? 1 : 0) + messages.length;
+    const dueText = (due ? (current.role === "medical_officer" ? ", daily exercise reminder for the crew" : ", today's exercise reminder") : "")
+      + (messages.length ? `, ${messages.length} unread message${messages.length === 1 ? "" : "s"} from the Medical Officer` : "");
+    if (!total) {
       badge.hidden = true;
       badge.textContent = "";
       bell.setAttribute("aria-label", n === 0 ? "Alerts, no open alerts" : "Alerts");
@@ -253,9 +277,32 @@ function startShell(current) {
       return;
     }
     badge.hidden = false;
-    badge.textContent = n > 99 ? "99+" : String(n);
-    badge.dataset.severity = res.topSeverity || "info";
-    bell.setAttribute("aria-label", `Alerts, ${n} open${res.topSeverity ? `, highest severity ${res.topSeverity}` : ""}`);
+    badge.textContent = total > 99 ? "99+" : String(total);
+    badge.dataset.severity = (res && res.topSeverity) || "info";
+    bell.setAttribute("aria-label", `Alerts, ${n || 0} open${res && res.topSeverity ? `, highest severity ${res.topSeverity}` : ""}${dueText}`);
+  }
+
+  /** Pop-up notice for a new message from the Medical Officer (text only; closes itself after 12 s). */
+  function showMessageNotice(m, count) {
+    const region = $("[data-toasts]");
+    if (!region || !m) return;
+    region.replaceChildren();
+    const close = () => toast.remove();
+    const toast = el("div", { class: "toast toast--message", "data-message-toast": "" }, [
+      icon("message-circle"),
+      el("div", { class: "toast__body" }, [
+        el("p", { class: "toast__title" }, `New message from ${m.from} (Medical Officer)`),
+        m.body ? el("p", { class: "toast__text toast__quote" }, m.body.length > 160 ? `${m.body.slice(0, 157)}…` : m.body) : null,
+        el("p", { class: "toast__text" }, [
+          m.alertNumber ? `About ${m.alertNumber}. ` : "",
+          count > 1 ? `${count} unread messages. ` : "",
+          el("a", { href: "#/alerts", onClick: close }, "Open notifications"),
+        ]),
+      ]),
+      el("button", { class: "icon-btn toast__close", type: "button", "aria-label": "Close notification", onClick: close }, icon("x")),
+    ]);
+    region.append(toast);
+    setTimeout(close, 12000);
   }
   // Updated when stored data changes (this tab or another) and on every navigation.
   onHealthChanged({ crewId: () => null, reload: () => showAlertCount() });
@@ -266,6 +313,8 @@ function startShell(current) {
   renderRoute();
   showMission();
   showAlertCount();
+  // A browser seeded by an older version gets the new demo data once, then the view reloads.
+  ensureDemoDataCurrent().then((r) => { if (r.upgraded) { renderRoute(); showAlertCount(); } });
   window.addEventListener("hashchange", () => { renderRoute({ focus: true }); showAlertCount(); });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") stillSignedIn();

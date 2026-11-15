@@ -148,6 +148,10 @@ export const LIVE_METRICS = Object.freeze([
   Object.freeze({ key: "sleepDuration", label: "Sleep duration", min: 0, max: 14, step: 0.1, curve: false }),
   Object.freeze({ key: "activity", label: "Activity", min: 0, max: 40000, step: 100, curve: false }),
   Object.freeze({ key: "fatigue", label: "Fatigue", min: 0, max: 10, step: 1, curve: true }),
+  Object.freeze({ key: "bodyTemperature", label: "Body temperature", min: 33, max: 41, step: 0.1, curve: true }),
+  Object.freeze({ key: "cabinCo2", label: "Cabin CO₂", min: 0, max: 10, step: 0.1, curve: true }),
+  Object.freeze({ key: "cabinPressure", label: "Cabin pressure", min: 90, max: 105, step: 0.1, curve: true }),
+  Object.freeze({ key: "cabinHumidity", label: "Cabin humidity", min: 10, max: 95, step: 1, curve: true }),
 ]);
 
 /** The live-control definition of a metric, or null. */

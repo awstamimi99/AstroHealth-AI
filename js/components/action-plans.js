@@ -6,8 +6,7 @@
 // says, reviewing the alert's evidence, and contacting the Medical Officer.
 // They are NOT medical advice, NOT treatment instructions, and NOT a
 // diagnosis. Wording reuses the review guidance already stored with alerts.
-// Videos: only local files under assets/ may ever be used; none exist yet,
-// so the drawer shows a labelled placeholder.
+// Videos: only local files under assets/guides/ are used (mediaForRule).
 
 export const PLAN_NOTICE =
   "Synthetic educational content — not medical advice. These are review steps for this demonstration, not treatment instructions.";
@@ -79,13 +78,34 @@ export function planForRule(ruleId, { viewer = "astronaut" } = {}) {
   return PLANS[ruleId] || DEFAULT_PLAN;
 }
 
-// Video or picture guides per rule. Only LOCAL files under assets/ may be listed
-// here ({ kind: "video" | "image", src: "assets/guides/…", caption }). None exist
-// yet, so every alert shows the review steps with a "no guide added" notice.
-const MEDIA = Object.freeze({});
+// Video guides per rule — LOCAL files under assets/guides/ only (synthetic
+// educational videos supplied by the project owner; not medical advice).
+const guide = (src, title, caption) => Object.freeze({ kind: "video", src, title, caption });
+const G = Object.freeze({
+  family: guide("assets/guides/family-call.mp4", "Family call", "Video guide: a family call for wellbeing support. Educational — not medical advice."),
+  hydration: guide("assets/guides/hydration.mp4", "Hydration and daily routine", "Video guide: hydration and a steady daily routine (sleep and exercise). Educational — not medical advice."),
+  bloodPressure: guide("assets/guides/low-blood-pressure.mp4", "Blood pressure", "Video guide: what to do about a blood-pressure reading. Educational — not medical advice."),
+  sick: guide("assets/guides/sick.mp4", "Feeling sick / oxygen", "Video guide: feeling sick, oxygen and temperature. Educational — not medical advice."),
+  injury: guide("assets/guides/physical-injury.mp4", "Physical injury", "Video guide: physical injury and physical alerts. Educational — not medical advice."),
+});
+const MEDIA = Object.freeze({
+  "WB-01": G.family,            // mental wellbeing
+  "PHY-05": G.hydration,        // sleep
+  "EX-01": G.hydration,         // daily routine / exercise countermeasure
+  "PHY-03": G.bloodPressure,    // blood pressure
+  "PHY-02": G.sick,             // SpO₂ (O₂)
+  "PHY-06": G.sick,             // body temperature high
+  "PHY-07": G.sick,             // body temperature low
+  "ENV-01": G.sick,             // cabin air (CO₂)
+  "ENV-02": G.sick,
+  "ENV-03": G.sick,
+  "PHY-01": G.injury,           // heart rate — any other physical alert
+});
+/** Any other PHYSICAL rule without its own guide gets the physical-injury video. */
+const PHYSICAL_DEFAULT = G.injury;
 
 /** The local video/picture guide for a rule, or null when none has been added. */
 export function mediaForRule(ruleId) {
-  const m = MEDIA[ruleId];
-  return m && (m.kind === "video" || m.kind === "image") && typeof m.src === "string" && m.src.startsWith("assets/") ? m : null;
+  const m = MEDIA[ruleId] || (typeof ruleId === "string" && ruleId.startsWith("PHY-") ? PHYSICAL_DEFAULT : null);
+  return m && (m.kind === "video" || m.kind === "image") && typeof m.src === "string" && m.src.startsWith("assets/guides/") ? m : null;
 }

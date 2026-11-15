@@ -21,7 +21,10 @@ const MESSAGES = {
 };
 
 /** Demo cards → the role we expect (used only to describe the choice). */
-const DEMO_ROLES = { haddad: ROLES.ASTRONAUT, medofficer: ROLES.MEDICAL_OFFICER };
+const DEMO_ROLES = {
+  haddad: ROLES.ASTRONAUT, karim: ROLES.ASTRONAUT, chen: ROLES.ASTRONAUT, reyes: ROLES.ASTRONAUT,
+  medofficer: ROLES.MEDICAL_OFFICER, medbackup: ROLES.MEDICAL_OFFICER,
+};
 
 /** DatabaseError codes meaning "the local database can't be used right now". */
 const UNAVAILABLE_CODES = new Set(["UNSUPPORTED", "OPEN_FAILED", "VERSION", "BLOCKED", "INVALID_STATE", "QUOTA", "ABORTED"]);

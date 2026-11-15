@@ -11,7 +11,7 @@
 // allowlist. That is added, narrowly, with the first approved remote endpoint.
 //
 // Scans:   .html .css .js .mjs .webmanifest .json
-// Skips:   node_modules/, docs/, scripts/, tests/, .git/, .github/,
+// Skips:   node_modules/, docs/, scripts/, tests/, server/, .git/, .github/,
 //          package.json, package-lock.json (dev metadata, never loaded)
 // Ignores: URLs inside comments, and the SVG namespace
 //          "http://www.w3.org/2000/svg" (an identifier, never fetched).
@@ -29,7 +29,7 @@ import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ROOT = process.argv[2] ? resolve(process.argv[2]) : REPO_ROOT;
-const SKIP_DIRS = new Set(["node_modules", "docs", "scripts", "tests", ".git", ".github"]);
+const SKIP_DIRS = new Set(["node_modules", "docs", "scripts", "tests", "server", ".git", ".github"]);
 const EXTENSIONS = new Set([".html", ".css", ".js", ".mjs", ".webmanifest", ".json"]);
 const ALLOWED = ["http://www.w3.org/2000/svg"];
 // Repository-relative paths (always "/"-separated) whose URLs are reference

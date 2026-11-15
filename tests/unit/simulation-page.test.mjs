@@ -399,12 +399,14 @@ test("Sprint 8: each step shows its risk-evaluation result honestly, with links 
   await h.fire();
   await h.fire();
   assert.match(text(h.container), /Risk evaluation after step 3:/);
-  assert.match(text(h.container), /ALT-0191 Low SpO₂ · warning · opened/);
+  assert.match(text(h.container), /ALT-0191 Low SpO₂ · info · opened/);
   assert.ok(byTag(h.container, "a").some((a) => a.getAttribute("href") === "#/alerts/ALT-0191"));
-  assert.equal(liveOf(h.container).textContent, "ALT-0191 Low SpO₂ opened (warning).", "a newly opened alert is announced once");
+  assert.equal(liveOf(h.container).textContent, "ALT-0191 Low SpO₂ opened (info).", "a newly opened alert is announced once");
+  await h.fire();
+  assert.match(text(h.container), /ALT-0191 Low SpO₂ · warning · escalated/, "step 4: 92, 90 → below 93 %");
   await h.fire();
   await h.fire();
-  assert.match(text(h.container), /ALT-0191 Low SpO₂ · critical · escalated/);
+  assert.match(text(h.container), /ALT-0191 Low SpO₂ · critical · escalated/, "step 6: 88, 88 → below 90 %");
 
   // A failing evaluation is reported as unavailable; the reading is still saved.
   await mock.resetMock({ now: NOW });

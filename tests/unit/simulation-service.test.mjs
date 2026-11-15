@@ -596,8 +596,8 @@ test("41–44 regressions: astronaut route denied; DB_VERSION 1; no banned wordi
   assert.equal(checkRoute({ role: "medical_officer", userId: "u-medofficer" }, "#/simulation").allowed, true);
   const { DB_VERSION, APP_VERSION } = await import("../../js/core/config.js");
   assert.equal(DB_VERSION, 1);
-  assert.equal(APP_VERSION, "0.11.0");
-  assert.match(read("sw.js"), /const CACHE_VERSION = "0\.11\.0";/);
+  assert.equal(APP_VERSION, "0.14.0");
+  assert.match(read("sw.js"), /const CACHE_VERSION = "0\.14\.0";/);
   const banned = [/\bhealthy\b/i, /\bunhealthy\b/i, /normal health/i, /\bdiagnos(is|ed|e)\b/i, /medically cleared/i, /fit for duty/i, /\btreatment\b/i, /AI health score/i, /clinical risk score/i, /hypoxi/i];
   for (const p of ["js/services/simulation-service.js", "js/pages/simulation-center.js", "js/simulation/scenarios.js", "css/pages/simulation.css"]) {
     const text = read(p).replace(/^\/\/.*$/gm, "");

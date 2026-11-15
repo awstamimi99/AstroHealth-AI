@@ -119,7 +119,7 @@ export function provenanceTag(item) {
   return badge("badge--neutral", "info", "Source unknown");
 }
 
-const DECIMALS = { heartRate: 0, spo2: 0, bloodPressure: 0, sleepDuration: 1 };
+const DECIMALS = { heartRate: 0, spo2: 0, bloodPressure: 0, sleepDuration: 1, bodyTemperature: 1 };
 
 /** "73 bpm", "118/76 mmHg", "—" */
 export function vitalValueText(item) {

@@ -18,7 +18,7 @@ import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
 import { onHealthChanged, keepFocus } from "../core/live-updates.js";
 import { formatDate } from "../core/utils/format.js";
-import { badge, loadingView, section, srOnly, syntheticNotice, utcTime } from "../components/crew-view.js";
+import { badge, loadingView, section, srOnly, utcTime } from "../components/crew-view.js";
 import { refusalView } from "../components/health-view.js";
 import { createContextBodyScan } from "../components/context-body-scan.js";
 import { upgradeToCards } from "../components/crew-body-cards.js";
@@ -169,7 +169,6 @@ export function createHistoryRenderer({ service, loadCards = null, subscribe = o
         el("h2", { class: "history__title", id: "history-title", tabindex: "-1", "data-heading": "" }, d.viewer === "officer" ? `Health history · ${d.profile.name} · ${d.profile.crewId}` : "Your health history"),
         el("p", { class: "history__subtitle" }, `${d.profile.missionRole} · ${d.range.from} to ${d.range.to} (UTC, inclusive) · newest first`),
         d.viewer === "officer" ? el("p", { class: "history__links" }, [el("a", { class: "btn btn--secondary btn--sm", href: "#/history" }, [icon("arrow-right"), "Choose another crew member"]), el("a", { class: "btn btn--secondary btn--sm", href: `#/crew/${d.profile.crewId}` }, [icon("users"), "Crew member detail"])]) : null,
-        syntheticNotice(),
       ]);
       const rangeGroup = el("div", { class: "segmented", role: "group", "aria-label": "Date range" },
         d.ranges.map((n) => el("button", { class: "segmented__option", type: "button", id: `history-range-${n}`, "aria-pressed": String(n === d.range.days), onClick: () => { if (n !== st.days) { st.days = n; load(); } } }, `${n} days`)));

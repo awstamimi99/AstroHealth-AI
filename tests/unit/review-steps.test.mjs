@@ -48,16 +48,31 @@ test("every rule has review steps for both roles; the Medical Officer gets the o
   if (RULES) for (const r of RULES) assert.ok(plans.planForRule(r.id, { viewer: "officer" }).steps.length, r.id);
 });
 
-test("a video/picture guide is used only when a local assets/ file is listed; none exist yet", () => {
-  for (const id of RULE_IDS) assert.equal(plans.mediaForRule(id), null);
+test("video guides: each rule maps to the owner's local video under assets/guides/; the files exist; unknown rules get none", async () => {
+  const { existsSync } = await import("node:fs");
+  const expected = {
+    "WB-01": "family-call.mp4", "PHY-05": "hydration.mp4", "EX-01": "hydration.mp4", "PHY-03": "low-blood-pressure.mp4",
+    "PHY-02": "sick.mp4", "PHY-06": "sick.mp4", "PHY-07": "sick.mp4", "ENV-01": "sick.mp4", "PHY-01": "physical-injury.mp4", "PHY-99": "physical-injury.mp4",
+  };
+  for (const [id, file] of Object.entries(expected)) {
+    const m = plans.mediaForRule(id);
+    assert.equal(m.kind, "video", id);
+    assert.equal(m.src, `assets/guides/${file}`, id);
+    assert.ok(existsSync(join(ROOT, m.src)), `${m.src} exists`);
+    assert.match(m.caption, /not medical advice/);
+  }
+  assert.equal(plans.mediaForRule("UNKNOWN-9"), null);
+  assert.equal(plans.mediaForRule(undefined), null);
 });
 
-test("review steps: no-guide notice, numbered steps, ticking updates the progress and is kept per user and alert", () => {
+test("review steps: video guide (or no-guide notice), numbered steps, ticking updates the progress and is kept per user and alert", () => {
   const progress = memoryProgress();
   const said = [];
   const node = steps.createReviewSteps({ number: "ALT-0190", ruleId: "PHY-05", viewer: "officer", userKey: "u-medofficer", idPrefix: "t", progress, announce: (t) => said.push(t) });
-  assert.match(node.textContent, new RegExp(steps.NO_GUIDE_TEXT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.ok(all(node, (e) => e.tagName === "VIDEO" && e.getAttribute("src") === "assets/guides/hydration.mp4").length === 1, "sleep alert shows the hydration video");
   assert.match(node.textContent, /Synthetic educational content — not medical advice/);
+  const noGuide = steps.createReviewSteps({ number: "ALT-0001", ruleId: "UNKNOWN-9", viewer: "officer", userKey: "u-medofficer", idPrefix: "n", progress });
+  assert.match(noGuide.textContent, new RegExp(steps.NO_GUIDE_TEXT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   const boxes = all(node, (e) => e.tagName === "INPUT" && e.getAttribute("type") === "checkbox");
   const plan = plans.planForRule("PHY-05", { viewer: "officer" });
   assert.equal(boxes.length, plan.steps.length);

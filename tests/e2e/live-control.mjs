@@ -119,7 +119,7 @@ try {
   const ring = (tab, key) => tab.eval(`(document.querySelector("#ov-ring-${key} .scan-ring__number")?.textContent || "")`);
   const pins = (tab) => tab.eval(`[...document.querySelectorAll(".vitals-stage .scan-pin")].map((p) => p.className.replace("scan-pin ", "") + " | " + p.getAttribute("aria-label"))`);
   const bell = (tab) => tab.eval(`(() => { const b = document.querySelector("[data-alert-count]"); return b && !b.hidden ? b.textContent : ""; })()`);
-  const openLive = async (tab) => { await tab.hash("#/simulation", 1500); await tab.click("#sim-tab-live"); await tab.until(`!!document.querySelector("[data-live-chip]")`); };
+  const openLive = async (tab) => { await tab.hash("#/simulation", 1500); await tab.until(`!!document.querySelector("[data-live-chip]")`); }; // Live control is the only view
   const selectCrew = async (tab, crewId) => { await tab.click(`[data-live-chip="${crewId}"]`); await tab.until(`document.querySelector("[data-live-editing]")?.getAttribute("data-live-editing") === ${JSON.stringify(crewId)}`); await sleep(300); };
   /** Move a single chart handle to `target` with in-page keyboard events (Shift = 5 steps), like a user would. */
   const setHandle = (tab, group, index, target) => tab.eval(`(() => {
@@ -172,36 +172,36 @@ try {
     return JSON.stringify(bOverviewBefore);
   });
 
-  await step("3. Window A: select Jonas Reyes, set SpO₂ to 90 % (below the stored limits), Apply twice", async () => {
+  await step("3. Window A: select Jonas Reyes, set SpO₂ to 88 % (below the critical limit of 90 %), Apply twice", async () => {
     await selectCrew(A, "AH-04");
     const head = await A.text("#live-editing-title");
     expect(head === "Editing: Jonas Reyes · AH-04", head);
     const applyLabel = await A.text("#live-apply-spo2");
     expect(applyLabel.includes("Apply to Jonas Reyes"), applyLabel);
     const rule = await A.text('[data-live-card="spo2"] [data-live-rule]');
-    expect(/PHY-02/.test(rule) && /warning < 95 %, critical < 92 %/.test(rule), `rule text: ${rule}`);
+    expect(/PHY-02/.test(rule) && /watch < 95 %, warning < 93 %, critical < 90 %/.test(rule), `rule text: ${rule}`);
     const limits = await A.eval(`[...document.querySelectorAll("#live-chart-spo2 .live-chart__limit-label")].map((t) => t.textContent)`);
-    expect(limits.length === 2 && limits.every((t) => t.startsWith("PHY-02")), `limit labels: ${limits}`);
+    expect(limits.length === 3 && limits.every((t) => t.startsWith("PHY-02")), `limit labels: ${limits}`);
     // A pointer drag moves the handle too (in-page PointerEvents on the real listeners).
     const dragged = await A.eval(`(() => { const h = document.querySelector("#live-chart-spo2 .live-chart__handle"); const svg = h.closest("svg"); const box = svg.getBoundingClientRect();
       const y = box.top + box.height * 0.5; const o = { bubbles: true, cancelable: true, clientX: box.left + box.width * 0.88, clientY: y, pointerId: 7 };
       h.dispatchEvent(new PointerEvent("pointerdown", o)); h.dispatchEvent(new PointerEvent("pointermove", { ...o, clientY: y + 20 })); h.dispatchEvent(new PointerEvent("pointerup", o));
       return [h.getAttribute("aria-valuenow"), document.querySelector("#live-input-spo2").value]; })()`);
     expect(dragged[0] === dragged[1] && Number(dragged[0]) < 97, `drag: ${dragged}`);
-    const set = await setHandle(A, "spo2", 0, 90);
-    expect(set === "90" && (await A.eval(`document.querySelector("#live-input-spo2").value`)) === "90", `handle ${set}`);
-    await A.shot("03a-A-reyes-spo2-set-90.png");
+    const set = await setHandle(A, "spo2", 0, 88);
+    expect(set === "88" && (await A.eval(`document.querySelector("#live-input-spo2").value`)) === "88", `handle ${set}`);
+    await A.shot("03a-A-reyes-spo2-set-88.png");
     const first = await apply(A, "spo2");
-    expect(/Saved for Jonas Reyes \(AH-04\): SpO₂ 90 %/.test(first) && /PHY-02/.test(first) && /apply the value again/.test(first), `first apply: ${first}`);
+    expect(/Saved for Jonas Reyes \(AH-04\): SpO₂ 88 %/.test(first) && /PHY-02/.test(first) && /apply the value again/.test(first), `first apply: ${first}`);
     await A.shot("03b-A-first-apply-no-alert-yet.png");
     const second = await apply(A, "spo2");
-    expect(/PHY-02/.test(second) && /2 consecutive SpO₂ readings below the demonstration critical threshold of 92 %/.test(second) && /Alert ALT-\d+ opened \(critical\)/.test(second), `second apply: ${second}`);
+    expect(/PHY-02/.test(second) && /2 consecutive SpO₂ readings below the demonstration critical threshold of 90 %/.test(second) && /Alert ALT-\d+ opened \(critical\)/.test(second), `second apply: ${second}`);
     await A.shot("03c-A-second-apply-alert-opened.png");
     return second.slice(0, 260);
   });
 
-  await step("4. Window B (no reload): SpO₂ ring shows 90, a new critical pin and the alert are listed, bell count rises", async () => {
-    const ok = await B.until(`document.querySelector("#ov-ring-spo2 .scan-ring__number")?.textContent === "90" && document.querySelectorAll(".vitals-stage .scan-pin").length === 2`, 6000);
+  await step("4. Window B (no reload): SpO₂ ring shows 88, a new critical pin and the alert are listed, bell count rises", async () => {
+    const ok = await B.until(`document.querySelector("#ov-ring-spo2 .scan-ring__number")?.textContent === "88" && document.querySelectorAll(".vitals-stage .scan-pin").length === 2`, 6000);
     const now = { spo2: await ring(B, "spo2"), pins: await pins(B), list: await B.text('[aria-labelledby="ov-alerts-title"]'), bell: await bell(B), marker: await B.eval(`window.__noReload`), ringClass: await B.eval(`document.querySelector("#ov-ring-spo2").className`) };
     await B.eval(`document.querySelector(".ov-scan").scrollIntoView()`); await sleep(300);
     await B.shot("04-B-reyes-overview-live-updated.png");
@@ -225,7 +225,7 @@ try {
     await B.shot("05b-B-alerts.png");
     await B.hash("#/history", 1800);
     const history = await B.eval(`document.querySelector("[data-route-view]")?.textContent || document.body.textContent`);
-    expect(/Live control reading: SpO₂ 90 %/.test(history) && /Low SpO₂/.test(history), `history: ${history.slice(0, 400)}`);
+    expect(/Live control reading: SpO₂ 88 %/.test(history) && /Low SpO₂/.test(history), `history: ${history.slice(0, 400)}`);
     // Live: a heart-rate value applied in A appears in B's History without navigation.
     await B.eval(`window.__noReload = "history-open"`);
     expect((await setHandle(A, "heartRate", 0, 88)) === "88", "heart-rate handle");

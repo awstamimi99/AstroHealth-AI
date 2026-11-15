@@ -46,7 +46,7 @@ import { bus } from "../core/event-bus.js";
 import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
 import { formatNumber, formatRelative } from "../core/utils/format.js";
-import { badge, loadingView, section, sectionError, srOnly, syntheticNotice, utcTime } from "../components/crew-view.js";
+import { badge, loadingView, section, sectionError, srOnly, utcTime } from "../components/crew-view.js";
 import { refusalView } from "../components/health-view.js";
 import { createContextBodyScan } from "../components/context-body-scan.js";
 
@@ -113,7 +113,7 @@ function statusBadge(key) {
 }
 
 /** TEST SEAM. Production uses renderSimulationCenter. */
-export function createSimulationCenterRenderer({ service, timers = defaultTimers, channel = defaultChannel, live: liveService = null, reset: resetService = null, notifyReset = () => bus.emit("demo:reset", {}) }) {
+export function createSimulationCenterRenderer({ service, timers = defaultTimers, channel = defaultChannel, live: liveService = null, reset: resetService = null, notifyReset = () => bus.emit("demo:reset", {}), liveOnly = false }) {
   return function render(container, session, { signal, focus = false } = {}) {
     const live = el("p", { class: "sr-only", role: "status", "aria-live": "polite" });
     const content = el("div", { class: "sim__content", id: "sim-panel-scenarios", role: "tabpanel", "aria-labelledby": "sim-tab-scenarios" });
@@ -123,6 +123,16 @@ export function createSimulationCenterRenderer({ service, timers = defaultTimers
     container.replaceChildren(root);
     let tab = "scenarios";
     let liveView = null;
+    // liveOnly (production): the Simulation Center shows ONLY Live control. The scenario
+    // panel stays mounted but hidden, because its timer advances custom curves and
+    // keeps the run state that Live control shows.
+    if (liveService && liveOnly) {
+      tabs.setAttribute("hidden", "");
+      content.setAttribute("hidden", "");
+      content.removeAttribute("role");
+      livePanel.removeAttribute("role");
+      livePanel.removeAttribute("aria-labelledby");
+    }
 
     const st = {
       data: null,
@@ -159,7 +169,7 @@ export function createSimulationCenterRenderer({ service, timers = defaultTimers
     // ---- tabs ("Scenarios" | "Live control") ------------------------------------------------
 
     function drawTabs() {
-      if (!liveService) return;
+      if (!liveService || liveOnly) return;
       const item = (key, text, iconName) => el("button", {
         type: "button", class: ["sim-tab", tab === key ? "is-active" : ""], role: "tab", id: `sim-tab-${key}`,
         "aria-selected": tab === key ? "true" : "false", "aria-controls": `sim-panel-${key}`, tabindex: tab === key ? "0" : "-1",
@@ -175,6 +185,7 @@ export function createSimulationCenterRenderer({ service, timers = defaultTimers
 
     function showTab(key) {
       if (!liveService || key === tab) return;
+      if (liveOnly && key !== "live") return;
       tab = key;
       if (tab === "live") {
         content.setAttribute("hidden", "");
@@ -448,7 +459,6 @@ export function createSimulationCenterRenderer({ service, timers = defaultTimers
           el("span", { class: "sim-tag" }, [icon("flask-conical", { size: 12 }), "SIMULATED"]),
         ]),
         el("p", { class: "sim__subtitle" }, "Generate deterministic synthetic readings for one crew member and watch them appear in the dashboards."),
-        syntheticNotice(),
         el("p", { class: "sim__note" }, d.notes.disclaimer),
       ]);
     }
@@ -703,7 +713,9 @@ export function createSimulationCenterRenderer({ service, timers = defaultTimers
     }
 
     drawTabs();
-    return load();
+    const first = load();
+    if (liveService && liveOnly) showTab("live");
+    return first;
   };
 }
 
@@ -721,4 +733,5 @@ export const renderSimulationCenter = createSimulationCenterRenderer({
   }),
   live: Object.freeze({ getLiveControl: (session, input) => getLiveControl(session, input) }),
   reset: Object.freeze({ resetDemoData: (session, input) => resetDemoData(session, input) }),
+  liveOnly: true, // the scenario catalog UI is retired; scenarios stay in the service for tests
 });

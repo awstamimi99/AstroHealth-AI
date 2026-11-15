@@ -107,6 +107,7 @@ test("allow-list: every supported type gets fixed safe wording; stored summary/d
     [ev("simulation_paused", { refStore: "simulationRuns", refId: "sim_1" }), "simulation", "Simulation paused: Low oxygen saturation demonstration", "simulation"],
     [ev("simulation_stopped", { refStore: "simulationRuns", refId: "sim_1", data: { outcome: "completed" } }), "simulation", "Simulation completed: Low oxygen saturation demonstration", "simulation"],
     [ev("simulation_stopped", { refStore: "simulationRuns", refId: "sim_gone", data: { outcome: "stopped" } }), "simulation", "Simulation stopped", "not_recorded"],
+    [ev("exercise_logged", { data: { sessionType: "aerobic", minutes: 45, completion: "partial", stopReason: "SECRET reason", source: "manual" } }), "readings", "Exercise: Aerobic session partial · 45 min", "not_recorded"],
   ];
   for (const [e, category, text, provenance] of cases) {
     const out = svc.describeEvent(e, c);
@@ -177,12 +178,12 @@ test("simulation + alert lifecycle entries appear for the subject astronaut (Spr
   const risk = (await import("../../js/services/risk-service.js")).createRiskService({ repos: repos2, withTransaction: mock.withTransaction });
   const sim = (await import("../../js/services/simulation-service.js")).createSimulationService({ repos: repos2, withTransaction: mock.withTransaction, evaluateRisk: risk.evaluateAstronaut });
   const st = await sim.startSimulation(MO, { crewId: "AH-03", scenarioId: "low_oxygen", speed: 8, confirm: true }, { now: NOW + 1000 });
-  for (let i = 0; i < 5; i += 1) await sim.advanceSimulation(MO, st.runRef, { expectedStep: i }, { now: NOW + 10000 + i * 1000 });
+  for (let i = 0; i < 6; i += 1) await sim.advanceSimulation(MO, st.runRef, { expectedStep: i }, { now: NOW + 10000 + i * 1000 }); // PHY-02 v2: info → warning → critical
   const h = await service().service.getOwnHistory(CHEN, { days: 7 }, { now: NOW + 60000 });
   const texts = h.entries.map((e) => e.text);
   assert.ok(texts.includes("Simulation started: Low oxygen saturation demonstration"));
   assert.ok(texts.includes("Simulated reading: SpO₂ 92 % (step 3)"));
-  assert.ok(texts.includes("ALT-0191 Low SpO₂ opened (warning)"));
+  assert.ok(texts.includes("ALT-0191 Low SpO₂ opened (info)"), texts.join(" | "));
   assert.ok(texts.includes("ALT-0191 Low SpO₂ escalated to critical"));
   assert.ok(h.entries.filter((e) => e.category === "simulation" || e.text.startsWith("Simulated")).every((e) => e.provenance === "simulation"));
   assert.ok(!LEAKS.test(JSON.stringify(h)), JSON.stringify(h).match(LEAKS)?.[0]);

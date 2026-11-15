@@ -49,6 +49,7 @@ const TREND_METRICS = Object.freeze([
   { key: "bpSystolic", label: "Blood pressure (systolic)", decimals: 0 },
   { key: "bpDiastolic", label: "Blood pressure (diastolic)", decimals: 0 },
   { key: "sleepDuration", label: "Sleep duration", decimals: 1 },
+  { key: "bodyTemperature", label: "Body temperature", decimals: 1 },
 ]);
 
 const ERROR = Symbol("error");
@@ -109,9 +110,9 @@ async function buildPhysical(repos, astronaut, viewer, now) {
   const dates = lastUtcDates(toDateKey(now), 30);
   const from = dates[0];
   const to = dates[dates.length - 1];
-  const keys = ["heartRate", "spo2", "bpSystolic", "bpDiastolic", "sleepDuration", "sum:heartRate", "sum:spo2", "sum:bpSystolic", "sum:bpDiastolic", "sum:sleepDuration", "alerts"];
+  const keys = ["heartRate", "spo2", "bpSystolic", "bpDiastolic", "sleepDuration", "bodyTemperature", "sum:heartRate", "sum:spo2", "sum:bpSystolic", "sum:bpDiastolic", "sum:sleepDuration", "sum:bodyTemperature", "alerts"];
   const settled = await Promise.allSettled([
-    ...["heartRate", "spo2", "bpSystolic", "bpDiastolic", "sleepDuration"].map((m) => attempt(() => repos.measurementsRepo.getRecent(aid, m, RECENT_READINGS_LIMIT))),
+    ...["heartRate", "spo2", "bpSystolic", "bpDiastolic", "sleepDuration", "bodyTemperature"].map((m) => attempt(() => repos.measurementsRepo.getRecent(aid, m, RECENT_READINGS_LIMIT))),
     ...TREND_METRICS.map((m) => attempt(() => repos.dailySummariesRepo.getRange(aid, m.key, from, to))),
     attempt(() => repos.alertsRepo.query({ astronautId: aid, status: [...OPEN_ALERT_STATUSES] })),
   ]);
@@ -140,6 +141,7 @@ async function buildPhysical(repos, astronaut, viewer, now) {
     card("spo2", "SpO₂", "spo2", VITALS_STALE_MS, 0),
     bp,
     card("sleepDuration", "Sleep duration", "sleepDuration", SLEEP_STALE_MS, 1),
+    card("bodyTemperature", "Body temperature", "bodyTemperature", VITALS_STALE_MS, 1),
   ];
   const failedLatest = latest.filter((i) => i.state === "error").length;
 

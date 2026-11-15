@@ -4,7 +4,7 @@
 //   listAlerts(session, { status?, severity?, crewId? }, options)
 //   getAlertDetail(session, "ALT-0191", options)
 //   acknowledgeAlert(session, "ALT-0191", { note? }, options)          Medical Officer
-//   resolveAlert(session, "ALT-0191", { note, confirmConditionPresent? }, options)  Medical Officer
+//   resolveAlert(session, "ALT-0191", { note, confirmConditionPresent?, notifyAstronaut? }, options)  Medical Officer
 //
 // SCOPE
 //   Astronaut: verified first; only alerts whose astronautId is their own —
@@ -19,7 +19,10 @@
 // state is a "conflict" — nothing is written in either case):
 //   acknowledge: new → acknowledged (optional note ≤ 500)
 //   resolve:     acknowledged → resolved (trimmed note 1…500 characters;
-//                if conditionCleared is 0, confirmConditionPresent: true)
+//                if conditionCleared is 0, confirmConditionPresent: true).
+//                notifyAstronaut: true ALSO sends the note to the crew member as a
+//                message (messages + message_sent event) in the same transaction —
+//                the officer's explicit choice; without it the note stays internal.
 //
 // PRIVACY: outputs never contain alert/astronaut/user/measurement ids or raw
 // records. Lifecycle notes (resolutionNote, acknowledgement / action notes)
@@ -35,6 +38,7 @@ import {
   alertsRepo,
   alertActionsRepo,
   eventsRepo,
+  messagesRepo,
   withTransaction,
   SEVERITIES,
   OPEN_ALERT_STATUSES,
@@ -51,6 +55,7 @@ export const RESOLVED_WINDOW_MS = 30 * DAY_MS;
 export const NOTE_MAX = 500;
 export const STATUS_FILTERS = Object.freeze(["open", "new", "acknowledged", "resolved", "all"]);
 export const ACTION_STORES = Object.freeze(["alerts", "alertActions", "missionEvents"]);
+export const NOTIFY_STORES = Object.freeze([...ACTION_STORES, "messages"]);
 
 const METRIC_LABELS = { heartRate: "Heart rate", spo2: "SpO₂", bpSystolic: "Systolic blood pressure", bpDiastolic: "Diastolic blood pressure", sleepDuration: "Sleep duration", activity: "Activity", fatigue: "Fatigue", mood: "Mood", stress: "Stress" };
 const ACTION_LABELS = { created: "Created", escalated: "Escalated", acknowledged: "Acknowledged", condition_cleared: "Condition cleared", resolved: "Resolved" };
@@ -165,6 +170,9 @@ export function createAlertsService({ repos, withTransaction: runTransaction }) 
     if (src.note !== undefined && typeof src.note !== "string") return result("invalid", "invalid_note", now);
     if (note.length > NOTE_MAX) return result("invalid", "note_too_long", now);
     if (kind === "resolve" && !note) return result("invalid", "note_required", now);
+    if (src.notifyAstronaut !== undefined && typeof src.notifyAstronaut !== "boolean") return result("invalid", "invalid_notify", now);
+    const notify = kind === "resolve" && src.notifyAstronaut === true;
+    if (notify && !repos.messagesRepo) return result("unavailable", "database_error", now);
     const viewer = { role: "officer", user: officer.officer };
 
     if (locks.has(number)) return result("busy", "operation_in_progress", now);
@@ -179,7 +187,7 @@ export function createAlertsService({ repos, withTransaction: runTransaction }) 
       if (!target) return result("not_found", "unknown_alert", now);
       let outcome;
       try {
-        outcome = await runTransaction(ACTION_STORES, "readwrite", async (tx) => {
+        outcome = await runTransaction(notify ? NOTIFY_STORES : ACTION_STORES, "readwrite", async (tx) => {
           const cur = await repos.alertsRepo.getById(target.id, { tx });
           if (!cur || cur.number !== number) return { status: "not_found" };
           if (kind === "acknowledge") {
@@ -197,13 +205,17 @@ export function createAlertsService({ repos, withTransaction: runTransaction }) 
           await repos.alertsRepo.update(cur.id, { status: "resolved", resolvedAt: now, resolvedBy: officer.officer.id, resolutionNote: note }, { tx });
           await repos.alertActionsRepo.add({ alertId: cur.id, action: "resolved", userId: officer.officer.id, timestamp: now, note }, { tx });
           await repos.eventsRepo.add({ type: "alert_resolved", timestamp: now, astronautId: cur.astronautId, actorUserId: officer.officer.id, refStore: "alerts", refId: cur.id, summary: `${cur.number} resolved by ${officer.officer.displayName}`, data: { ruleId: cur.ruleId, severity: cur.severity, conditionCleared: cur.conditionCleared === 1 ? 1 : 0 } }, { tx });
-          return { status: "resolved", alertStatus: "resolved" };
+          if (notify) {
+            const msg = await repos.messagesRepo.add({ astronautId: cur.astronautId, fromUserId: officer.officer.id, templateId: "", body: note, relatedAlertId: cur.id, sentAt: now, acknowledgedAt: 0, response: null, createdBy: officer.officer.id }, { tx });
+            await repos.eventsRepo.add({ type: "message_sent", timestamp: now, astronautId: cur.astronautId, actorUserId: officer.officer.id, refStore: "messages", refId: msg.id, summary: `Message sent about ${cur.number}`, data: { templateId: "", alertNumber: cur.number } }, { tx });
+          }
+          return { status: "resolved", alertStatus: "resolved", notified: notify };
         });
       } catch {
         return result("unavailable", "database_error", now);
       }
       if (outcome.status === "not_found") return result("not_found", "unknown_alert", now);
-      return result(outcome.status, outcome.reason || "", now, { number, alertStatus: outcome.alertStatus });
+      return result(outcome.status, outcome.reason || "", now, { number, alertStatus: outcome.alertStatus, ...(kind === "resolve" ? { notified: outcome.notified === true } : {}) });
     } finally {
       locks.delete(number);
     }
@@ -361,7 +373,7 @@ export function createAlertsService({ repos, withTransaction: runTransaction }) 
 }
 
 const production = createAlertsService({
-  repos: Object.freeze({ usersRepo, astronautsRepo, alertsRepo, alertActionsRepo, eventsRepo }),
+  repos: Object.freeze({ usersRepo, astronautsRepo, alertsRepo, alertActionsRepo, eventsRepo, messagesRepo }),
   withTransaction,
 });
 export const listAlerts = (session, filters, options) => production.listAlerts(session, filters, options);

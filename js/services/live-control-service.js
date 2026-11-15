@@ -71,8 +71,8 @@ function presentAlerts(list, aid) {
 }
 
 /** The rule (if any) that reads this metric, with its stored limits as the engine words them. */
-function presentRule(metricKey, rules, thresholds) {
-  const rule = rules.find((r) => r && r.metric === metricKey);
+function presentRule(metricKey, rules, thresholds, index = 0) {
+  const rule = rules.filter((r) => r && r.metric === metricKey)[index];
   if (!rule) return null;
   const bounds = thresholdsFor(rule, thresholds);
   const unit = METRIC_UNITS[metricKey];
@@ -83,6 +83,7 @@ function presentRule(metricKey, rules, thresholds) {
     compare: rule.compare,
     count: rule.count,
     description: rule.description,
+    info: bounds.info,
     warning: bounds.warning,
     critical: bounds.critical,
     limitsText: bounds.warning === null ? "" : thresholdUsedText(rule, bounds, unit),
@@ -174,6 +175,7 @@ export function createLiveControlService({ repos, rules = PHYSICAL_RULES }) {
           readings: { status: readings === null ? "error" : "ok", items: readings || [] },
           latest: last ? { value: last.value, timestamp: last.timestamp } : null,
           rule: presentRule(m.key, rules, thresholds),
+          extraRule: presentRule(m.key, rules, thresholds, 1), // e.g. body temperature: high (PHY-06) and low (PHY-07)
         };
       });
 

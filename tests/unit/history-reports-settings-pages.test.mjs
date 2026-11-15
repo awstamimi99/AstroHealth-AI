@@ -234,7 +234,7 @@ test("settings page: astronaut has no thresholds; officer sees read-only thresho
   await settingsPage.createSettingsRenderer({ service: svc, prefs })(m, MO, { signal: new AbortController().signal });
   await flush();
   assert.match(text(m), /Demonstration thresholds — not clinically validated\./);
-  assert.match(text(m), /PHY-02.*SpO₂.*below 95 %.*below 92 %/s);
+  assert.match(text(m), /PHY-02.*SpO₂.*below 95 %.*below 93 %.*below 90 %/s);
   assert.match(text(m), /Default speed: 1×/);
   assert.equal(byTag(m, "input").filter((i) => i.getAttribute("type") !== "radio").length, 0, "no editable fields besides the preference radios");
   // Blocked storage → calm notice.

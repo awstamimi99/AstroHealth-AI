@@ -18,7 +18,7 @@
 //
 // Test seam: createDemoResetService({ repos, resetDatabase }).
 
-import { usersRepo, resetDatabase } from "../db/index.js";
+import { usersRepo, resetDatabase, seedDemoData } from "../db/index.js";
 import { verifyMedicalOfficer } from "./access-control.js";
 
 export const RESET_PHRASE = "RESET DEMO";
@@ -52,3 +52,18 @@ export function createDemoResetService({ repos, resetDatabase: reset }) {
 
 const production = createDemoResetService({ repos: Object.freeze({ usersRepo }), resetDatabase });
 export const resetDemoData = (session, input, options) => production.resetDemoData(session, input, options);
+
+/**
+ * Keep an existing local demo database current (no sign-in needed, no user
+ * data involved): seed version 1 → 2 adds body temperature, cabin readings
+ * and exercise sessions once; missing demonstration thresholds are added.
+ * Never throws. → { upgraded: boolean }
+ */
+export async function ensureDemoDataCurrent() {
+  try {
+    const r = await seedDemoData();
+    return { upgraded: Boolean(r && (r.upgraded || r.seeded)) };
+  } catch {
+    return { upgraded: false };
+  }
+}
