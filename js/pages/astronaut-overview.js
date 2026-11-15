@@ -31,9 +31,10 @@ import { getAlertDetail } from "../services/alerts-service.js";
 import { icon } from "../components/icon.js";
 import { createRing } from "../components/body-scan.js";
 import { zoneForRule, ZONE_LABELS } from "../components/alert-zones.js";
-import { createVitalsStage, alertPins, ringFraction, centreStages, severityLegend } from "../components/vitals-stage.js";
+import { createVitalsStage, alertPins, pinNumbers, ringFraction, centreStages, severityLegend } from "../components/vitals-stage.js";
 import { alertPopupBody, alertTitle, loadAlertDetailSafely } from "../components/alert-popup.js";
 import { planForRule, PLAN_NOTICE, VIDEO_PLACEHOLDER } from "../components/action-plans.js";
+import { createAlertLifecycle, lifecycleFromDetail } from "../components/alert-lifecycle.js";
 import { openDialog } from "../components/dialog.js";
 import { planProgress } from "../core/action-plan-progress.js";
 import { onHealthChanged, keepFocus } from "../core/live-updates.js";
@@ -224,7 +225,7 @@ function scanStageSection(data, onRetry, onOpenAlert) {
     el("div", { class: "scan-stage__foot" }, [
       el("p", { class: "scan-stage__note" },
         "Illustration only: the body is a stylised drawing and the ring fill uses a fixed display scale — neither is a health assessment. " +
-          (pins.length ? "Numbered pins map your current and recently resolved alerts to the body, coloured by their recorded severity. Only an open physical alert colours a vital ring. The same alerts are listed beside the scan." : "You have no current or recently resolved alerts to map, so no pins are shown and every ring is blue.")),
+          (pins.length ? "Numbered pins mark your open alerts, coloured by severity. A resolved alert is removed from the body; recently resolved alerts are still listed beside the scan. Only an open physical alert colours a vital ring." : "You have no open alerts, so no pins are shown and every ring is blue. Resolved alerts are never marked on the body.")),
     ]),
   ]);
 }
@@ -235,23 +236,28 @@ function sideAlertsSection(alerts, onRetry, onOpenAlert) {
   else if (!alerts.items.length) body = [el("p", { class: "overview__empty" }, "No open alerts.")];
   else {
     body = [
-      el("ol", { class: "ov-alerts", role: "list" }, alerts.items.map((a, i) => {
+      el("ol", { class: "ov-alerts", role: "list" }, alerts.items.map((a, i, list) => {
         const view = SEVERITY_VIEW[a.severity] || SEVERITY_VIEW.info;
+        const pin = pinNumbers(list)[i]; // null = resolved: no longer on the body
         return el("li", { class: ["alert-item", view.item, "ov-alert"], "data-alert-card": String(i + 1) }, [
-          el("span", { class: ["alert-num", `alert-num--${a.severity}`], "aria-hidden": "true" }, String(i + 1)),
+          pin === null
+            ? el("span", { class: "alert-num alert-num--resolved", "aria-hidden": "true" }, icon("check", { size: 14 }))
+            : el("span", { class: ["alert-num", `alert-num--${a.severity}`], "aria-hidden": "true" }, String(pin)),
           el("div", { class: "alert-item__body" }, [
-            el("button", { type: "button", class: "alert-open", "data-alert-open": String(i + 1), onClick: (e) => onOpenAlert(a, e.target && e.target.closest ? e.target.closest("button") : null, i + 1) },
+            el("button", { type: "button", class: "alert-open", "data-alert-open": String(i + 1), onClick: (e) => onOpenAlert(a, e.target && e.target.closest ? e.target.closest("button") : null, pin || 0) },
               `${[a.number, a.title].filter(Boolean).join(" · ")}`),
             el("p", { class: "overview__tags" }, [
               badge(view.badge, view.icon, view.label),
               badge(a.status === "resolved" ? "badge--ok" : "badge--neutral", a.status === "resolved" ? "circle-check" : "clock", ALERT_STATUS_LABEL[a.status] || a.status),
               el("span", { class: "sim-tag" }, "Synthetic"),
             ]),
-            el("p", { class: "overview__meta ov-alert__mapping" }, [
-              icon("activity", { size: 13 }),
-              `${a.ruleId === "WB-01" ? "Mental wellbeing" : "Body"} pin ${i + 1} · ${ZONE_LABELS[zoneForRule(a.ruleId)] || "Body"} · detected `,
-              utcTime(a.detectedAt),
-            ]),
+            pin === null
+              ? el("p", { class: "overview__meta ov-alert__mapping" }, [icon("circle-check", { size: 13 }), "Resolved ", a.resolvedAt ? utcTime(a.resolvedAt) : "", " · no longer marked on the body"])
+              : el("p", { class: "overview__meta ov-alert__mapping" }, [
+                  icon("activity", { size: 13 }),
+                  `${a.ruleId === "WB-01" ? "Mental wellbeing" : "Body"} pin ${pin} · ${ZONE_LABELS[zoneForRule(a.ruleId)] || "Body"} · detected `,
+                  utcTime(a.detectedAt),
+                ]),
           ]),
         ]);
       })),
@@ -514,9 +520,12 @@ export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, p
       const prog = el("progress", { class: "ov-plan__progress", max: String(ids.length), value: "0", "aria-labelledby": "ov-plan-count" });
       const count = el("p", { class: "overview__meta", id: "ov-plan-count" });
       const notice = el("p", { class: "overview__note", role: "note", hidden: true }, "This browser isn't saving your ticks right now, so they apply to this tab only.");
+      const complete = el("p", { class: "banner ov-plan__complete", role: "status", hidden: true }, [icon("circle-check"), el("span", { class: "banner__text" }, "Review complete — thank you. The Medical Officer resolves the alert; see “How this alert is closed” below for what happens next.")]);
       const sync = (done, persisted) => {
         prog.setAttribute("value", String(done.length));
         count.textContent = `${done.length} of ${ids.length} review steps ticked`;
+        if (done.length === ids.length) complete.removeAttribute("hidden");
+        else complete.setAttribute("hidden", "");
         if (persisted === false) notice.removeAttribute("hidden");
       };
       const done0 = progress.get(userKey, a.number, ids);
@@ -534,20 +543,18 @@ export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, p
       const body = [
         el("p", { class: "banner" }, [icon("info"), el("span", { class: "banner__text" }, PLAN_NOTICE)]),
         el("h3", { class: "alert-pop__h3" }, plan.title),
-        prog, count, notice, steps,
+        prog, count, notice, steps, complete,
         el("div", { class: "ov-plan__video" }, [
           el("span", { class: "ov-plan__video-icon", "aria-hidden": "true" }, icon("play")),
           el("div", {}, [el("p", {}, [el("strong", {}, VIDEO_PLACEHOLDER.title), " ", el("span", { class: "badge badge--neutral" }, "Placeholder")]), el("p", { class: "overview__note" }, VIDEO_PLACEHOLDER.text)]),
         ]),
+        createAlertLifecycle(detail ? lifecycleFromDetail(detail) : lifecycleFromDetail(a), { viewer: "astronaut", id: "ov-life-title" }),
         el("h3", { class: "alert-pop__h3" }, "Alert activity"),
         timeline,
-        el("p", { class: "overview__note", id: "ov-esc-note" }, "Escalate: escalation is decided by the demonstration rules, not from this view."),
-        el("p", { class: "overview__note", id: "ov-res-note" }, "Mark resolved: only the Medical Officer can resolve alerts."),
       ];
       const footer = [
-        el("button", { type: "button", class: "btn btn--secondary btn--sm", disabled: true, "aria-describedby": "ov-esc-note" }, [icon("triangle-alert"), "Escalate"]),
-        el("button", { type: "button", class: "btn btn--secondary btn--sm", disabled: true, "aria-describedby": "ov-res-note" }, [icon("circle-check"), "Mark resolved"]),
-      ];
+        a.number ? el("a", { class: "btn btn--secondary btn--sm", href: `#/alerts/${a.number}` }, [icon("arrow-right"), "Open on Alerts page"]) : null,
+      ].filter(Boolean);
       dialog = openDialog({ kind: "drawer", title: `Action plan · ${a.number || a.title}`, body, footer, returnFocus: trigger, onClose: () => { dialog = null; }, host });
       sync(done0);
     }

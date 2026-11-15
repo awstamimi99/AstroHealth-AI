@@ -22,6 +22,7 @@
 import { getCrewSnapshot, getCrewMemberDetail } from "../services/crew-monitor-service.js";
 import { getAlertDetail } from "../services/alerts-service.js";
 import { createRing } from "../components/body-scan.js";
+import { createAlertLifecycle, lifecycleFromDetail } from "../components/alert-lifecycle.js";
 import { zoneForRule, ZONE_LABELS } from "../components/alert-zones.js";
 import { createVitalsStage, alertPins, ringFraction, centreStages, severityLegend } from "../components/vitals-stage.js";
 import { alertPopupBody, alertTitle, loadAlertDetailSafely } from "../components/alert-popup.js";
@@ -341,6 +342,7 @@ export function createCrewMonitorRenderer({ loadSnapshot, loadDetail, loadAlertD
       const a = detail ? detail.alert : alert;
       const body = [
         ...alertPopupBody({ alert, detail, pinNumber, who: `${profile.name} (${profile.crewId})` }),
+        createAlertLifecycle(detail ? lifecycleFromDetail(detail) : lifecycleFromDetail(alert), { viewer: "officer", id: "crew-life-title" }),
         el("p", { class: "alert-pop__note" }, "This view is read-only. Acknowledge and resolve this alert on the Alerts page, where every action is recorded with its note."),
       ];
       const footer = a.number

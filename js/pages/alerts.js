@@ -23,6 +23,8 @@ import { formatNumber } from "../core/utils/format.js";
 import { SEVERITY_VIEW, badge, loadingView, retryButton, section, sectionError, srOnly, syntheticNotice, utcTime } from "../components/crew-view.js";
 import { createContextBodyScan } from "../components/context-body-scan.js";
 import { zoneForRule, ZONE_LABELS } from "../components/alert-zones.js";
+import { createReviewSteps } from "../components/review-steps.js";
+import { createAlertLifecycle, lifecycleFromDetail } from "../components/alert-lifecycle.js";
 
 const STATUS_VIEW = {
   new: { icon: "bell", label: "New", badge: "badge--neutral" },
@@ -258,7 +260,7 @@ export function createAlertsRenderer({ service, channel = defaultChannel, subscr
     function listView(d) {
       const parts = [header(d), messageBox()];
       if (d.viewer === "officer") parts.push(toolbar(d));
-      const mapped = d.items.slice(0, 4).map((a, index) => ({
+      const mapped = d.items.filter((a) => a.status !== "resolved").slice(0, 4).map((a, index) => ({
         number: index + 1, zone: zoneForRule(a.ruleId), severity: a.severity,
         tag: `${a.number} · ${a.title}`, label: `Open alert ${a.number}: ${a.title}`,
         href: `#/alerts/${a.number}`,
@@ -268,7 +270,7 @@ export function createAlertsRenderer({ service, channel = defaultChannel, subscr
         title: d.viewer === "officer" ? "Crew alert body map" : "Your alert body map",
         description: "The map places the first visible alerts on their related body areas using their stored demonstration rule.",
         pins: mapped, compact: true, eyebrow: "Alert map",
-        note: mapped.length ? "Select a point to open the complete alert explanation." : "No visible alert can be mapped with the current filters.",
+        note: mapped.length ? "Select a point to open the complete alert explanation. Resolved alerts are not marked on the body." : "No open alert to mark with the current filters. Resolved alerts are not marked on the body.",
       }));
       parts.push(section("alerts-list-title", d.viewer === "officer" ? "Crew alerts" : "Your alerts", [
         d.items.length
@@ -305,10 +307,13 @@ export function createAlertsRenderer({ service, channel = defaultChannel, subscr
         createContextBodyScan({
           id: "alert-body-map-title",
           title: `Alert location · ${ZONE_LABELS[zone] || "Body"}`,
-          description: "The marker connects this stored demonstration-rule alert to its related body area. It does not identify or diagnose an injury.",
-          pins: [{ number: 1, zone, severity: a.severity, tag: `${a.number} · ${a.title}`, label: `Go to why this alert was created: ${a.number} ${a.title}`, targetId: "alert-why-title" }],
+          description: a.status === "resolved"
+            ? "This alert is resolved, so it is no longer marked on the body. It stays here as history."
+            : "The marker connects this stored demonstration-rule alert to its related body area. It does not identify or diagnose an injury.",
+          pins: a.status === "resolved" ? [] : [{ number: 1, zone, severity: a.severity, tag: `${a.number} · ${a.title}`, label: `Go to why this alert was created: ${a.number} ${a.title}`, targetId: "alert-why-title" }],
           compact: true,
           eyebrow: "Alert body map",
+          note: a.status === "resolved" ? "Resolved alerts have no pin. Open alerts are marked in their severity colour." : undefined,
         }),
         messageBox(),
         section("alert-facts-title", "Summary", [el("dl", { class: "alerts-facts" }, facts.flatMap(([k, v]) => [el("dt", {}, k), el("dd", {}, v)]))]),
@@ -325,7 +330,13 @@ export function createAlertsRenderer({ service, channel = defaultChannel, subscr
           el("p", { class: "alerts__text" }, ["Evaluated ", utcTime(ev.evaluatedAt), ev.considered !== null ? ` · ${ev.considered} recent reading${ev.considered === 1 ? "" : "s"} examined` : ""]),
           el("p", { class: "alerts__text" }, `Not used as evidence: ${ev.excluded.suspect} suspect, ${ev.excluded.invalid} invalid, ${ev.excluded.stale} stale.`),
         ]) : null,
-        section("alert-suggested-title", "Suggested review", [el("p", { class: "alerts__text" }, a.suggestedAction || "Medical officer review recommended.")]),
+        section("alert-suggested-title", "How to review this alert", [
+          createAlertLifecycle(lifecycleFromDetail(d), { viewer: d.viewer === "officer" ? "officer" : "astronaut", id: "alert-life-title" }),
+          el("p", { class: "alerts__text" }, a.suggestedAction || "Medical officer review recommended."),
+          a.status === "resolved"
+            ? el("p", { class: "alerts__note" }, "This alert is closed, so no review steps are needed.")
+            : createReviewSteps({ number: a.number, ruleId: a.rule.id, viewer: d.viewer === "officer" ? "officer" : "astronaut", userKey: session && typeof session.userId === "string" ? session.userId : "", idPrefix: "alert-review", announce }),
+        ]),
         timelineSection(d.timeline),
         d.viewer === "officer" ? actionsSection(d) : el("p", { class: "alerts__note" }, "Alerts are reviewed by the Medical Officer. This view is read-only."),
       ].filter(Boolean);

@@ -49,7 +49,43 @@ const PLANS = Object.freeze({
 });
 const DEFAULT_PLAN = Object.freeze({ title: "Alert review", steps: Object.freeze([REVIEW, CONTACT]) });
 
-/** The review plan for a rule id (unknown → a generic review plan). */
-export function planForRule(ruleId) {
+// Medical Officer review workflow: checking the stored evidence and following the
+// app's own alert lifecycle (message, acknowledge, resolve with a note). Still
+// non-clinical: no diagnosis, no treatment, no medication.
+const MO_TREND = step("trend", "Compare the readings with the crew member's personal baseline and recent trend on their Physical Health page.");
+const MO_RECHECK = step("recheck", "Ask the crew member to repeat the reading, following the approved crew procedure.");
+const MO_MESSAGE = step("message", "Message the crew member through the approved channel and keep their reply with the alert.");
+const MO_ACK = step("acknowledge", "Acknowledge the alert so the crew member can see it has been seen.");
+const MO_RESOLVE = step("resolve", "When the review is complete, resolve the alert with a note that says what was checked.");
+const moPlan = (title, evidence, middle = [MO_TREND, MO_RECHECK]) =>
+  Object.freeze({ title, steps: Object.freeze([step("evidence", evidence), ...middle, MO_MESSAGE, MO_ACK, MO_RESOLVE]) });
+
+const OFFICER_PLANS = Object.freeze({
+  "PHY-01": moPlan("Heart-rate alert review", "Check the evidence table: are the heart-rate readings recent, complete and not marked suspect?"),
+  "PHY-02": moPlan("SpO₂ alert review", "Check the evidence table: are the SpO₂ readings recent, complete and not marked suspect?"),
+  "PHY-03": moPlan("Blood-pressure alert review", "Check the evidence table: does every reading have both a systolic and a diastolic value, and are they recent?"),
+  "PHY-05": moPlan("Sleep alert review", "Check that the sleep entries for the three nights in the evidence are complete.", [MO_TREND]),
+  "WB-01": moPlan("Wellbeing alert review", "Review the check-ins the crew member chose to share (private check-ins and the journal are never shown).", []),
+});
+const OFFICER_DEFAULT = moPlan("Alert review", "Check the evidence stored with this alert and the rule that was used.", []);
+
+/**
+ * The review plan for a rule id (unknown → a generic review plan).
+ * @param {string} ruleId
+ * @param {{ viewer?: "astronaut"|"officer" }} [options]  the Medical Officer gets the officer workflow
+ */
+export function planForRule(ruleId, { viewer = "astronaut" } = {}) {
+  if (viewer === "officer") return OFFICER_PLANS[ruleId] || OFFICER_DEFAULT;
   return PLANS[ruleId] || DEFAULT_PLAN;
+}
+
+// Video or picture guides per rule. Only LOCAL files under assets/ may be listed
+// here ({ kind: "video" | "image", src: "assets/guides/…", caption }). None exist
+// yet, so every alert shows the review steps with a "no guide added" notice.
+const MEDIA = Object.freeze({});
+
+/** The local video/picture guide for a rule, or null when none has been added. */
+export function mediaForRule(ruleId) {
+  const m = MEDIA[ruleId];
+  return m && (m.kind === "video" || m.kind === "image") && typeof m.src === "string" && m.src.startsWith("assets/") ? m : null;
 }

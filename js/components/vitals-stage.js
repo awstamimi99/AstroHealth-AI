@@ -54,21 +54,32 @@ function stagePoint(zone) {
   return { x: BODY_LEFT + p.x * BODY_SCALE, y: p.y * BODY_SCALE };
 }
 
-/** Numbered pins for open alerts (same numbers as the page's text list). `who` prefixes the label. */
+/**
+ * Pin number of each alert in list order: open alerts are numbered 1, 2, …;
+ * a resolved alert gets null — resolved alerts are never marked on a body.
+ */
+export function pinNumbers(alertItems) {
+  let n = 0;
+  return (Array.isArray(alertItems) ? alertItems : []).map((a) => (a && a.status !== "resolved" ? (n += 1) : null));
+}
+
+/** Numbered pins for OPEN alerts only (same numbers as pinNumbers / the page's text list). `who` prefixes the label. */
 export function alertPins(alertItems, { who = "" } = {}) {
-  return (Array.isArray(alertItems) ? alertItems : []).map((a, i) => {
+  const list = Array.isArray(alertItems) ? alertItems : [];
+  const numbers = pinNumbers(list);
+  return list.flatMap((a, i) => {
+    if (numbers[i] === null) return [];
     const zone = zoneForRule(a.ruleId);
     const severity = SEVERITY_LABEL[a.severity] ? a.severity : "info";
-    const status = a.status === "resolved" ? "Resolved, " : "";
     const context = a.ruleId === "WB-01" ? "Mental wellbeing · " : "";
-    return {
-      number: i + 1,
+    return [{
+      number: numbers[i],
       zone,
       severity,
       alert: a,
       tag: `${context}${a.title}`,
-      label: `${who}Alert ${i + 1}: ${context}${[a.number, a.title].filter(Boolean).join(" ")} — ${status}${SEVERITY_LABEL[severity]}, ${ZONE_LABELS[zone] || "body"}. Open details.`,
-    };
+      label: `${who}Alert ${numbers[i]}: ${context}${[a.number, a.title].filter(Boolean).join(" ")} — ${SEVERITY_LABEL[severity]}, ${ZONE_LABELS[zone] || "body"}. Open details.`,
+    }];
   });
 }
 

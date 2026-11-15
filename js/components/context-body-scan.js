@@ -24,7 +24,7 @@ export function createContextBodyScan({ id, title, description, pins = [], crop 
           el("span", { class: ["context-scan__key-number", `context-scan__key-number--${pin.severity || "info"}`], "aria-hidden": "true" }, String(pin.number)),
           el("span", {}, pin.tag || pin.label), icon("arrow-right", { size: 15 }),
         ]))))
-    : el("p", { class: "context-scan__empty" }, "No mapped information is available for this view.");
+    : el("p", { class: "context-scan__empty" }, "Nothing is marked on the body for this view.");
   return el("section", { class: ["context-scan", compact ? "context-scan--compact" : ""], "aria-labelledby": id }, [
     el("div", { class: "context-scan__visual" }, [
       el("div", { class: "context-scan__visual-head" }, [el("span", { class: "context-scan__eyebrow" }, [icon("activity", { size: 15 }), eyebrow]), el("span", { class: "sim-tag" }, "Synthetic data")]),
