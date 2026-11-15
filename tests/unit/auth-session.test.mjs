@@ -21,6 +21,7 @@ const redirects = [];
 globalThis.self = globalThis;
 globalThis.BroadcastChannel = class { postMessage() {} addEventListener() {} close() {} };
 globalThis.localStorage = new MemoryStorage();
+globalThis.sessionStorage = new MemoryStorage(); // this tab's storage (tab-only sessions)
 globalThis.location = {
   hash: "", search: "", pathname: "/app.html",
   replace(url) { redirects.push(url); },
@@ -36,7 +37,7 @@ const { ROLES } = await import("../../js/db/constants.js");
 
 await resetMock();
 const login = (u, p) => usersRepo.verifyPassword(u, p);
-const reset = () => { localStorage.clear(); redirects.length = 0; location.hash = ""; location.search = ""; };
+const reset = () => { localStorage.clear(); sessionStorage.clear(); redirects.length = 0; location.hash = ""; location.search = ""; };
 
 // ---- 1–6: credentials (through the repository API) ----------------------------
 
@@ -158,6 +159,41 @@ test("13. logout clears the session and notifies listeners", async () => {
   assert.equal(localStorage.getItem(SESSION_KEY), null);
   assert.equal(session.isAuthenticated(), false);
   assert.deepEqual(seen, [null]);
+});
+
+// ---- Tab-only sessions (Live control demo: two users side by side) -------------------
+
+test("tab-only sign-in: this tab uses its own session; the shared one is left alone", async () => {
+  reset();
+  const shared = session.createSession(await login("medofficer", "demo"));
+  const own = session.createSession(await login("reyes", "demo"), { tabOnly: true });
+  assert.equal(JSON.parse(localStorage.getItem(SESSION_KEY)).userId, shared.userId, "other tabs keep the Medical Officer");
+  assert.equal(JSON.parse(sessionStorage.getItem(SESSION_KEY)).userId, own.userId);
+  assert.equal(session.getSession().userId, "u-reyes", "the tab-only session wins in its tab");
+  assert.equal(session.isTabOnlySession(), true);
+  for (const secret of ["password", "passwordHash", "salt"]) assert.ok(!(secret in session.getSession()), secret);
+});
+
+test("tab-only sign-out clears only this tab; a normal sign-in replaces a tab-only session", async () => {
+  reset();
+  session.createSession(await login("medofficer", "demo"));
+  session.createSession(await login("reyes", "demo"), { tabOnly: true });
+  session.clearSession();
+  assert.equal(sessionStorage.getItem(SESSION_KEY), null);
+  assert.equal(session.getSession().userId, "u-medofficer", "the shared session is still there");
+  assert.equal(session.isTabOnlySession(), false);
+
+  session.createSession(await login("chen", "demo"), { tabOnly: true });
+  session.createSession(await login("haddad", "demo"));
+  assert.equal(sessionStorage.getItem(SESSION_KEY), null, "normal sign-in removed the tab-only session");
+  assert.equal(session.getSession().userId, "u-haddad");
+});
+
+test("an expired or tampered tab-only session is removed and never falls back silently to a wrong user", async () => {
+  reset();
+  sessionStorage.setItem(SESSION_KEY, "{not json");
+  assert.equal(session.getSession(), null);
+  assert.equal(sessionStorage.getItem(SESSION_KEY), null, "broken tab session removed");
 });
 
 // ---- 14–15: page redirects ----------------------------------------------------------

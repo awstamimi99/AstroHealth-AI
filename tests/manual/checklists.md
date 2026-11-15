@@ -525,6 +525,42 @@ Sign in as `medofficer` / `demo`:
 - [ ] Brand red never marks a health state; the arc end has a small marker dot
 - [ ] Screen reader: a coloured ring's spoken value ends with "Open warning/critical alert for this measure"
 
+## 22. Live control demo (Simulation Center → Live control)
+
+A script to follow in front of the judges. Use **one** browser (Chrome or Edge) with two windows side by side: both share the same local database and live-update channel. A second browser or a private window does **not** work.
+
+**Before each judge (reset)**
+
+- [ ] Window A: sign in as `medofficer` / `demo` → Simulation Center → **Live control** tab
+- [ ] In "Reset demo data", type `RESET DEMO` (capitals) → **Reset demo data**. Every window is signed out and the seed data is back
+
+**Set up the two windows**
+
+- [ ] Window A: sign in as `medofficer` / `demo` → Simulation Center → **Live control**. No crew member is selected and there are no Apply buttons
+- [ ] Window B: open a new window at `login.html?tab=1` (or use the "open a second window and sign in for that tab only" link in Live control). "Sign in for this tab only" is ticked. Sign in as `reyes` / `demo` → Overview
+- [ ] Window A is still the Medical Officer (it did not switch to Jonas Reyes)
+
+**Show it working**
+
+1. [ ] Window A: choose **Jonas Reyes · AH-04** in "Crew member to edit" (or click his chip in "Crew overview"). The header reads "Editing: Jonas Reyes · AH-04" with his initials and mini body scan, and every button says "Apply to Jonas Reyes"
+2. [ ] Point at the SpO₂ chart: readings line, dashed baseline, the shaded limit band labelled **PHY-02**, and the "Synthetic demonstration data" tag
+3. [ ] Drag the SpO₂ handle (or type in the number field) to **90** → **Apply to Jonas Reyes**. Apply a second time (PHY-02 needs 2 consecutive readings). The result panel names the rule, the values, the limits and the alert severity, and says the threshold is not clinically validated
+4. [ ] Window B, **without reloading**: the SpO₂ ring shows 90 %, a new pin appears on the chest, the alert is in the Open alerts list and the bell count goes up
+5. [ ] Window B: **Physical** shows the new reading, **History** lists it under today, and **Alerts** shows the new alert
+6. [ ] Window A: **Crew Monitor** and the Medical Officer **Overview** show the new alert for Jonas Reyes, and the counts have changed
+7. [ ] Window A, back in Live control: choose **Mei Chen · AH-03** and apply a value. Window B (Jonas Reyes) does **not** change
+8. [ ] Curve: on Mei Chen's heart-rate chart press **Draw a curve**, drag the points, tick the confirmation → **Play curve for Mei Chen**. Pause / Play / Stop work, and only one run can be active at a time
+9. [ ] Finish with the reset above, ready for the next judge
+
+**Checks**
+
+- [ ] Change a value, then choose another crew member: a notice says the unsaved values were discarded, and nothing was written
+- [ ] Keyboard: Tab to a chart handle; arrows move ±1 step, Shift+arrows ±5, Home/End go to the input limits; typed numbers are clamped to the allowed range
+- [ ] While a run is active for a crew member, their Apply buttons are disabled with an explanation; the run notice names who it is for and offers Stop / Go to that member
+- [ ] Every page still shows the disclaimer (research & educational prototype, not a medical device, not affiliated with or endorsed by NASA). Red never marks a health state
+- [ ] 375 px: the Live control tab stacks, charts fit their cards, and there is no page-level horizontal scrolling
+- [ ] Automated version: `node tests/e2e/live-control.mjs <output-dir>` (needs `python3` and Chrome; set `CHROME_BIN` on Windows/Linux). It writes one screenshot per step and `result.json`
+
 ## 23. Responsive layout (1400 → 320 px)
 
 Automated: `npm run test:responsive` (needs Chrome; no Python). It opens every public page and every app route for `reyes` and `medofficer` (including detail views and Simulation Center → Live control) at 1400, 1350, … 350 and 320 px. It fails on any page-level horizontal scrolling or any element sticking out of the screen, and warns about content hidden inside a sideways-scrolling or clipping box. Screenshots for 1400, 768/750 and 320 px go to the output folder.

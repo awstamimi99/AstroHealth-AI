@@ -68,6 +68,11 @@ e.g. a new alert appears in all tabs. Suggested event names use
 `noun:verb` — `measurement:added`, `alert:new`, `alert:acknowledged`,
 `simulation:started`, `session:changed`, `sw:status`.
 
+Live updates (`js/core/live-updates.js`, see [Live control](#live-control-simulation-center))
+use three events: `health:changed` `{ crewId, metric, alertsChanged }`,
+`alert:changed` `{}` and `simulation:changed` `{}`. Payloads carry only the
+public crew ID, a metric name and a flag: never values, names or internal ids.
+
 ### Service worker
 
 - Cache name `astrohealth-v<version>`; old caches are deleted on activate.
@@ -336,6 +341,84 @@ current stored data again.
 - Sleep, activity and wellbeing scenarios are deferred (one sleep value per
   night can't be simulated coherently in real time).
 
+### Live control (Simulation Center)
+
+A "Live control" tab next to the scenarios in `#/simulation` (Medical Officer
+only). The officer picks **one** crew member (no default selection), sets a
+synthetic value on an SVG chart (drag, keyboard or number field) and applies
+it. The reading is stored, the demonstration rules are evaluated, and every
+open screen for that crew member refreshes without a reload.
+
+- **Files** — `js/components/live-control-view.js` (the tab; imports no
+  service, the page passes them in), `js/components/live-chart.js` (chart:
+  readings line, dashed baseline, rule-limit band labelled with the rule id,
+  draggable handle; arrows ±1 step, Shift ±5, Page Up/Down ±10, Home/End),
+  `js/services/live-control-service.js` (read model),
+  `js/core/live-updates.js` (screen subscriptions).
+- **Read model** — `getLiveControl(session, { crewId? })`: verifies the
+  Medical Officer first, then returns the crew list (name, crew ID, mission
+  role, open-alert summary, latest values) and, for a valid crew ID, per
+  metric the recent readings, baseline, input limits and the rule that reads
+  that metric. Rule limits come from `PHYSICAL_RULES` and the stored
+  `settings.thresholds` through the risk engine's `thresholdsFor` /
+  `thresholdUsedText`, never from numbers in a page. It never writes.
+- **Input limits** — `LIVE_METRICS` in `js/simulation/scenarios.js` gives each
+  stored metric a demonstration input range and step (`clampLiveValue`).
+  These are **not** risk limits and no rule uses them. Curves are offered for
+  heart rate, SpO₂, systolic blood pressure and fatigue (not sleep: one value
+  per UTC night; not activity: a cumulative daily total).
+- **Writes** (in `simulation-service.js`, Medical Officer verified first,
+  crew member resolved from the public crew ID at write time; the page never
+  sends astronaut or user ids):
+  - `recordManualReading(session, { crewId, metric, value, diastolic? })`:
+    one reading at the controlled `now`, through `measurementsRepo.add` in
+    one transaction (`MEASUREMENT_WRITE_STORES` + `simulationRuns` +
+    `missionEvents`). Blood pressure is always a pair (`bpSystolic` +
+    `diastolic`, same timestamp and `sampleId`; diastolic must be lower).
+    Refused, with nothing written: a time not later than that member's
+    latest reading of the metric (`clock_not_monotonic`), a member who has
+    the active run (`run_active_for_member`), an activity value below today's
+    stored total (`below_todays_total`). Readings use `source: "simulation"`,
+    `simulationRunId: ""`; the timeline event is `measurement_recorded` with
+    `data.mode: "live_control"`, `refStore: "measurements"`.
+  - `startCustomCurve(session, { crewId, metric, values, diastolic?, speed, confirm })`:
+    6–12 drawn values, clamped to the input limits, stored on a run with
+    `scenarioId: "custom_curve"`. It is advanced, paused, resumed and stopped
+    by the existing functions and the Simulation Center's existing timer,
+    so the one-active-run rule, compare-and-set per step, per-run locks and
+    monotonic time all apply unchanged.
+- **Extra non-indexed `simulationRuns` fields for custom curves** (DATA-MODEL
+  §2 "extra non-indexed fields"; no `DB_VERSION` change, no new store or
+  index): `customMetric` (the metric key), `customValues` (the clamped step
+  values, length = `totalSteps`) and, for blood pressure only,
+  `customDiastolic` (the paired diastolic value written with every step).
+  The other progress fields are the same as a catalog run. A stored run whose
+  custom fields fail validation (`customScenarioOf` returns null) can only be
+  stopped.
+- **After every committed write**: the service publishes `health:changed`
+  `{ crewId, metric, alertsChanged: false }`, runs the risk evaluation (a
+  separate transaction, as for scenario steps), and if an alert changed
+  publishes `health:changed` with `alertsChanged: true` plus `alert:changed`.
+  A refused or failed write publishes nothing. A failing publisher never
+  undoes a committed reading. The result shows each rule's own explanation
+  and limits (`risk.rules[]`). Services don't import the event bus: the
+  Simulation Center page connects it once with `connectSimulationEvents(publish)`.
+- **Screens that refresh** (subscribed through `onHealthChanged`, ended by the
+  navigation `AbortSignal`, bursts merged into one quiet reload that keeps
+  focus): astronaut Overview, Physical health, History, Alerts (astronaut and
+  Medical Officer), Medical Officer Overview, Crew Monitor and the top-bar
+  alert badge (`alerts-service.countOpenAlerts`, counts only). A screen that
+  shows one crew member ignores `health:changed` for any other crew ID; the
+  screen's own service still returns only what the signed-in user may see.
+- **Two users on one device** — the demo needs a Medical Officer window and
+  an astronaut window side by side. Both must share the same browser profile
+  (same IndexedDB and BroadcastChannel), so the astronaut window signs in
+  with the opt-in "Sign in for this tab only" (`login.html?tab=1`). See
+  [Session contract](#session-contract).
+- **E2E** — `tests/e2e/live-control.mjs` drives two headless Chrome windows
+  (Medical Officer + `reyes`) through the demo, including the "AH-03 change
+  doesn't reach AH-04" check and the reset.
+
 ## Risk Engine and Alerts (Sprint 8)
 
 Deterministic, explainable **demonstration** rules on synthetic data. They are
@@ -475,6 +558,15 @@ Read-only features. Sprint 9 writes **nothing** to IndexedDB: no
 `localStorage["astrohealth.session"]` (`SESSION_KEY` in `js/core/config.js`)
 is **written only by `js/auth/`**. Other code may **read** it — e.g. to
 show "Continue to dashboard" on the landing page — but never write or delete it.
+
+**Tab-only sessions (opt-in).** "Sign in for this tab only" on the login page
+(pre-ticked by `login.html?tab=1`) stores the same session schema under the
+same key in that tab's `sessionStorage` instead. In that tab it wins over the
+shared session; signing out there clears only that tab; a normal sign-in
+removes it. Other tabs keep the shared session unchanged. It exists so one
+browser can show two demo users side by side (Live control demo) while they
+share the local database. Same expiry and checks; still demo-only, not real
+security.
 
 ## Database contract
 

@@ -57,6 +57,8 @@ export class FakeElement extends FakeNode {
   dispatch(type, extra = {}) { for (const fn of this.listeners[type] || []) fn({ target: this, preventDefault() {}, ...extra }); }
   /** Inputs: value reflects the attribute (enough for radio groups). */
   get value() { return this.getAttribute("value") ?? ""; }
+  set value(v) { this.setAttribute("value", String(v)); }
+  set value(v) { this.setAttribute("value", String(v)); }
   set innerHTML(v) { this.svgMarkup = String(v); } // only icon() uses it, with built-in SVG markup
   focus() { globalThis.document.activeElement = this; }
   /** Supports "[attr]" only — all the renderer needs. */
