@@ -133,11 +133,11 @@ test("vital rings: 4 rings; simulated vs manual labels; suspect and stale are da
   Object.assign(card("spo2"), { source: "manual", simulated: false, stale: true });
   const container = new FakeElement("div");
   await page.createOverviewRenderer({ loadOverview: async () => data })(container, ASTRONAUT, {});
-  const rings = byClass(container, "ov-ring");
+  const rings = byClass(container, "vitals-stage__ring");
   assert.deepEqual(rings.map((c) => byClass(c, "scan-ring__label")[0].textContent), ["Heart rate", "SpO₂", "Blood pressure", "Sleep duration"]);
   assert.ok(rings.every((r) => r.tagName === "FIGURE" && byId(r, r.getAttribute("aria-labelledby"))), "each ring is a labelled figure");
   const [hr, spo2, bp] = rings;
-  assert.ok(rings.every((c) => byClass(c, "ov-ring__link")[0].getAttribute("href") === "#/physical"), "every vital offers its health history");
+  assert.ok(rings.every((c) => byClass(c, "vitals-stage__ring-link")[0].getAttribute("href") === "#/physical"), "every vital offers its health history");
   assert.match(hr.textContent, /Simulated/);
   assert.match(hr.textContent, /Data quality: suspect/);
   assert.ok(!byClass(hr, "badge--warning").length && !byClass(hr, "badge--critical").length, "suspect isn't shown as a health warning");
@@ -153,8 +153,8 @@ test("vital rings: 4 rings; simulated vs manual labels; suspect and stale are da
   // ring fill is a display scale: the arc has no status colour class
   for (const arc of byClass(container, "scan-ring__arc")) assert.equal(arc.getAttribute("class"), "scan-ring__arc");
   // each ring has a dashed connector to its body zone
-  assert.equal(byClass(container, "ov-stage__link").length, 4);
-  assert.equal(byClass(container, "ov-stage__links")[0].getAttribute("aria-hidden"), "true");
+  assert.equal(byClass(container, "vitals-stage__link").length, 4);
+  assert.equal(byClass(container, "vitals-stage__links")[0].getAttribute("aria-hidden"), "true");
 });
 
 test("empty and incomplete vitals are honest (no zeros, no invented pair)", async () => {
@@ -167,7 +167,7 @@ test("empty and incomplete vitals are honest (no zeros, no invented pair)", asyn
   ];
   const container = new FakeElement("div");
   await page.createOverviewRenderer({ loadOverview: async () => data })(container, ASTRONAUT, {});
-  const [hr, spo2, bp, sleep] = byClass(container, "ov-ring");
+  const [hr, spo2, bp, sleep] = byClass(container, "vitals-stage__ring");
   assert.match(hr.textContent, /No recent reading/);
   assert.match(spo2.textContent, /marked invalid/);
   assert.match(bp.textContent, /No complete reading/);

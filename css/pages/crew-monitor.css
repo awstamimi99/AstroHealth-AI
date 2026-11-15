@@ -328,7 +328,8 @@
     align-items: start;
     gap: var(--space-6);
   }
-  .crew--overview > .crew__header {
+  .crew--overview > .crew__header,
+  .crew--overview > [aria-labelledby="mo-scan-title"] {
     grid-column: 1 / -1;
   }
   .crew--overview > .crew__section {
@@ -343,4 +344,112 @@
   .crew-queue__item {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* ---- Body-scan redesign ------------------------------------------------------------------ */
+/* #/crew/AH-0n: the body-scan stage beside the numbered open alerts. */
+.crew-scan-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+@media (min-width: 1200px) {
+  .crew-scan-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    align-items: start;
+  }
+}
+.crew-scan {
+  min-width: 0;
+}
+.crew-scan__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.crew-scan__alerts {
+  padding: 0;
+  list-style: none;
+}
+.crew-scan__alert {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+/* Medical Officer #/overview: one compact scan card per crew member. */
+.mo-scan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mo-scan-grid > li {
+  display: flex;
+  min-width: 0;
+}
+.mo-scan-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.mo-scan-card__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.mo-scan-card__name {
+  font-size: var(--text-md);
+}
+.mo-scan-card__main {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+}
+.mo-scan-card__body {
+  position: relative;
+  flex: 0 0 104px;
+  width: 104px;
+}
+.mo-scan-card__rings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.mo-scan-card .scan-ring {
+  width: 96px;
+  gap: var(--space-1);
+}
+.mo-scan-card .scan-ring__face {
+  width: 68px;
+  height: 68px;
+}
+.mo-scan-card .scan-ring__number {
+  font-size: var(--text-md);
+}
+.mo-scan-card .scan-pin__tag {
+  display: none; /* the card's text line names the alert; the pin keeps its number and aria-label */
+}
+.mo-scan-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  color: var(--color-scan-text);
+  font-weight: var(--weight-semibold);
+}
+.mo-scan-card__link:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 2px solid var(--color-scan-text);
+  outline-offset: 2px;
 }

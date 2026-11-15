@@ -6,6 +6,13 @@
 //                 readings, open alerts, up to 7 explicitly shared check-ins,
 //                 sleep summary, last cognitive check, recent verified messages
 //
+// Body-scan redesign: the detail view shows the crew member's latest readings
+// as the same body-scan stage as the astronaut Overview (4 rings + dashed
+// connectors, js/components/vitals-stage.js) with numbered pins for open
+// alerts. A pin or the numbered alert list opens a read-only pop-up
+// (js/components/alert-popup.js); acknowledging and resolving stay on the
+// Alerts page, where every action is recorded.
+//
 // app-shell has already authorized the route (#/crew/… normalizes to #/crew,
 // Medical Officer only). This module only reads the detail segment, strictly:
 // "#/crew/AH-01" selects AH-01; any other "#/crew/…" is "not found" — never
@@ -13,11 +20,18 @@
 // Presentation only; no js/db imports; database text is inserted via el().
 
 import { getCrewSnapshot, getCrewMemberDetail } from "../services/crew-monitor-service.js";
+import { getAlertDetail } from "../services/alerts-service.js";
+import { createRing } from "../components/body-scan.js";
+import { zoneForRule, ZONE_LABELS } from "../components/alert-zones.js";
+import { createVitalsStage, alertPins, ringFraction, centreStages } from "../components/vitals-stage.js";
+import { alertPopupBody, alertTitle, loadAlertDetailSafely } from "../components/alert-popup.js";
+import { openDialog } from "../components/dialog.js";
 import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
 import { formatDate, formatNumber } from "../core/utils/format.js";
 import {
   alertItem,
+  badge,
   dataBadges,
   crewCard,
   loadingView,
@@ -25,6 +39,8 @@ import {
   refusalView,
   section,
   sectionError,
+  SEVERITY_VIEW,
+  srOnly,
   stamp,
   stateBadge,
   syntheticNotice,
@@ -104,20 +120,63 @@ function listView(data, onRetry) {
 
 // ---- Detail (#/crew/AH-0n) ---------------------------------------------------------------
 
-function vitalCard(item, now, onRetry) {
-  const id = `crew-vital-${item.key}`;
-  const baseline = item.baseline == null
-    ? "No baseline recorded"
-    : item.key === "bloodPressure"
-      ? `Baseline: ${formatNumber(item.baseline.systolic)}/${formatNumber(item.baseline.diastolic)} ${item.unit}`
-      : `Baseline: ${formatNumber(item.baseline, item.key === "sleepDuration" ? 1 : 0)} ${item.unit}`;
-  return el("article", { class: "card metric crew-detail__vital", "aria-labelledby": id }, [
-    el("div", { class: "metric__top" }, [el("h3", { class: "metric__label", id }, item.label), item.state === "ok" ? provenanceTag(item) : null]),
-    el("p", { class: "crew-detail__value" }, vitalValueText(item)),
-    item.state === "ok" ? el("p", { class: "crew__meta" }, stamp(item.timestamp, now)) : null,
-    item.state === "error" ? sectionError(onRetry, "this reading") : el("p", { class: "crew__tags" }, dataBadges(item)),
-    el("p", { class: "crew__meta" }, baseline),
-  ]);
+const SPOKEN_UNIT = { heartRate: "beats per minute", spo2: "percent", bloodPressure: "millimetres of mercury", sleepDuration: "hours" };
+const STATUS_LABEL = { new: "New", acknowledged: "Acknowledged" };
+
+function baselineText(item) {
+  if (item.baseline == null) return "No baseline recorded";
+  if (item.key === "bloodPressure") return `Baseline: ${formatNumber(item.baseline.systolic)}/${formatNumber(item.baseline.diastolic)} ${item.unit}`;
+  return `Baseline: ${formatNumber(item.baseline, item.key === "sleepDuration" ? 1 : 0)} ${item.unit}`;
+}
+
+/** One vital ring on the stage: value, unit, baseline, time, provenance and data-quality labels as text. */
+function vitalRing(item, now, onRetry) {
+  const id = `crew-ring-${item.key}`;
+  if (item.state === "ok") {
+    const bp = item.key === "bloodPressure";
+    const visual = bp ? `${formatNumber(item.systolic)}/${formatNumber(item.diastolic)}` : formatNumber(item.value, item.key === "sleepDuration" ? 1 : 0);
+    return createRing({
+      id,
+      label: item.label,
+      value: visual,
+      unit: item.unit,
+      fraction: ringFraction(item),
+      baseline: baselineText(item),
+      meta: stamp(item.timestamp, now),
+      spoken: `${item.label}: ${bp ? visual.replace("/", " over ") : visual} ${SPOKEN_UNIT[item.key] || item.unit}`,
+      tags: [provenanceTag(item), ...dataBadges(item)].filter(Boolean),
+    });
+  }
+  return createRing({
+    id,
+    label: item.label,
+    value: "—",
+    unit: "",
+    fraction: null,
+    baseline: baselineText(item),
+    tags: dataBadges(item),
+    extra: item.state === "error" ? sectionError(onRetry, "this reading") : null,
+  });
+}
+
+/** Open alerts as a numbered list matching the pins; each title opens the pop-up. */
+function numberedAlerts(alerts, onOpenAlert) {
+  return el("ol", { class: "crew__alerts crew-scan__alerts", role: "list" }, alerts.items.map((a, i) => {
+    const view = SEVERITY_VIEW[a.severity] || SEVERITY_VIEW.info;
+    return el("li", { class: ["alert-item", view.item, "crew-scan__alert"] }, [
+      el("span", { class: ["alert-num", `alert-num--${a.severity}`], "aria-hidden": "true" }, String(i + 1)),
+      el("div", { class: "alert-item__body" }, [
+        el("button", { type: "button", class: "alert-open", "data-alert-open": String(i + 1), onClick: (e) => onOpenAlert(a, e.target && e.target.closest ? e.target.closest("button") : null, i + 1) }, alertTitle(a)),
+        a.explanation ? el("p", { class: "alert-item__text" }, a.explanation) : null,
+        el("p", { class: "crew__tags" }, [
+          badge(view.badge, view.icon, view.label),
+          badge("badge--neutral", "clock", STATUS_LABEL[a.status] || a.status),
+          el("span", { class: "sim-tag" }, "Synthetic"),
+        ]),
+        el("p", { class: "crew__meta" }, [`Pin ${i + 1} · ${ZONE_LABELS[zoneForRule(a.ruleId)] || "Body"} · detected `, utcTime(a.detectedAt)]),
+      ]),
+    ]);
+  }));
 }
 
 function sharedWellbeingSection(shared, onRetry) {
@@ -176,7 +235,7 @@ function messagesSection(messages, data, onRetry) {
   ]);
 }
 
-function detailView(data, onRetry) {
+function detailView(data, onRetry, onOpenAlert) {
   const p = data.profile;
   const heading = el("h2", { class: "crew__welcome", id: "crew-detail-title", tabindex: "-1" }, `${p.name} · ${p.crewId}`);
   const alerts = data.alerts;
@@ -201,16 +260,32 @@ function detailView(data, onRetry) {
       el("p", { class: "crew__text" }, data.state.reason),
       el("p", { class: "crew__note" }, data.state.note),
     ]),
-    section("crew-detail-alerts-title", "Open alerts", [
-      alerts.status === "error"
-        ? sectionError(onRetry, "open alerts")
-        : alerts.items.length
-          ? el("ul", { class: "crew__alerts", role: "list" }, alerts.items.map((a) => alertItem(a)))
-          : el("p", { class: "crew__empty" }, "No open alerts."),
-    ]),
-    section("crew-detail-vitals-title", "Latest readings", [
-      el("p", { class: "crew__note" }, "Most recent usable reading of each measure. Invalid readings are left out. Times are UTC."),
-      el("div", { class: "crew-grid crew-grid--4" }, data.vitals.items.map((v) => vitalCard(v, data.generatedAt, onRetry))),
+    el("div", { class: "crew-scan-layout" }, [
+      el("section", { class: "scan-stage crew-scan", "aria-labelledby": "crew-detail-vitals-title" }, [
+        el("div", { class: "crew-scan__head" }, [
+          el("h2", { class: "scan-stage__title", id: "crew-detail-vitals-title" }, "Body scan · latest readings"),
+          el("span", { class: "sim-tag" }, [icon("flask-conical", { size: 12 }), "SIMULATED"]),
+        ]),
+        el("p", { class: "scan-stage__note" }, "Most recent usable reading of each measure. Invalid readings are left out. Times are UTC."),
+        createVitalsStage({
+          items: data.vitals.items,
+          pins: alerts.status === "ok" ? alertPins(alerts.items, { who: `${p.name}: ` }) : [],
+          ringFor: (item) => vitalRing(item, data.generatedAt, onRetry),
+          onPinClick: (pin, button) => onOpenAlert(pin.alert, button, pin.number),
+        }),
+        el("p", { class: "scan-stage__note" },
+          "Illustration only: the body is a stylised drawing and the ring fill uses a fixed display scale — neither is a health assessment. " +
+            (alerts.status === "ok" && alerts.items.length ? "Numbered pins mark open alerts; the same alerts are listed under Open alerts." : "No pins: no open alerts are shown.")),
+      ]),
+      section("crew-detail-alerts-title", "Open alerts", [
+        alerts.status === "error"
+          ? sectionError(onRetry, "open alerts")
+          : alerts.items.length
+            ? numberedAlerts(alerts, onOpenAlert)
+            : el("p", { class: "crew__empty" }, "No open alerts."),
+        el("p", { class: "crew__note" }, "Acknowledge and resolve on the Alerts page, where every action is recorded."),
+        el("p", {}, el("a", { class: "btn btn--secondary btn--sm", href: "#/alerts" }, [icon("bell"), "Open Alerts page"])),
+      ], "crew-scan-layout__side"),
     ]),
     sharedWellbeingSection(data.sharedWellbeing, onRetry),
     section("crew-detail-sleep-title", "Sleep — last 7 nights", [
@@ -235,12 +310,30 @@ function detailView(data, onRetry) {
 // ---- Renderer ---------------------------------------------------------------------------
 
 /** TEST SEAM: tests pass fake loaders returning presentation data. Pages use renderCrewMonitor. */
-export function createCrewMonitorRenderer({ loadSnapshot, loadDetail }) {
+export function createCrewMonitorRenderer({ loadSnapshot, loadDetail, loadAlertDetail = null, host = null }) {
   return function render(container, session, { signal, hash = "#/crew", focus = false } = {}) {
     const route = parseCrewRoute(hash);
     const root = el("div", { class: "crew", "aria-busy": "false" });
     container.replaceChildren(root);
     let generation = 0;
+    let dialog = null;
+    if (signal) signal.addEventListener("abort", () => { if (dialog) dialog.close(); }, { once: true });
+
+    /** Read-only alert pop-up for the Medical Officer; actions stay on the Alerts page. */
+    async function openAlert(profile, alert, trigger, pinNumber) {
+      if (dialog) dialog.close();
+      const detail = await loadAlertDetailSafely(loadAlertDetail, session, alert.number);
+      if (signal && signal.aborted) return;
+      const a = detail ? detail.alert : alert;
+      const body = [
+        ...alertPopupBody({ alert, detail, pinNumber, who: `${profile.name} (${profile.crewId})` }),
+        el("p", { class: "alert-pop__note" }, "This view is read-only. Acknowledge and resolve this alert on the Alerts page, where every action is recorded with its note."),
+      ];
+      const footer = a.number
+        ? [el("a", { class: "btn btn--primary btn--sm", href: `#/alerts/${a.number}` }, [icon("arrow-right"), "Review on Alerts page", srOnly(` (${a.number})`)])]
+        : [];
+      dialog = openDialog({ kind: "modal", title: alertTitle(a), body, footer, returnFocus: trigger, onClose: () => { dialog = null; }, host });
+    }
 
     async function load() {
       const token = ++generation;
@@ -261,8 +354,9 @@ export function createCrewMonitorRenderer({ loadSnapshot, loadDetail }) {
       if (result && result.status === "ready") {
         if (route.view === "list") root.replaceChildren(...listView(result, retry));
         else {
-          const { view, heading } = detailView(result, retry);
+          const { view, heading } = detailView(result, retry, (alert, trigger, n) => openAlert(result.profile, alert, trigger, n));
           root.replaceChildren(...view);
+          centreStages(root);
           if (focus && token === 1) heading.focus(); // opening a crew member moves focus to its name
         }
       } else {
@@ -277,4 +371,5 @@ export function createCrewMonitorRenderer({ loadSnapshot, loadDetail }) {
 export const renderCrewMonitor = createCrewMonitorRenderer({
   loadSnapshot: (session) => getCrewSnapshot(session),
   loadDetail: (session, crewId) => getCrewMemberDetail(session, crewId),
+  loadAlertDetail: (session, number) => getAlertDetail(session, number),
 });

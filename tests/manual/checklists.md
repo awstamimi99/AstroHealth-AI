@@ -490,3 +490,16 @@ Sign in as `reyes` / `demo` (open alert ALT-0190) and open Overview:
 - [ ] Alert activity (right column) lists recent alert events with links to `#/alerts/ALT-…`
 - [ ] 1440 px: stage and right column side by side; 768 / 375 px: stacked, the stage scrolls sideways inside its card, the page itself doesn't
 - [ ] Medical Officer (`medofficer` / `demo`) Overview is unchanged
+
+## 19. Medical Officer body scan (body-scan redesign — app version 0.10.3)
+
+Sign in as `medofficer` / `demo`:
+
+- [ ] Overview → "Crew body scan": one dark card per crew member in review order, each with the wireframe body, small Heart rate / SpO₂ / Sleep duration rings, the state badge and a SIMULATED tag
+- [ ] Reyes (Watch) and Chen (Info) show pin 1 on the head; Haddad and Karim show no pin and "No open alerts."
+- [ ] Clicking a pin or "Open body scan" opens that crew member's page
+- [ ] Crew Monitor → a crew member (e.g. `#/crew/AH-04`): "Body scan · latest readings" shows the same stage as the astronaut Overview — 4 rings (incl. blood pressure) with dashed connectors and numbered pins; the Open alerts list beside it shows "Pin 1 · Head"
+- [ ] Pin 1 or the alert title opens a read-only pop-up naming the crew member, body location, rule and threshold, readings and limitation, with "Review on Alerts page"; there are no acknowledge/resolve buttons in it
+- [ ] Esc closes it and focus returns to the pin or list button
+- [ ] 1440 / 768 / 375 px: no page-level horizontal scrolling; on phones the crew member stage scrolls sideways inside its card
+- [ ] Astronaut Overview (`reyes`) still looks and works as in section 18

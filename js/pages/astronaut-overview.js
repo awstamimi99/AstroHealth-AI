@@ -30,8 +30,10 @@ import { getAstronautOverview } from "../services/astronaut-overview-service.js"
 import { getAlertDetail } from "../services/alerts-service.js";
 import { getOwnHistory } from "../services/history-service.js";
 import { icon } from "../components/icon.js";
-import { createBodyScan, createRing, BODY_VIEWBOX, zonePoint } from "../components/body-scan.js";
-import { zoneForRule, ZONE_LABELS, VITAL_ZONES } from "../components/alert-zones.js";
+import { createRing } from "../components/body-scan.js";
+import { zoneForRule, ZONE_LABELS } from "../components/alert-zones.js";
+import { createVitalsStage, alertPins, ringFraction, centreStages } from "../components/vitals-stage.js";
+import { alertPopupBody, alertTitle, loadAlertDetailSafely } from "../components/alert-popup.js";
 import { planForRule, PLAN_NOTICE, VIDEO_PLACEHOLDER } from "../components/action-plans.js";
 import { openDialog } from "../components/dialog.js";
 import { planProgress } from "../core/action-plan-progress.js";
@@ -172,38 +174,12 @@ function baselineText(item, view) {
   return `Your baseline: ${formatNumber(item.baseline, view.decimals)} ${item.unit}`;
 }
 
-// ---- Scan stage: 4 rings around the body + numbered alert pins ----------------------
-
-const STAGE = Object.freeze({ width: 760, height: 560 });
-const BODY_SCALE = STAGE.height / BODY_VIEWBOX.height;
-const BODY_LEFT = (STAGE.width - BODY_VIEWBOX.width * BODY_SCALE) / 2;
-/** Ring anchor (centre of the dial) in stage units, and the side it sits on. */
-const RING_POSITIONS = Object.freeze({
-  sleepDuration: { x: 112, y: 96, side: "left" },
-  spo2: { x: 112, y: 340, side: "left" },
-  heartRate: { x: 648, y: 120, side: "right" },
-  bloodPressure: { x: 648, y: 352, side: "right" },
-});
-/** Fixed display scales for the ring fill (orientation only — no health meaning). */
-const RING_SCALES = Object.freeze({
-  heartRate: (i) => (i.value - 30) / 150,
-  spo2: (i) => (i.value - 80) / 20,
-  bloodPressure: (i) => (i.systolic - 70) / 120,
-  sleepDuration: (i) => i.value / SLEEP_SCALE_HOURS,
-});
-const pct = (v, total) => `${((v / total) * 100).toFixed(2)}%`;
-
-/** A zone's point on the stage. */
-function stagePoint(zone) {
-  const p = zonePoint(zone);
-  return { x: BODY_LEFT + p.x * BODY_SCALE, y: p.y * BODY_SCALE };
-}
+// ---- Scan stage: 4 rings around the body + numbered alert pins (js/components/vitals-stage.js) ----
 
 function vitalRing(item, data, onRetry) {
   const view = VITAL_VIEW[item.key];
-  const pos = RING_POSITIONS[item.key];
   const id = `ov-ring-${item.key}`;
-  const history = el("a", { class: "ov-ring__link", href: "#/physical", "aria-label": `View ${item.label.toLowerCase()} history` }, ["History", icon("arrow-right")]);
+  const history = el("a", { class: "vitals-stage__ring-link", href: "#/physical", "aria-label": `View ${item.label.toLowerCase()} history` }, ["History", icon("arrow-right")]);
   let ring;
   if (item.state === "ok") {
     const value = vitalValue(item, view);
@@ -212,7 +188,7 @@ function vitalRing(item, data, onRetry) {
       label: item.label,
       value: value.visual,
       unit: item.unit,
-      fraction: RING_SCALES[item.key](item),
+      fraction: ringFraction(item),
       baseline: baselineText(item, view),
       meta: [utcTime(item.timestamp, { dateToo: false }), ` · ${formatRelative(item.timestamp, data.generatedAt)}`],
       spoken: `${view.spokenLabel}: ${value.spoken}`,
@@ -230,71 +206,24 @@ function vitalRing(item, data, onRetry) {
           : item.invalidOnly ? "No usable recent reading — recent readings were marked invalid." : "No recent reading.";
     ring = createRing({ id, label: item.label, value: "—", unit: "", fraction: null, baseline: baselineText(item, view), meta: message, extra: item.state === "error" ? retryButton(onRetry) : history });
   }
-  ring.setAttribute("class", `scan-ring ov-ring ov-ring--${pos.side}`);
-  ring.style.setProperty("left", pct(pos.x, STAGE.width));
-  ring.style.setProperty("top", pct(pos.y, STAGE.height));
   return ring;
 }
 
-/** Dashed connector lines from each ring to its body zone (decorative). */
-function connectors(items) {
-  const NS = "http://www.w3.org/2000/svg";
-  const make = (name, attrs) => {
-    const n = document.createElementNS(NS, name);
-    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
-    return n;
-  };
-  const layer = make("svg", { class: "ov-stage__links", viewBox: `0 0 ${STAGE.width} ${STAGE.height}`, preserveAspectRatio: "none", "aria-hidden": "true", focusable: "false" });
-  for (const item of items) {
-    const pos = RING_POSITIONS[item.key];
-    if (!pos) continue;
-    const to = stagePoint(VITAL_ZONES[item.key]);
-    const startX = pos.side === "left" ? pos.x + 64 : pos.x - 64;
-    const elbowX = pos.side === "left" ? Math.min(to.x - 24, startX + 60) : Math.max(to.x + 24, startX - 60);
-    layer.append(make("path", { class: "ov-stage__link", d: `M${startX} ${pos.y} L${elbowX.toFixed(1)} ${pos.y} L${to.x.toFixed(1)} ${to.y.toFixed(1)}` }));
-    layer.append(make("circle", { class: "ov-stage__link-dot", cx: to.x.toFixed(1), cy: to.y.toFixed(1), r: 4 }));
-  }
-  return layer;
-}
-
-/** Pins for the listed open alerts (same numbers as the Open alerts list). */
-function alertPins(alerts) {
-  if (!alerts || alerts.status !== "ok") return [];
-  return alerts.items.map((a, i) => {
-    const zone = zoneForRule(a.ruleId);
-    const sev = SEVERITY_VIEW[a.severity] || SEVERITY_VIEW.info;
-    return {
-      number: i + 1,
-      zone,
-      severity: a.severity,
-      alert: a,
-      tag: a.title,
-      label: `Alert ${i + 1}: ${[a.number, a.title].filter(Boolean).join(" ")} — ${sev.label}, ${ZONE_LABELS[zone] || "body"}. Open details.`,
-    };
-  });
-}
-
 function scanStageSection(data, onRetry, onOpenAlert) {
-  const items = data.vitals.items;
-  const pins = alertPins(data.alerts);
-  const body = createBodyScan({
+  const pins = data.alerts && data.alerts.status === "ok" ? alertPins(data.alerts.items) : [];
+  const stage = createVitalsStage({
+    items: data.vitals.items,
     pins,
-    hotspots: pins.map((p) => ({ zone: p.zone, severity: p.severity })),
+    ringFor: (item) => vitalRing(item, data, onRetry),
     onPinClick: (pin, button) => onOpenAlert(pin.alert, button, pin.number),
   });
-  const stage = el("div", { class: "ov-stage" }, [
-    connectors(items),
-    el("div", { class: "ov-stage__body", style: { left: pct(BODY_LEFT, STAGE.width), width: pct(BODY_VIEWBOX.width * BODY_SCALE, STAGE.width) } }, body),
-    ...items.map((item) => vitalRing(item, data, onRetry)),
-  ]);
   return el("section", { class: "scan-stage ov-scan", "aria-labelledby": "ov-vitals-title" }, [
     el("div", { class: "ov-scan__head" }, [
       el("h2", { class: "scan-stage__title", id: "ov-vitals-title" }, "Body scan · latest vital signs"),
       el("span", { class: "sim-tag" }, [icon("flask-conical", { size: 12 }), "SIMULATED"]),
     ]),
     el("p", { class: "scan-stage__note" }, "The most recent usable reading of each measure. Invalid readings are left out. Times are UTC."),
-    // Keyboard-scrollable on small screens (the stage keeps its proportions and scrolls sideways).
-    el("div", { class: "scan-stage__scroll", tabindex: "0", role: "region", "aria-label": "Body scan stage — scrolls sideways on small screens" }, stage),
+    stage,
     el("p", { class: "scan-stage__note" },
       "Illustration only: the body is a stylised drawing and the ring fill uses a fixed display scale — neither is a health assessment. " +
         (pins.length ? "Numbered pins mark your open alerts; the same alerts are listed under Open alerts." : "You have no open alerts, so no pins are shown.")),
@@ -310,9 +239,9 @@ function sideAlertsSection(alerts, onRetry, onOpenAlert) {
       el("ol", { class: "ov-alerts", role: "list" }, alerts.items.map((a, i) => {
         const view = SEVERITY_VIEW[a.severity] || SEVERITY_VIEW.info;
         return el("li", { class: ["alert-item", view.item, "ov-alert"] }, [
-          el("span", { class: ["ov-alert__num", `ov-alert__num--${a.severity}`], "aria-hidden": "true" }, String(i + 1)),
+          el("span", { class: ["alert-num", `alert-num--${a.severity}`], "aria-hidden": "true" }, String(i + 1)),
           el("div", { class: "alert-item__body" }, [
-            el("button", { type: "button", class: "ov-alert__open", "data-alert-open": String(i + 1), onClick: (e) => onOpenAlert(a, e.target && e.target.closest ? e.target.closest("button") : null, i + 1) },
+            el("button", { type: "button", class: "alert-open", "data-alert-open": String(i + 1), onClick: (e) => onOpenAlert(a, e.target && e.target.closest ? e.target.closest("button") : null, i + 1) },
               `${[a.number, a.title].filter(Boolean).join(" · ")}`),
             el("p", { class: "overview__tags" }, [
               badge(view.badge, view.icon, view.label),
@@ -554,42 +483,11 @@ export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, l
     // ---- Alert pop-up -------------------------------------------------------------
     async function openAlert(alert, trigger, pinNumber) {
       if (dialog) dialog.close();
-      let detail = null;
-      if (loadAlertDetail && alert.number) {
-        try {
-          const res = await loadAlertDetail(session, alert.number);
-          if (res && res.status === "ready") detail = res;
-        } catch {
-          detail = null;
-        }
-      }
+      const detail = await loadAlertDetailSafely(loadAlertDetail, session, alert.number);
       if (signal && signal.aborted) return;
       const a = detail ? detail.alert : alert;
-      const view = SEVERITY_VIEW[a.severity] || SEVERITY_VIEW.info;
-      const zone = zoneForRule(a.ruleId || alert.ruleId);
-      const evidence = detail ? a.evidence.slice(-3).reverse() : [];
       const body = [
-        el("p", { class: "overview__tags" }, [
-          badge(view.badge, view.icon, view.label),
-          badge("badge--neutral", "clock", ALERT_STATUS_LABEL[a.status] || a.status),
-          el("span", { class: "sim-tag" }, "Synthetic"),
-        ]),
-        el("dl", { class: "ov-facts" }, [
-          el("dt", {}, "Body location"), el("dd", {}, `${ZONE_LABELS[zone] || "Body"}${pinNumber ? ` (pin ${pinNumber})` : ""}`),
-          el("dt", {}, "Detected"), el("dd", {}, utcTime(a.detectedAt)),
-          detail && a.rule.id ? el("dt", {}, "Rule") : null,
-          detail && a.rule.id ? el("dd", {}, `${a.rule.id}${a.rule.version ? ` · version ${a.rule.version}` : ""}${a.rule.thresholdUsed ? ` — ${a.rule.thresholdUsed}` : ""}`) : null,
-        ]),
-        el("h3", { class: "ov-dialog__h3" }, "What was detected"),
-        el("p", {}, a.explanation || "No explanation stored."),
-        el("p", { class: "overview__note" }, detail ? (a.limitation.startsWith(detail.thresholdLabel) ? a.limitation : `${detail.thresholdLabel} ${a.limitation}`) : "Demonstration threshold — not clinically validated. Not a diagnosis."),
-        evidence.length ? el("h3", { class: "ov-dialog__h3" }, "Key readings") : null,
-        evidence.length ? el("ul", { class: "ov-readings", role: "list" }, evidence.map((e) => el("li", {}, [
-          el("strong", {}, e.valueHidden || typeof e.value !== "number" ? e.label : `${e.label} ${formatNumber(e.value, Number.isInteger(e.value) ? 0 : 1)} ${e.unit}`),
-          " · ", utcTime(e.timestamp), " ",
-          e.source === "simulation" || e.source === "seed" ? el("span", { class: "sim-tag" }, "Simulated") : null,
-        ]))) : null,
-        detail ? null : el("p", { class: "overview__note" }, "Full details couldn't be loaded; open the alert on the Alerts page."),
+        ...alertPopupBody({ alert, detail, pinNumber }),
         el("p", { class: "overview__note", id: "ov-ack-note" }, "Acknowledge: only the Medical Officer can acknowledge alerts."),
         el("p", { class: "overview__note", id: "ov-msg-note" }, "Message the Medical Officer: sending messages from this view isn't available in this version."),
       ];
@@ -599,7 +497,7 @@ export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, l
         el("button", { type: "button", class: "btn btn--secondary btn--sm", disabled: true, "aria-describedby": "ov-msg-note" }, [icon("send"), "Message the Medical Officer"]),
         a.number ? el("a", { class: "btn btn--ghost btn--sm", href: `#/alerts/${a.number}` }, [icon("arrow-right"), "Open on Alerts page"]) : null,
       ].filter(Boolean);
-      dialog = openDialog({ kind: "modal", title: `${[a.number, a.title].filter(Boolean).join(" · ")}`, body, footer, returnFocus: trigger, onClose: () => { dialog = null; }, host });
+      dialog = openDialog({ kind: "modal", title: alertTitle(a), body, footer, returnFocus: trigger, onClose: () => { dialog = null; }, host });
     }
 
     // ---- Action-plan drawer ---------------------------------------------------------
@@ -628,13 +526,13 @@ export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, l
         : el("p", { class: "overview__empty" }, "Activity for this alert isn't available here; see the Alerts page.");
       const body = [
         el("p", { class: "banner" }, [icon("info"), el("span", { class: "banner__text" }, PLAN_NOTICE)]),
-        el("h3", { class: "ov-dialog__h3" }, plan.title),
+        el("h3", { class: "alert-pop__h3" }, plan.title),
         prog, count, notice, steps,
         el("div", { class: "ov-plan__video" }, [
           el("span", { class: "ov-plan__video-icon", "aria-hidden": "true" }, icon("play")),
           el("div", {}, [el("p", {}, [el("strong", {}, VIDEO_PLACEHOLDER.title), " ", el("span", { class: "badge badge--neutral" }, "Placeholder")]), el("p", { class: "overview__note" }, VIDEO_PLACEHOLDER.text)]),
         ]),
-        el("h3", { class: "ov-dialog__h3" }, "Alert activity"),
+        el("h3", { class: "alert-pop__h3" }, "Alert activity"),
         timeline,
         el("p", { class: "overview__note", id: "ov-esc-note" }, "Escalate: escalation is decided by the demonstration rules, not from this view."),
         el("p", { class: "overview__note", id: "ov-res-note" }, "Mark resolved: only the Medical Officer can resolve alerts."),
@@ -688,7 +586,7 @@ export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, l
       const retry = () => load();
       if (result && result.status === "ready") {
         root.replaceChildren(live, ...readyView(result, retry, openAlert, Boolean(loadActivity)));
-        centreStage(root);
+        centreStages(root);
         if (loadActivity) fillActivity(token);
       } else root.replaceChildren(refusalView(result || {}, retry));
       root.setAttribute("aria-busy", "false");
@@ -696,15 +594,6 @@ export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, l
 
     return load();
   };
-}
-
-/** On narrow screens, start the sideways-scrolling stage centred on the body. */
-function centreStage(root) {
-  if (typeof globalThis.requestAnimationFrame !== "function") return;
-  globalThis.requestAnimationFrame(() => {
-    const box = root.querySelector ? root.querySelector(".scan-stage__scroll") : null;
-    if (box && box.scrollWidth > box.clientWidth) box.scrollLeft = (box.scrollWidth - box.clientWidth) / 2;
-  });
 }
 
 /** Render #/overview for the signed-in session into `container`. */
