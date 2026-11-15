@@ -74,6 +74,10 @@
 .report-table {
   font-variant-numeric: tabular-nums;
 }
+/* Headings may wrap so a report table fits its card instead of scrolling sideways. */
+.report-table th {
+  white-space: normal;
+}
 .report-table__caption {
   caption-side: top;
   text-align: left;
@@ -81,7 +85,8 @@
   font-size: var(--text-xs);
   padding-bottom: var(--space-1);
 }
-@media (max-width: 599px) {
+/* Narrow screens: each row becomes a labelled block (screen only — print keeps the table). */
+@media screen and (max-width: 719px) {
   .report-table thead {
     position: absolute;
     width: 1px;

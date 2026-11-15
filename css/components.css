@@ -1249,7 +1249,9 @@ button.chip:hover { border-color: var(--color-border); color: var(--color-text);
 }
 
 /* Vitals stage (js/components/vitals-stage.js): body + 4 rings + dashed connectors.
-   It keeps its proportions; on narrow screens it scrolls sideways inside the card. */
+   It keeps its proportions while its card is at least 720px wide; in a narrower
+   card it stacks (body on top, rings in a grid below) — see the container query
+   after .vitals-stage__ring. */
 .vitals-stage {
   position: relative;
   min-width: 720px;
@@ -1287,6 +1289,51 @@ button.chip:hover { border-color: var(--color-border); color: var(--color-text);
   position: absolute;
   transform: translate(-50%, -56px);
   z-index: 1;
+}
+/* Narrow cards (phones, tablets, a stage beside a side column): nothing is hidden
+   sideways. The body sits on top and the 4 rings flow into a grid below it; the
+   dashed connectors are dropped because the rings no longer sit beside their zones. */
+.scan-stage__scroll {
+  container-type: inline-size;
+}
+@container (max-width: 719px) {
+  .vitals-stage {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* 2 × 2 rings */
+    gap: var(--space-5) var(--space-3);
+    justify-items: center;
+    min-width: 0;
+    aspect-ratio: auto;
+    padding-block: var(--space-2);
+  }
+  .vitals-stage__links {
+    display: none;
+  }
+  .vitals-stage__body {
+    position: relative;
+    grid-column: 1 / -1;
+    left: auto !important;   /* overrides the inline wide-layout position */
+    width: min(100%, 230px) !important;
+    height: auto;
+    aspect-ratio: 400 / 1000;
+    max-height: 420px;
+  }
+  .vitals-stage__ring {
+    position: static;
+    transform: none;
+  }
+  /* Pin labels wrap beside the pin; the alert list next to the stage names every alert. */
+  .vitals-stage .scan-pin__tag {
+    width: max-content;
+    max-width: max(110px, calc(50cqi - 64px));
+    white-space: normal;
+  }
+}
+@container (max-width: 459px) {
+  .vitals-stage .scan-pin__tag { display: none; }
+}
+@container (max-width: 379px) {
+  .vitals-stage { grid-template-columns: 1fr; } /* one ring per row on small phones */
 }
 
 .vitals-stage__ring-link {
@@ -1427,6 +1474,18 @@ html[data-motion="reduce"] .drawer { animation: none; }
   .context-scan, .context-scan--compact { grid-template-columns: 1fr; }
   .context-scan__visual, .context-scan--compact .context-scan__visual { min-height: 360px; }
   .context-scan__visual .scan-body, .context-scan--compact .context-scan__visual .scan-body { width: min(100%, 205px); }
+}
+/* Pin labels stay inside the dark panel: they wrap to the space beside the pin,
+   and in a narrow panel they are hidden. The key list next to the scan names
+   every alert in text; pins keep their number, colour, shape and aria-label. */
+.context-scan__visual { container-type: inline-size; }
+.context-scan__visual .scan-pin__tag {
+  width: max-content;
+  max-width: max(120px, calc(50cqi - 64px));
+  white-space: normal;
+}
+@container (max-width: 459px) {
+  .context-scan__visual .scan-pin__tag { display: none; }
 }
 @media print {
   .context-scan { break-inside: avoid; box-shadow: none; }

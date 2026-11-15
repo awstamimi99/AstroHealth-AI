@@ -1,5 +1,46 @@
 /* css/pages/settings.css — #/settings (Sprint 9). */
 
+/* Read-only tables fit a phone screen: headings wrap and cells get tighter padding. */
+.settings-table th {
+  white-space: normal;
+}
+@media (max-width: 480px) {
+  .settings-table th,
+  .settings-table td {
+    padding: var(--space-2) var(--space-3);
+  }
+}
+/* Small phones: a row with labelled cells becomes a labelled block. */
+@media screen and (max-width: 420px) {
+  .settings-table:has(td[data-label]) thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .settings-table:has(td[data-label]),
+  .settings-table:has(td[data-label]) tbody,
+  .settings-table:has(td[data-label]) tr,
+  .settings-table:has(td[data-label]) th,
+  .settings-table:has(td[data-label]) td {
+    display: block;
+    width: 100%;
+  }
+  .settings-table:has(td[data-label]) td {
+    padding-block: var(--space-1);
+    border-bottom: 0;
+  }
+  .settings-table:has(td[data-label]) tr {
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--color-border-subtle);
+  }
+  .settings-table td[data-label]::before {
+    content: attr(data-label) ": ";
+    color: var(--color-text-3);
+  }
+}
+
 .settings,
 .settings__content {
   display: flex;
