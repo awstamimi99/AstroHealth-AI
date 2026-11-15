@@ -36,6 +36,7 @@ import { alertPopupBody, alertTitle, loadAlertDetailSafely } from "../components
 import { planForRule, PLAN_NOTICE, VIDEO_PLACEHOLDER } from "../components/action-plans.js";
 import { openDialog } from "../components/dialog.js";
 import { planProgress } from "../core/action-plan-progress.js";
+import { onHealthChanged, keepFocus } from "../core/live-updates.js";
 import { el } from "../core/utils/dom.js";
 import { formatDate, formatDateTime, formatNumber, formatRelative, formatTime } from "../core/utils/format.js";
 
@@ -469,7 +470,7 @@ function readyView(data, onRetry, onOpenAlert) {
  * It can't change identity — the real service does that. Pages and app-shell
  * use renderAstronautOverview (bound to getAstronautOverview).
  */
-export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, progress = planProgress, host = null }) {
+export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, progress = planProgress, host = null, subscribe = onHealthChanged }) {
   return function render(container, session, { signal } = {}) {
     const root = el("div", { class: "overview", "aria-busy": "false" });
     container.replaceChildren(root);
@@ -551,10 +552,18 @@ export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, p
       sync(done0);
     }
 
-    async function load() {
+    // Live updates: a reading or alert for THIS astronaut changed (Live control,
+    // a simulation step, an alert action) → reload quietly: the current view
+    // stays until the new data is ready, with no loading state.
+    let shownCrewId = null;
+    subscribe({ signal, crewId: () => shownCrewId, reload: () => keepFocus(root, () => load({ quiet: true })) });
+
+    async function load({ quiet = false } = {}) {
       const token = ++generation;
-      root.setAttribute("aria-busy", "true");
-      for (const button of root.querySelectorAll ? root.querySelectorAll("[data-retry]") : []) button.disabled = true;
+      if (!quiet) {
+        root.setAttribute("aria-busy", "true");
+        for (const button of root.querySelectorAll ? root.querySelectorAll("[data-retry]") : []) button.disabled = true;
+      }
       if (!root.childNodes.length) root.replaceChildren(...loadingView());
 
       let result;
@@ -566,7 +575,9 @@ export function createOverviewRenderer({ loadOverview, loadAlertDetail = null, p
       if (!isCurrent(token)) return; // navigated away, or a newer Retry is running
 
       const retry = () => load();
+      if (quiet && !(result && result.status === "ready")) return; // keep what is shown; the next event or Retry tries again
       if (result && result.status === "ready") {
+        shownCrewId = result.astronaut && typeof result.astronaut.crewId === "string" ? result.astronaut.crewId : null;
         root.replaceChildren(live, ...readyView(result, retry, openAlert));
         centreStages(root);
       } else root.replaceChildren(refusalView(result || {}, retry));

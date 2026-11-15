@@ -14,6 +14,7 @@
 import { getCrewSnapshot } from "../services/crew-monitor-service.js";
 import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
+import { onHealthChanged, keepFocus } from "../core/live-updates.js";
 import { createBodyScan, createRing } from "../components/body-scan.js";
 import { alertPins, ringFraction, severityLegend } from "../components/vitals-stage.js";
 import { zoneForRule, ZONE_LABELS, vitalSeverities } from "../components/alert-zones.js";
@@ -139,16 +140,21 @@ function queueSection(data) {
 }
 
 /** TEST SEAM: tests pass a fake loader returning presentation data. Pages use renderMedicalOfficerOverview. */
-export function createMedicalOfficerOverviewRenderer({ loadSnapshot, navigate = (hash) => { globalThis.location.hash = hash; } }) {
+export function createMedicalOfficerOverviewRenderer({ loadSnapshot, navigate = (hash) => { globalThis.location.hash = hash; }, subscribe = onHealthChanged }) {
   return function render(container, session, { signal } = {}) {
     const root = el("div", { class: "crew crew--overview", "aria-busy": "false" });
     container.replaceChildren(root);
     let generation = 0;
 
-    async function load() {
+    // Live updates (crew-wide screen: every crew member's changes count).
+    subscribe({ signal, crewId: () => "", reload: () => keepFocus(root, () => load({ quiet: true })) });
+
+    async function load({ quiet = false } = {}) {
       const token = ++generation;
-      root.setAttribute("aria-busy", "true");
-      for (const b of root.querySelectorAll("[data-retry]")) b.disabled = true;
+      if (!quiet) {
+        root.setAttribute("aria-busy", "true");
+        for (const b of root.querySelectorAll("[data-retry]")) b.disabled = true;
+      }
       if (!root.childNodes.length) root.replaceChildren(...loadingView("Loading the crew overview…"));
       let result;
       try {
@@ -157,8 +163,14 @@ export function createMedicalOfficerOverviewRenderer({ loadSnapshot, navigate = 
         result = { status: "unavailable", reason: "unexpected_error" };
       }
       if (token !== generation || (signal && signal.aborted)) return;
+      if (quiet && !(result && result.status === "ready")) return; // keep what is shown
       const retry = () => load();
-      if (result && result.status === "ready") root.replaceChildren(headerSection(result), summarySection(result, retry), queueSection(result), crewScanSection(result, navigate));
+      if (result && result.status === "ready") root.replaceChildren(
+        headerSection(result),
+        crewScanSection(result, navigate),
+        summarySection(result, retry),
+        queueSection(result),
+      );
       else root.replaceChildren(refusalView(result, retry));
       root.setAttribute("aria-busy", "false");
     }

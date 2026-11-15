@@ -17,7 +17,14 @@
 // The opaque run reference returned by the service is kept in memory only —
 // never rendered, never put in a URL.
 //
-// Test seam: createSimulationCenterRenderer({ service, timers, channel }).
+// TABS: "Scenarios" (the catalog runs, as before) and "Live control"
+// (js/components/live-control-view.js): the Medical Officer sets synthetic values on
+// charts for one crew member. A custom curve started there is advanced by
+// THIS page's timer, like any other run. This module also connects the
+// simulation service's "data changed" notices to the event bus, so open
+// screens (this tab and others) refresh after every committed reading.
+//
+// Test seam: createSimulationCenterRenderer({ service, timers, channel, live, reset, notifyReset }).
 
 import {
   getSimulationCenter,
@@ -27,8 +34,14 @@ import {
   pauseSimulation,
   resumeSimulation,
   stopSimulation,
+  recordManualReading,
+  startCustomCurve,
+  connectSimulationEvents,
   DEFAULT_SPEED,
 } from "../services/simulation-service.js";
+import { getLiveControl } from "../services/live-control-service.js";
+import { resetDemoData } from "../services/demo-reset-service.js";
+import { createLiveControl } from "../components/live-control-view.js";
 import { bus } from "../core/event-bus.js";
 import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
@@ -38,6 +51,9 @@ import { refusalView } from "../components/health-view.js";
 import { createContextBodyScan } from "../components/context-body-scan.js";
 
 const BASE = "simulation";
+
+// Committed readings and alert changes → event bus (same tab + other tabs).
+connectSimulationEvents((name, data) => bus.emit(name, data));
 
 const STATUS_VIEW = Object.freeze({
   running: { icon: "play", label: "Running", badge: "badge--info" },
@@ -97,12 +113,16 @@ function statusBadge(key) {
 }
 
 /** TEST SEAM. Production uses renderSimulationCenter. */
-export function createSimulationCenterRenderer({ service, timers = defaultTimers, channel = defaultChannel }) {
+export function createSimulationCenterRenderer({ service, timers = defaultTimers, channel = defaultChannel, live: liveService = null, reset: resetService = null, notifyReset = () => bus.emit("demo:reset", {}) }) {
   return function render(container, session, { signal, focus = false } = {}) {
     const live = el("p", { class: "sr-only", role: "status", "aria-live": "polite" });
-    const content = el("div", { class: "sim__content" });
-    const root = el("div", { class: "sim", "aria-busy": "false" }, [live, content]);
+    const content = el("div", { class: "sim__content", id: "sim-panel-scenarios", role: "tabpanel", "aria-labelledby": "sim-tab-scenarios" });
+    const livePanel = el("div", { class: "sim__content", id: "sim-panel-live", role: "tabpanel", "aria-labelledby": "sim-tab-live", hidden: true });
+    const tabs = el("div", { class: "sim-tabs", role: "tablist", "aria-label": "Simulation Center sections" });
+    const root = el("div", { class: "sim", "aria-busy": "false" }, liveService ? [live, tabs, content, livePanel] : [live, content]);
     container.replaceChildren(root);
+    let tab = "scenarios";
+    let liveView = null;
 
     const st = {
       data: null,
@@ -134,6 +154,62 @@ export function createSimulationCenterRenderer({ service, timers = defaultTimers
         st.driving = null;
         if (typeof unsubscribe === "function") unsubscribe();
       }, { once: true });
+    }
+
+    // ---- tabs ("Scenarios" | "Live control") ------------------------------------------------
+
+    function drawTabs() {
+      if (!liveService) return;
+      const item = (key, text, iconName) => el("button", {
+        type: "button", class: ["sim-tab", tab === key ? "is-active" : ""], role: "tab", id: `sim-tab-${key}`,
+        "aria-selected": tab === key ? "true" : "false", "aria-controls": `sim-panel-${key}`, tabindex: tab === key ? "0" : "-1",
+        onClick: () => showTab(key),
+        onKeydown: (e) => {
+          if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+          showTab(key === "live" ? "scenarios" : "live");
+          for (const n of tabs.querySelectorAll("[id]")) if (n.getAttribute("id") === `sim-tab-${tab}` && typeof n.focus === "function") n.focus();
+        },
+      }, [icon(iconName), text]);
+      tabs.replaceChildren(item("scenarios", "Scenarios", "flask-conical"), item("live", "Live control", "sliders-horizontal"));
+    }
+
+    function showTab(key) {
+      if (!liveService || key === tab) return;
+      tab = key;
+      if (tab === "live") {
+        content.setAttribute("hidden", "");
+        livePanel.removeAttribute("hidden");
+        if (!liveView) {
+          liveView = createLiveControl({
+            session,
+            service: { recordManualReading: (s, i) => service.recordManualReading(s, i), startCustomCurve: (s, i) => service.startCustomCurve(s, i) },
+            live: liveService,
+            reset: resetService,
+            notifyReset,
+            signal,
+            host: {
+              getRun: () => (st.data && st.data.run ? st.data.run : null),
+              lastRisk: () => st.risk,
+              announce,
+              control: (kind) => control(kind),
+              adoptRun: async (runRef) => {
+                st.driving = runRef;
+                st.risk = null;
+                channel.notify();
+                await load();
+              },
+            },
+          });
+          livePanel.replaceChildren(liveView.node);
+        }
+        liveView.load();
+        announce("Live control. Choose a crew member to edit.");
+      } else {
+        livePanel.setAttribute("hidden", "");
+        content.removeAttribute("hidden");
+        announce("Scenarios.");
+      }
+      drawTabs();
     }
 
     // ---- actions --------------------------------------------------------------------------
@@ -310,6 +386,7 @@ export function createSimulationCenterRenderer({ service, timers = defaultTimers
       if (!run || !run.active) st.confirmStop = false;
       draw();
       schedule();
+      if (liveView) liveView.sync(); // a curve step landed, a run changed, …
       if (st.focusHeading) {
         st.focusHeading = false;
         for (const n of content.querySelectorAll("[data-heading]")) n.focus();
@@ -625,6 +702,7 @@ export function createSimulationCenterRenderer({ service, timers = defaultTimers
       ]);
     }
 
+    drawTabs();
     return load();
   };
 }
@@ -638,5 +716,9 @@ export const renderSimulationCenter = createSimulationCenterRenderer({
     pauseSimulation: (session, runRef) => pauseSimulation(session, runRef),
     resumeSimulation: (session, runRef) => resumeSimulation(session, runRef),
     stopSimulation: (session, runRef, input) => stopSimulation(session, runRef, input),
+    recordManualReading: (session, input) => recordManualReading(session, input),
+    startCustomCurve: (session, input) => startCustomCurve(session, input),
   }),
+  live: Object.freeze({ getLiveControl: (session, input) => getLiveControl(session, input) }),
+  reset: Object.freeze({ resetDemoData: (session, input) => resetDemoData(session, input) }),
 });

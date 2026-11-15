@@ -83,8 +83,9 @@
           <span class="chip"><i data-icon="calendar"></i> Mission Day <strong data-mission-day>—</strong></span>
         </div>
         <div class="topbar__actions">
-          <!-- Plain link to the Alerts page. No unread count until alerts are built. -->
-          <a class="icon-btn" href="#/alerts" aria-label="Alerts" title="Alerts"><i data-icon="bell"></i></a>
+          <!-- Link to the Alerts page with the number of OPEN alerts the signed-in user may see
+               (astronaut: own alerts; Medical Officer: the crew). Filled by app-shell.js. -->
+          <a class="icon-btn icon-btn--badged" href="#/alerts" aria-label="Alerts" title="Alerts" data-alert-bell><i data-icon="bell"></i><span class="icon-btn__badge" data-alert-count hidden></span></a>
           <div class="topbar__user">
             <span class="avatar avatar--brand" aria-hidden="true" data-user-initials></span>
             <div class="topbar__user-text">

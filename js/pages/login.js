@@ -6,7 +6,7 @@
 // ⚠️ DEMO AUTHENTICATION — a research/educational prototype, not real security.
 
 import { usersRepo, ROLES, seedDemoData, DatabaseError, DEMO_PASSWORD } from "../db/index.js";
-import { createSession, onSessionChange } from "../auth/session.js";
+import { createSession, onSessionChange, isTabOnlySession } from "../auth/session.js";
 import { redirectAuthenticatedUser } from "../auth/guard.js";
 import { icon } from "../components/icon.js";
 import { mountPublicBodyScans } from "../components/public-body-scan.js";
@@ -26,8 +26,13 @@ const DEMO_ROLES = { haddad: ROLES.ASTRONAUT, medofficer: ROLES.MEDICAL_OFFICER 
 /** DatabaseError codes meaning "the local database can't be used right now". */
 const UNAVAILABLE_CODES = new Set(["UNSUPPORTED", "OPEN_FAILED", "VERSION", "BLOCKED", "INVALID_STATE", "QUOTA", "ABORTED"]);
 
+// login.html?tab=1 — "sign in for this tab only": show the form even when another
+// tab is signed in (the shared session is left alone), unless THIS tab already
+// has its own tab-only session.
+const TAB_ONLY_MODE = new URLSearchParams(location.search).get("tab") === "1";
+
 // Already signed in? Go straight to the app (and stop here).
-if (!redirectAuthenticatedUser()) {
+if (!(TAB_ONLY_MODE && !isTabOnlySession() ? false : redirectAuthenticatedUser())) {
   mountPublicBodyScans();
   initLoginPage();
 }
@@ -52,6 +57,8 @@ function initLoginPage() {
   const formErrorText = $("#form-error-text");
   const demoButtons = $$("[data-demo-username]");
   let busy = false;
+  let tabOnlySignIn = false;
+  if (TAB_ONLY_MODE && $("#tab-only")) $("#tab-only").checked = true;
 
   // One-time notice after a demo-data reset (login.html?reset=1): show it, then
   // drop the parameter so a reload doesn't show it again.
@@ -162,7 +169,9 @@ function initLoginPage() {
         return;
       }
 
-      createSession(user); // stores only safe fields — never the password
+      const tabOnly = Boolean($("#tab-only") && $("#tab-only").checked);
+      tabOnlySignIn = tabOnly;
+      createSession(user, { tabOnly }); // stores only safe fields — never the password
       status.textContent = "Signed in. Opening the mission console…";
       redirectAuthenticatedUser();
     } catch (err) {
@@ -178,6 +187,7 @@ function initLoginPage() {
 
   // Signed in from another tab? Follow it to the app.
   onSessionChange((session) => {
-    if (session) redirectAuthenticatedUser();
+    // In "this tab only" mode a sign-in in ANOTHER tab doesn't move this one.
+    if (session && (!TAB_ONLY_MODE || tabOnlySignIn || isTabOnlySession())) redirectAuthenticatedUser();
   });
 }

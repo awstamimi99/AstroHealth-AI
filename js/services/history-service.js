@@ -97,6 +97,11 @@ export function describeEvent(e, ctx) {
         const text = reading ? `Simulated reading: ${METRIC_LABELS[reading.metric]} ${fmt(reading.value)} ${reading.unit}${step ? ` (step ${step})` : ""}` : "Simulated reading recorded";
         return base("readings", text, { provenance: "simulation" });
       }
+      // Live control (Medical Officer set a synthetic value directly in the Simulation Center).
+      if (d.mode === "live_control") {
+        const live = readingFrom(d);
+        return base("readings", live ? `Live control reading: ${METRIC_LABELS[live.metric]} ${fmt(live.value)} ${live.unit}` : "Live control reading recorded", { provenance: "simulation" });
+      }
       if (Number.isInteger(d.samples) && d.samples > 0) return base("readings", `${d.samples} vital-sign sample${d.samples === 1 ? "" : "s"} recorded`, { provenance: "not_recorded" });
       const reading = readingFrom(d);
       if (reading) return base("readings", `${METRIC_LABELS[reading.metric]} recorded: ${fmt(reading.value)} ${reading.unit}`, { provenance: "not_recorded" });

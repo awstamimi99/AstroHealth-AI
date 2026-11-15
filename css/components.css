@@ -124,6 +124,28 @@
   background: var(--color-elevated);
   color: var(--color-text);
 }
+/* Count on an icon button (open alerts on the bell). The link's aria-label says the number. */
+.icon-btn__badge {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border: 2px solid var(--color-topbar, var(--color-card));
+  border-radius: var(--radius-pill);
+  background: var(--color-info);
+  color: var(--color-card);
+  font-size: 10px;
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.icon-btn__badge[hidden] { display: none; }
+.icon-btn__badge[data-severity="warning"] { background: var(--color-warning); }
+.icon-btn__badge[data-severity="critical"] { background: var(--color-critical); }
 .icon-btn--bordered {
   border-color: var(--color-border-subtle);
 }
@@ -1410,3 +1432,87 @@ html[data-motion="reduce"] .drawer { animation: none; }
   .context-scan { break-inside: avoid; box-shadow: none; }
   .context-scan__visual { min-height: 280px; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
 }
+
+/* ---------------------------------------------------- Live chart ------ */
+/* js/components/live-chart.js — drawn on the dark scan stage; scan tokens only. */
+.live-chart {
+  margin: 0;
+}
+.live-chart__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  touch-action: pan-y;
+}
+.live-chart__grid line {
+  stroke: var(--color-scan-grid);
+  stroke-width: 1;
+}
+.live-chart__tick,
+.live-chart__baseline-label,
+.live-chart__limit-label,
+.live-chart__handle-value {
+  fill: var(--color-scan-text-2);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.live-chart__band { opacity: 0.06; }
+.live-chart__band--warning { fill: var(--color-scan-watch); }
+.live-chart__band--critical { fill: var(--color-scan-critical); opacity: 0.09; }
+.live-chart__limit {
+  stroke-width: 1.5;
+  stroke-dasharray: 2 4;
+}
+.live-chart__limit--warning { stroke: var(--color-scan-watch); }
+.live-chart__limit--critical { stroke: var(--color-scan-critical); }
+.live-chart__limit-label--warning { fill: var(--color-scan-watch); }
+.live-chart__limit-label--critical { fill: var(--color-scan-critical); }
+.live-chart__baseline line {
+  stroke: var(--color-scan-text-2);
+  stroke-width: 1.2;
+  stroke-dasharray: 7 5;
+}
+.live-chart__line {
+  fill: none;
+  stroke: var(--color-scan-outline);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.live-chart__line--1 { stroke: var(--color-scan-baseline); }
+.live-chart__dot { fill: var(--color-scan-outline); }
+.live-chart__dot--1 { fill: var(--color-scan-baseline); }
+.live-chart__join {
+  fill: none;
+  stroke: var(--color-scan-text);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 4;
+  opacity: 0.8;
+}
+.live-chart__handle {
+  cursor: ns-resize;
+  touch-action: none;
+  outline: none;
+}
+.live-chart__handle-hit { fill: transparent; }
+.live-chart__handle-dot {
+  fill: var(--color-scan-text);
+  stroke: var(--color-scan-bg);
+  stroke-width: 2;
+}
+.live-chart__handle--1 .live-chart__handle-dot { fill: var(--color-scan-baseline); }
+.live-chart__handle-value {
+  fill: var(--color-scan-text);
+  font-weight: var(--weight-bold);
+}
+.live-chart__handle:hover .live-chart__handle-dot,
+.live-chart__handle:focus-visible .live-chart__handle-dot {
+  stroke: var(--color-scan-text);
+  stroke-width: 4;
+  filter: drop-shadow(0 0 6px var(--color-scan-glow));
+}
+.live-chart.is-disabled .live-chart__handle {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+

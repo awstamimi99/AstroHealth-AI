@@ -16,6 +16,7 @@
 import { getOwnHistory, getCrewMemberHistory, listCrewForHistorySelection } from "../services/history-service.js";
 import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
+import { onHealthChanged, keepFocus } from "../core/live-updates.js";
 import { formatDate } from "../core/utils/format.js";
 import { badge, loadingView, section, srOnly, syntheticNotice, utcTime } from "../components/crew-view.js";
 import { refusalView } from "../components/health-view.js";
@@ -66,7 +67,7 @@ function historyScan(data) {
 }
 
 /** TEST SEAM. Production uses renderHistory. */
-export function createHistoryRenderer({ service }) {
+export function createHistoryRenderer({ service, subscribe = onHealthChanged }) {
   return function render(container, session, { signal, hash = "#/history", focus = false } = {}) {
     const route = parseHistoryRoute(hash);
     const live = el("p", { class: "sr-only", role: "status", "aria-live": "polite" });
@@ -87,10 +88,19 @@ export function createHistoryRenderer({ service }) {
     const st = { generation: 0, data: null, days: 7, visible: 0, hidden: new Set(), focusHeading: focus };
     const aborted = () => Boolean(signal && signal.aborted);
 
-    async function load() {
+    // Live updates: new readings and alert events appear in the list without a reload.
+    subscribe({
+      signal,
+      crewId: () => (officer ? (route.view === "base" ? "" : route.crewId) : st.data && st.data.profile && typeof st.data.profile.crewId === "string" ? st.data.profile.crewId : null),
+      reload: () => keepFocus(root, () => load({ quiet: true })),
+    });
+
+    async function load({ quiet = false } = {}) {
       const token = ++st.generation;
-      root.setAttribute("aria-busy", "true");
-      content.replaceChildren(...loadingView("Loading history…"));
+      if (!quiet) {
+        root.setAttribute("aria-busy", "true");
+        content.replaceChildren(...loadingView("Loading history…"));
+      }
       let res;
       try {
         if (officer && route.view === "base") res = await service.listCrewForHistorySelection(session);
@@ -100,6 +110,16 @@ export function createHistoryRenderer({ service }) {
         res = { status: "unavailable", reason: "unexpected_error" };
       }
       if (token !== st.generation || aborted()) return;
+      if (quiet) {
+        if (!(res && res.status === "ready")) return; // keep what is shown
+        if (officer && route.view === "base") return void content.replaceChildren(picker(res.crew));
+        const added = st.data ? Math.max(0, res.totalAvailable - st.data.totalAvailable) : 0;
+        st.data = res;
+        st.visible = Math.max(st.visible, res.pageSize);
+        draw();
+        if (added) live.textContent = `History updated: ${added} new activit${added === 1 ? "y" : "ies"}.`;
+        return;
+      }
       root.setAttribute("aria-busy", "false");
       if (res && res.status === "ready" && officer && route.view === "base") {
         content.replaceChildren(picker(res.crew));

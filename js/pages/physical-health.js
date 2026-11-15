@@ -12,6 +12,7 @@
 import { getOwnPhysicalHealth, getCrewMemberPhysicalHealth, listCrewForPhysicalSelection, BASELINE_NOTE } from "../services/physical-health-service.js";
 import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
+import { onHealthChanged, keepFocus } from "../core/live-updates.js";
 import { alertItem, dataBadges, loadingView, provenanceTag, section, sectionError, stamp, syntheticNotice, vitalValueText } from "../components/crew-view.js";
 import { astronautNestedNotFound, baselineSentence, crewPicker, parseHealthRoute, refusalView, trendBlock } from "../components/health-view.js";
 import { createContextBodyScan } from "../components/context-body-scan.js";
@@ -122,7 +123,7 @@ function alertsSection(data, onRetry) {
 }
 
 /** TEST SEAM: tests pass fake loaders. Production uses renderPhysicalHealth. */
-export function createPhysicalHealthRenderer({ loadOwn, loadCrewMember, listCrew }) {
+export function createPhysicalHealthRenderer({ loadOwn, loadCrewMember, listCrew, subscribe = onHealthChanged }) {
   return function render(container, session, { signal, hash = `#/${BASE}`, focus = false } = {}) {
     const route = parseHealthRoute(hash, BASE);
     const root = el("div", { class: "health", "aria-busy": "false" });
@@ -147,10 +148,19 @@ export function createPhysicalHealthRenderer({ loadOwn, loadCrewMember, listCrew
       root.replaceChildren(header(data), physicalScan(data), latestSection(data, retry), trendsSection(data, windowDays, (n) => { windowDays = n; draw(); }), qualitySection(data), alertsSection(data, retry));
     };
 
-    async function load() {
+    // Live updates for the crew member shown (own data for an astronaut): reload quietly.
+    subscribe({
+      signal,
+      crewId: () => (officer ? (route.view === "base" ? "" : route.crewId) : data && data.profile && typeof data.profile.crewId === "string" ? data.profile.crewId : null),
+      reload: () => keepFocus(root, () => load({ quiet: true })),
+    });
+
+    async function load({ quiet = false } = {}) {
       const token = ++generation;
-      root.setAttribute("aria-busy", "true");
-      for (const b of root.querySelectorAll("[data-retry]")) b.disabled = true;
+      if (!quiet) {
+        root.setAttribute("aria-busy", "true");
+        for (const b of root.querySelectorAll("[data-retry]")) b.disabled = true;
+      }
       if (!root.childNodes.length) root.replaceChildren(...loadingView("Loading physical health…"));
       let result;
       try {
@@ -161,13 +171,14 @@ export function createPhysicalHealthRenderer({ loadOwn, loadCrewMember, listCrew
         result = { status: "unavailable", reason: "unexpected_error" };
       }
       if (token !== generation || (signal && signal.aborted)) return;
+      if (quiet && !(result && result.status === "ready")) return; // keep what is shown
       const retry = () => load();
       if (result && result.status === "ready" && officer && route.view === "base") {
         root.replaceChildren(crewPicker(result.crew, BASE, { title: "Choose a crew member", intro: "Select a crew member to review their physical readings (read-only)." }));
       } else if (result && result.status === "ready") {
         data = result;
         draw();
-        if (focus && officer) root.querySelectorAll("[tabindex]")[0]?.focus();
+        if (focus && officer && !quiet) root.querySelectorAll("[tabindex]")[0]?.focus();
       } else {
         root.replaceChildren(refusalView(result, retry, BASE));
       }

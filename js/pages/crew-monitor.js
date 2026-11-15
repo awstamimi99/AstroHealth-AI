@@ -28,6 +28,7 @@ import { alertPopupBody, alertTitle, loadAlertDetailSafely } from "../components
 import { openDialog } from "../components/dialog.js";
 import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
+import { onHealthChanged, keepFocus } from "../core/live-updates.js";
 import { formatDate, formatNumber } from "../core/utils/format.js";
 import {
   alertItem,
@@ -323,7 +324,7 @@ function detailView(data, onRetry, onOpenAlert) {
 // ---- Renderer ---------------------------------------------------------------------------
 
 /** TEST SEAM: tests pass fake loaders returning presentation data. Pages use renderCrewMonitor. */
-export function createCrewMonitorRenderer({ loadSnapshot, loadDetail, loadAlertDetail = null, host = null }) {
+export function createCrewMonitorRenderer({ loadSnapshot, loadDetail, loadAlertDetail = null, host = null, subscribe = onHealthChanged }) {
   return function render(container, session, { signal, hash = "#/crew", focus = false } = {}) {
     const route = parseCrewRoute(hash);
     const root = el("div", { class: "crew", "aria-busy": "false" });
@@ -348,10 +349,15 @@ export function createCrewMonitorRenderer({ loadSnapshot, loadDetail, loadAlertD
       dialog = openDialog({ kind: "modal", title: alertTitle(a), body, footer, returnFocus: trigger, onClose: () => { dialog = null; }, host });
     }
 
-    async function load() {
+    // Live updates: the crew list follows every crew member; a detail view only its own.
+    subscribe({ signal, crewId: () => (route.view === "detail" ? route.crewId : ""), reload: () => keepFocus(root, () => load({ quiet: true })) });
+
+    async function load({ quiet = false } = {}) {
       const token = ++generation;
-      root.setAttribute("aria-busy", "true");
-      for (const b of root.querySelectorAll("[data-retry]")) b.disabled = true;
+      if (!quiet) {
+        root.setAttribute("aria-busy", "true");
+        for (const b of root.querySelectorAll("[data-retry]")) b.disabled = true;
+      }
       if (!root.childNodes.length) root.replaceChildren(...loadingView(route.view === "list" ? "Loading the crew…" : "Loading crew member…"));
 
       let result;
@@ -362,6 +368,7 @@ export function createCrewMonitorRenderer({ loadSnapshot, loadDetail, loadAlertD
         result = { status: "unavailable", reason: "unexpected_error" };
       }
       if (token !== generation || (signal && signal.aborted)) return;
+      if (quiet && !(result && result.status === "ready")) return; // keep what is shown
 
       const retry = () => load();
       if (result && result.status === "ready") {
@@ -370,7 +377,7 @@ export function createCrewMonitorRenderer({ loadSnapshot, loadDetail, loadAlertD
           const { view, heading } = detailView(result, retry, (alert, trigger, n) => openAlert(result.profile, alert, trigger, n));
           root.replaceChildren(...view);
           centreStages(root);
-          if (focus && token === 1) heading.focus(); // opening a crew member moves focus to its name
+          if (focus && token === 1 && !quiet) heading.focus(); // opening a crew member moves focus to its name
         }
       } else {
         root.replaceChildren(refusalView(result, retry));

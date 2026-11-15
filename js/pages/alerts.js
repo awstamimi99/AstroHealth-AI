@@ -18,6 +18,7 @@ import { evaluateCrew } from "../services/risk-service.js";
 import { bus } from "../core/event-bus.js";
 import { icon } from "../components/icon.js";
 import { el } from "../core/utils/dom.js";
+import { onHealthChanged, keepFocus, HEALTH_EVENT } from "../core/live-updates.js";
 import { formatNumber } from "../core/utils/format.js";
 import { SEVERITY_VIEW, badge, loadingView, retryButton, section, sectionError, srOnly, syntheticNotice, utcTime } from "../components/crew-view.js";
 import { createContextBodyScan } from "../components/context-body-scan.js";
@@ -101,7 +102,7 @@ const defaultChannel = Object.freeze({
 });
 
 /** TEST SEAM. Production uses renderAlerts. */
-export function createAlertsRenderer({ service, channel = defaultChannel }) {
+export function createAlertsRenderer({ service, channel = defaultChannel, subscribe = onHealthChanged }) {
   return function render(container, session, { signal, hash = "#/alerts", focus = false } = {}) {
     const route = parseAlertsRoute(hash);
     const live = el("p", { class: "sr-only", role: "status", "aria-live": "polite" });
@@ -114,6 +115,9 @@ export function createAlertsRenderer({ service, channel = defaultChannel }) {
     const announce = (text) => { live.textContent = text; };
     const unsubscribe = channel.subscribe(() => { if (!aborted() && !st.busy) load(); });
     if (signal) signal.addEventListener("abort", () => { if (typeof unsubscribe === "function") unsubscribe(); }, { once: true });
+    // Live updates: a committed reading / risk evaluation (Live control, simulation steps) in this
+    // or another tab. The service returns only the alerts this viewer may see.
+    subscribe({ signal, events: [HEALTH_EVENT], crewId: () => (officer ? "" : null), reload: () => { if (!aborted() && !st.busy) return keepFocus(root, () => load()); } });
 
     if (route.view === "invalid") {
       content.replaceChildren(refusal({ status: "not_found", reason: "unknown_alert" }, null));

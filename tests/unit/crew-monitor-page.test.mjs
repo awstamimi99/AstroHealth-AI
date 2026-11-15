@@ -60,7 +60,7 @@ test("MO overview: welcome, crew summary counts and the priority queue as an ord
   const c = await renderMO(SNAPSHOT);
   const root = c.childNodes[0];
   assert.equal(root.getAttribute("aria-busy"), "false");
-  assert.deepEqual(all(root, (e) => e.tagName === "SECTION").map((s) => s.getAttribute("aria-labelledby")), ["mo-welcome-title", "mo-summary-title", "mo-queue-title", "mo-scan-title"]);
+  assert.deepEqual(all(root, (e) => e.tagName === "SECTION").map((s) => s.getAttribute("aria-labelledby")), ["mo-welcome-title", "mo-scan-title", "mo-summary-title", "mo-queue-title"]);
   assert.match(byId(root, "mo-welcome-title").textContent, /Welcome, Dr\. Lena Ortiz/);
   const summary = sectionOf(root, "mo-summary-title");
   assert.match(summary.textContent, /4 crew members · 2 with open alerts\./);
